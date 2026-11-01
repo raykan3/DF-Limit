@@ -1,0 +1,828 @@
+\documentclass[review,12pt]{elsarticle}
+\usepackage{amsfonts,amsmath,amssymb,amsthm,bm,graphicx,booktabs,enumitem,xcolor}
+\usepackage[letterpaper,textwidth=6.5in,textheight=8.8in]{geometry}
+\usepackage[breaklinks=true,colorlinks,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+\usepackage{array,multirow}
+
+\journal{Journal of Econometrics}
+
+%% Harvard citation style
+\bibliographystyle{model2-names}\biboptions{authoryear}
+
+\allowdisplaybreaks
+\renewcommand{\topfraction}{0.9}\renewcommand{\bottomfraction}{0.7}\renewcommand{\textfraction}{0.08}\renewcommand{\floatpagefraction}{0.75}
+
+\newcommand{\E}{{\mathbb E}}
+\newcommand{\PP}{{\mathbb P}}
+\newcommand{\dr}[1]{{\mathrm d}#1}
+\newcommand{\iu}{{\mathrm i}}
+\newcommand{\Rea}{\operatorname{Re}}
+\newcommand{\Ima}{\operatorname{Im}}
+\newcommand{\Var}{\operatorname{Var}}
+\newcommand{\Cov}{\operatorname{Cov}}
+\newcommand{\erf}{\operatorname{erf}}
+\newcommand{\erfc}{\operatorname{erfc}}
+\newcommand{\tr}{\operatorname{tr}}
+\newcommand{\adj}{\operatorname{adj}}
+\newcommand{\sech}{\operatorname{sech}}
+\newcommand{\diag}{\operatorname{diag}}
+\newcommand{\phih}{\hat\phi}
+\newcommand{\tauh}{\hat\tau}
+\newcommand{\Fk}{\textsf{\upshape DK}}
+\newcommand{\Fu}{\textsf{\upshape DU}}
+\newcommand{\Ft}{\textsf{\upshape DT}}
+\newcommand{\Sk}{\textsf{\upshape SK}}
+\newcommand{\Su}{\textsf{\upshape SU}}
+\newcommand{\St}{\textsf{\upshape ST}}
+\newcommand{\cF}{\mathcal{F}}
+\newcommand{\cP}{\mathcal{P}}
+\newcommand{\cQ}{\mathcal{Q}}
+\newcommand{\cG}{\mathcal{G}}
+\newcommand{\bX}{\boldsymbol{X}}
+\newcommand{\bQ}{\boldsymbol{Q}}
+\newcommand{\bK}{\boldsymbol{K}}
+\newcommand{\bI}{\boldsymbol{I}}
+\newcommand{\bGam}{\boldsymbol{\Gamma}}
+\newcommand{\bSig}{\boldsymbol{\Sigma}}
+\newcommand{\bP}{\boldsymbol{P}}
+\newcommand{\bG}{\boldsymbol{G}}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}{Proposition}
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}
+
+\begin{document}
+
+\begin{frontmatter}
+
+\title{The Exact Limiting Distribution of the Dickey--Fuller $t$-Ratio}
+
+\author[purdue]{Yong Bao}
+\ead{ybao@purdue.edu}
+
+\author[hslu]{Simon A. Broda\corref{cor}}
+\ead{simon.broda@hslu.ch}
+
+\author[rotman,hkust]{Raymond Kan}
+\ead{Raymond.Kan@rotman.utoronto.ca}
+\cortext[cor]{Correspondence to: Institute of Financial Services IFZ, Lucerne University of Applied Sciences, Suurstoffi 1, 6343 Rotkreuz, Switzerland.}
+
+\address[purdue]{Department of Economics, Purdue University, 403 W. State Street, West Lafayette, IN 47907, USA}
+\address[hslu]{Institute of Financial Services IFZ, Lucerne University of Applied Sciences, Rotkreuz, Switzerland}
+\address[rotman]{Rotman School of Management, University of Toronto, Canada}
+\address[hkust]{School of Business and Management, Hong Kong University of Science and Technology, Hong Kong}
+
+\begin{abstract}
+The limiting distribution of the Dickey--Fuller $t$-ratio, the reference distribution of the most widely used test in time series econometrics, has been tabulated by simulation since 1979.  We obtain its density and distribution function in closed form up to a single integral, for the regression without deterministic terms, with an intercept, and with an intercept and a linear trend, under local alternatives $\phi=1+c/n$ on either side of the unit root, for the $t$-ratio centered at the unit root or at any local null value, and with a zero, a fixed or a stationary initial observation of the order of $\sqrt n$.  The joint moment generating function of the numerator and the denominator of the limit is a Fredholm determinant that is a polynomial of degree at most two in the argument of the numerator, because the numerator is a quadratic form of rank at most two in a few Gaussian functionals of the path, and the initial observation enters it through a closed-form quadratic term.  An inversion formula for ratios of the form $X/\sqrt Y$ then gives the density and the distribution function as single integrals of special functions along a line in the complex plane; reversing the order of the two inversions gives a second representation, a double integral along saddle-point paths, which covers a fixed nonzero start as well.  The integrals are evaluated to eleven or twelve digits in a fraction of a second, and the moments of the limits are one-dimensional integrals of the moment generating function at real arguments.  The results reproduce the response-surface critical values of MacKinnon, the moments of Nabeya, the closed forms of Abadir and the simulated local powers in the literature, and make the limiting power of the three tests, with a zero, a fixed or a stationary start, exact.
+\end{abstract}
+
+\begin{keyword}
+unit root \sep Dickey--Fuller test \sep $t$-ratio \sep local-to-unity asymptotics \sep Fredholm determinant \sep inversion formula \sep parabolic cylinder function \sep saddle point contour
+\JEL C12 \sep C22 \sep C46
+\end{keyword}
+
+\end{frontmatter}
+
+\section{Introduction}
+\label{sec:intro}
+
+The Dickey--Fuller $t$-ratio is the least squares $t$-statistic for $\phi=1$ in the first-order autoregression $y_t=\alpha+\phi y_{t-1}+\sigma e_t$, computed from the regression of $y_t$ on $y_{t-1}$ (the statistic $\hat\tau$), on a constant and $y_{t-1}$ ($\hat\tau_\mu$), or on a constant, a linear trend and $y_{t-1}$ ($\hat\tau_\tau$) \citep{DickeyFuller1979,DickeyFuller1981,Fuller1996}.  Under the unit root its limiting distribution is a functional of Brownian motion \citep{DickeyFuller1979,ChanWei1987,Phillips1987}, and under the local alternatives $\phi=1+c/n$ a functional of an Ornstein--Uhlenbeck process.  Every critical value in use---the tables of \cite{Fuller1996}, the response surfaces of \cite{MacKinnon1996,MacKinnon2010} and \cite{CheungLai1995}, and the tables built into current software---comes from simulation, and so do the local power curves of the three tests \citep{Elliott1999,MullerElliott2003,HarveyLeybourneTaylor2009}.
+
+The reason is that the $t$-ratio is not a ratio of quadratic forms.  For the coefficient statistic $n(\phih-1)$, whose limit is the ratio of two quadratic forms in the path, the joint characteristic function of numerator and denominator is a Fredholm determinant \citep{NabeyaTanaka1990}, and the distribution function follows by the inversion formula of \cite{Imhof1961} and \cite{GilPelaez1951} as a one-dimensional integral; \cite{NabeyaTanaka1990b} and \cite{NabeyaSorensen1994} tabulated the limiting distributions of the coefficient statistics in this way, under local alternatives and with a nonzero initial value, a drift and a trend, and \cite{Tanaka1990} and \cite{Perron1991b} treated the fixed and the stationary initial observation.  The limit of the $t$-ratio is the ratio of a quadratic form to the square root of another, which this approach does not reach \citep[Section~8.4]{Tanaka2017}.  What is known exactly is partial.  \cite{Abadir1992} computed the limiting density and distribution function of $\hat\tau$ numerically, from a formula with a double sum and an integral, and \cite{Abadir1995} derived a convergent series for its lower tail and single integrals of parabolic cylinder functions for its upper tail, for $\hat\tau$ at the unit root with a zero start.  \cite{Larsson1995} gave an exact formula for the upper tail of the limiting distribution of $\hat\tau$ under local alternatives and saddlepoint approximations to both tails, and \cite{Larsson1998} saddlepoint approximations to its lower tail; \cite{HitomiEtAl2022} wrote the limiting distributions of the coefficient and $t$ statistics without an intercept, with a zero or a fixed initial value, as double integrals of the joint density of a squared Bessel process and its time integral, whose integrands are triple sums of parabolic cylinder functions.  \cite{Nabeya1999} computed the first six moments of the three limiting null distributions, by the formula of \cite{Sawa1978}, and \cite{Larsson1997} the second moment of $\hat\tau_\mu$.  For $\hat\tau_\mu$ and $\hat\tau_\tau$, under the null and under local alternatives, no exact result for the distribution has been available, and the effect of the initial observation on the local power of the three $t$-tests has been studied by simulating the limiting functionals \citep{Elliott1999,MullerElliott2003,HarveyLeybourneTaylor2009}.
+
+This paper gives the exact limiting density and distribution function of the three $t$-ratios, under the unit root and under local alternatives on either side of it, for the statistic centered at the unit root or at any local null value $\phi_0=1+c_0/n$, and with a zero, a fixed or a stationary initial observation of the order of $\sqrt n$, as single integrals of closed-form integrands, and evaluates them to eleven or twelve digits in a fraction of a second.  The representation rests on two facts.  First, the limiting numerator and denominator of the $t$-ratio, $U=\int_0^1\tilde J\dr{J}$ and $V=\int_0^1\tilde J^2\dr{r}$ in the notation of Section~\ref{sec:model}, have a joint moment generating function that is a Fredholm determinant \citep{NabeyaTanaka1990,NabeyaSorensen1994}, and this determinant is a polynomial of degree one or two in the argument of $U$, because $U$ is a quadratic form of rank one or two in a few Gaussian functionals of the path, $J(0)$, $J(1)$, $\int_0^1J\dr{r}$ and $\int_0^1rJ\dr{r}$; a fixed initial observation adds to its logarithm a closed-form term that is quadratic in the start, and a stationary start, averaged over, leaves a determinant of the same degree.  Second, the distribution of a ratio $X/\sqrt Y$ is a double inversion of the joint moment generating function of $(X,Y)$ with an explicit kernel; the polynomial structure makes the inversion in the argument of $U$ explicit, a scaled $\chi^2_1$ density for $\hat\tau$ and the density of a difference of two scaled $\chi^2_1$ variables, a Bessel function $K_0$, for $\hat\tau_\mu$, $\hat\tau_\tau$ and the three stationary cases, and what remains is a single integral over the argument of $V$ of parabolic cylinder functions and of Gaussian transforms of $K_0$ along a line in the complex plane.  The integrand decays only like $\exp(-\frac12|\Ima t|^{1/2})$ along the line and, in the lower tail, oscillates with a period proportional to the square of the argument; a partition of the integrand into an analytic part and an oscillating part, each integrated by a rule suited to it, gives twelve digits with a few hundred nodes.  Reversing the order of the two inversions gives a second representation, in which the outer integral runs over the value of $V$ and the inner one along a path through a saddle point, on which the integrand decays fast whatever the argument; it is the route we take for a fixed nonzero start in the regressions with deterministic terms, where the inversion in the argument of $U$ is a one-dimensional integral rather than a closed form, and it serves as an independent check of the first everywhere else.  The moments of the limits need no inversion at all: a gamma integral makes them one-dimensional integrals of the moment generating function at real arguments.
+
+The principle is more general than the problem.  Whenever a statistic is a ratio $X/\sqrt Y$ in which $X+a$ is a quadratic form of low rank $r$ in a Gaussian vector and $Y$ a quadratic form in the same vector, the joint moment generating function is $e^{-as}$ times the inverse square root of a polynomial of degree $r$ in $s$ whose coefficients depend on $t$ alone, because under the tilt $e^{tY}$ the vector remains Gaussian and $X+a$ remains a quadratic form of rank $r$.  The inversion in $s$ is then the density of a weighted sum of $r$ squared normals, in closed form for $r\le2$, and the distribution of the ratio is a single integral in $t$ of that density against an explicit Gaussian kernel.  The Dickey--Fuller limits are the case $r\le2$ with $a=\frac12$, and so are the limits of the unit root tests with a drift or a trend in the data-generating process.  The limit of the $t$-ratio in a predictive regression with a near-integrated regressor is the same ratio, scaled by the correlation of the innovations, convolved with an independent normal, since the part of its numerator that is orthogonal to the regressor's innovations is conditionally Gaussian given the path.
+
+The results are checked against everything that is known.  The distribution function reproduces the probability $\PP(\hat\tau\le0)$, which is known in closed form, to $10^{-13}$ for $c$ between $-30$ and $20$, the series and the integrals of \cite{Abadir1995} to $10^{-15}$, the probability $\PP(\hat\tau_\mu\le0)$ computed by \cite{BaoKan2026} from the distribution of the coefficient statistic to its eight digits, and the response-surface critical values of \cite{MacKinnon1996,MacKinnon2010} to their stated accuracy; the two representations agree with each other to $10^{-11}$ over the six cases, both sides of the unit root and the local null values; the moments reproduce the values of \cite{Nabeya1999} and \cite{Larsson1997}; the local powers reproduce the simulations of \cite{Larsson1995} and \cite{Elliott1999} within their sampling error; and two million simulated paths of the limiting functionals agree with the distribution functions within their standard errors.  The limiting power of the three tests with a fixed or a stationary start, studied so far by simulation, is then exact: the start raises power, most for the test without deterministic terms, and lowers it slightly for the test with a trend close to the unit root.  The finite-sample distribution of the same statistics, which the limits approximate, is the subject of the companion paper \citep{BaoBrodaKan2026}, whose exact finite-sample powers we set beside the limits.
+
+Section~\ref{sec:model} sets out the models and their limits, Section~\ref{sec:mgf} the joint moment generating function, its structure and the initial observation, Section~\ref{sec:inv} the inversion formulas and the single integrals for the density and the distribution function, Section~\ref{sec:double} the second representation, Section~\ref{sec:mom} the moments, Section~\ref{sec:numerics} the evaluation, and Section~\ref{sec:results} the numerical results.  Proofs are in \ref{app:proofs} and the details of the quadrature in \ref{app:num}.  The MATLAB programs that produce every number in the paper accompany it, together with a Julia implementation of the single integral.
+
+\section{The $t$-ratios and their limits}
+\label{sec:model}
+
+Consider the first-order autoregression
+\begin{equation}
+y_t=\alpha+\delta t+\phi y_{t-1}+\sigma e_t,\qquad t=1,\ldots,n,
+\label{eq:ar1}
+\end{equation}
+with $e_1,\ldots,e_n$ independent $N(0,1)$ and $\sigma>0$.  Following \cite{BaoKan2026} we label the cases by the initial observation, \textsf{D}eterministic, that is fixed, or \textsf{S}tationary, and by the deterministic terms, intercept \textsf{K}nown to be zero, intercept \textsf{U}nknown, or intercept and \textsf{T}rend unknown.  In case \Fk\ ($\alpha=\delta=0$ known, $y_0$ fixed) $\phi$ is estimated by the regression of $y_t$ on $y_{t-1}$, in case \Fu\ ($\delta=0$ known) by the regression on a constant and $y_{t-1}$, and in case \Ft\ by the regression on a constant, $t$ and $y_{t-1}$.  Let $\tauh$ be the least squares $t$-ratio for the hypothesis $\phi=1$, that is $\phih-1$ divided by its standard error: the Dickey--Fuller statistics $\hat\tau$, $\hat\tau_\mu$ and $\hat\tau_\tau$.  More generally let $\tauh_0$ be the $t$-ratio for the hypothesis $\phi=\phi_0$ with $\phi_0=1+c_0/n$, the Dickey--Fuller statistic at $c_0=0$ and the $t$-ratio centered at the true value at $c_0=c$, whose distribution is needed when a confidence interval for $\phi$ is obtained by inverting the test.  Cases \Sk, \Su\ and \St\ are cases \Fk, \Fu\ and \Ft\ with $|\phi|<1$ and the initial observation drawn from the stationary distribution of the process.
+
+Let $\phi=1+c/n$ with $c$ fixed as $n\to\infty$, no drift, and $y_0=\sigma\sqrt n\,\gamma_0$.  Let $W$ be a standard Brownian motion on $[0,1]$ and
+\begin{equation}
+J(r)=\gamma_0e^{cr}+\int_0^re^{c(r-u)}\dr{W(u)},\qquad\dr{J}=cJ\dr{r}+\dr{W},
+\label{eq:J}
+\end{equation}
+the Ornstein--Uhlenbeck process started at $\gamma_0$, where $\gamma_0$ is a constant in the fixed-start cases ($\gamma_0=0$ is the standard setting, in which the start is negligible against $\sqrt n$) and $\gamma_0\sim N\{0,-1/(2c)\}$ independent of $W$, the limit of the stationary distribution of $y_0/(\sigma\sqrt n)$, in the stationary cases, which require $c<0$.  Following \cite{MullerElliott2003} we also write $\gamma_0=\xi/\sqrt{-2c}$, so that $\xi$ is the initial deviation in units of the stationary standard deviation and the stationary start is $\xi\sim N(0,1)$.  Let $\tilde J$ be $J$ (\Fk, \Sk), $J$ less its mean $\int_0^1J\dr{r}$ (\Fu, \Su), or $J$ less its projection on $(1,r)$ in $L^2[0,1]$ (\Ft, \St).  Then, as $n\to\infty$ \citep{Phillips1987,ChanWei1987,NabeyaSorensen1994},
+\begin{equation}
+\tauh_0\Rightarrow\tau=\frac{U-c_0V}{\sqrt V},\qquad U=\int_0^1\tilde J(r)\dr{J(r)},\qquad
+V=\int_0^1\tilde J(r)^2\dr{r},
+\label{eq:limit}
+\end{equation}
+since $\tauh_0=\tauh-c_0/(n\,\mathrm{se})$ and $n\,\mathrm{se}\to V^{-1/2}$, where $\mathrm{se}$ is the standard error of $\phih$.  Here $U$, the limit of $n(\phih-1)$ times the limit of $n^2\mathrm{se}^2$, is defined by the formula $\int_0^1J\dr{W}+c\int_0^1J^2\dr{r}$ less the projection terms, since $\tilde J$ depends on the whole path and the stochastic integral is not an It\^o integral of $\tilde J$.  In cases \Fu, \Ft, \Su\ and \St\ the regression removes $\gamma_0$ itself and only $\gamma_0(e^{cr}-1)$ remains, which vanishes at $c=0$: the null limits do not depend on the start, and the start matters only under the alternative.  We write $\cF$ and $f$ for the distribution function and the density of the limit in question.
+
+Two identities organize what follows.  By It\^o's formula, $U+\frac12$ is a quadratic form of rank one or two in a few Gaussian functionals of the path.  With $\bar J=\int_0^1J\dr{r}$ and $K=\int_0^1rJ\dr{r}$,
+\begin{equation}
+U+\frac12=\frac{J(1)^2-J(0)^2}{2}-L,\qquad
+L=\begin{cases}
+0 & (\textsf{K}),\\
+\{J(1)-J(0)\}\bar J & (\textsf{U}),\\
+\{J(1)-J(0)\}(4\bar J-6K)\\ \quad+6\{J(1)-\bar J\}(2K-\bar J) & (\textsf{T}),
+\end{cases}
+\label{eq:U}
+\end{equation}
+which for a zero start reduces to $\frac12J(1)^2$, $\frac12J(1)^2-J(1)\bar J$ and $\frac12J(1)^2-J(1)\bar J-12\{\frac12J(1)-\bar J\}(K-\frac12\bar J)$.  The rank is one in case \Fk\ and two otherwise; in the cases with deterministic terms $U$ is invariant to $J\mapsto J+a$ (\textsf{U}) or $J\mapsto J+a+br$ (\textsf{T}), as the regression is, so that $U+\frac12$ is a quadratic form in two invariant linear combinations of these functionals, $J(1)-J(0)$ and $J(1)+J(0)-2\bar J$ in case \textsf{U}.  And given $V$ the event $\{\tau\le x\}=\{U\le x\sqrt V+c_0V\}$ is linear in $U$.  The first identity makes the joint moment generating function of $(U,V)$ a polynomial in the argument of $U$ (Section~\ref{sec:mgf}); the second is what the inversion formulas of Sections~\ref{sec:inv} and~\ref{sec:double} exploit.  We write $R=U+\frac12$ where the quadratic form is in view, and $a(v)=\frac12+x\sqrt v+c_0v$, so that $\{\tau\le x\}=\{R\le a(V)\}$.
+
+\section{The joint moment generating function}
+\label{sec:mgf}
+
+Let $M(s,t)=\E\exp(sU+tV)$, which is finite on a tube $\{(\Rea s,\Rea t)\in\mathcal{D}\}$ with $\mathcal{D}$ a convex neighborhood of the origin.  With a zero start it is known in closed form: the Fredholm determinants of \citet[Theorem~4]{NabeyaTanaka1990} for their Models~1, 2 and 4 give it in the three cases, after their $c$ is replaced by $-c$ and their statistic $T(\hat\rho-1)$ is identified with $U/V$; case \Fk\ is the moment generating function of \cite{White1958} and \cite{Phillips1987}.  We write the result in a form that displays its structure.
+
+\begin{proposition}[The joint moment generating function, zero start]
+\label{prop:mgf}
+Let $\lambda=-s$, $z=2t-c^2$, and let $C=\cos\sqrt z$, $S=\sin\sqrt z/\sqrt z$ and $T=\{S+(C-1)/z\}/z^3$, all even in $\sqrt z$ and hence entire functions of $z$.  Then, on the tube,
+\begin{equation}
+M(s,t)=e^{-s/2}\,D(s,t)^{-1/2},\qquad D(s,t)=e^c\{F_0(z)+F_1(z)\lambda+F_2(z)\lambda^2\},
+\label{eq:mgf}
+\end{equation}
+where, in case \Fk,
+\[
+F_0=C-cS,\qquad F_1=S,\qquad F_2=0;
+\]
+in case \Fu,
+\begin{gather*}
+F_2=\frac{S}{z}+\frac{2(C-1)}{z^2},\qquad F_1=-c^2F_2,\\
+F_0=\frac{(2t+c^3)S}{z}-\frac{c^2C}{z}+\frac{4ct(C-1)}{z^2};
+\end{gather*}
+and in case \Ft,
+\begin{align*}
+F_2&=-\frac{4(c^2-3c+27)S}{z^2}+\{192t+288(1-c)\}T-\frac{32(c^2-3c+6)C}{z^3}-\frac{16(c^2-3c-3)}{z^3},\\
+F_1&=c^4\Big\{\frac{S}{z^2}-24T+\frac{8C}{z^3}+\frac{4}{z^3}\Big\},\\
+F_0&=\frac{\{-c^5-8(c^2+3c-3)t\}S}{z^2}-96(1-c)t^2T+\Big\{\frac{c^4}{z^2}-\frac{16c^3t}{z^3}\Big\}C+\frac{8c^2(3-c)t}{z^3}.
+\end{align*}
+Each $F_m$ is an entire function of $z$, and the square root in (\ref{eq:mgf}) is the branch that is continuous on the tube and positive at real arguments.
+\end{proposition}
+
+At $c=0$ in case \Fk, $D=\cosh\mu-(s/\mu)\sinh\mu$ with $\mu=\sqrt{-2t}$, the formula of \cite{Phillips1987}.  The determinants of cases \Fu\ and \Ft\ are rearrangements of Theorems~1 and 2 of \cite{NabeyaSorensen1994}, who write the characteristic function of $xV-U$ for all $x$ as $D_j(2\iu\theta)^{-1/2}e^{\iu\theta}$ with $D_j$ explicit combinations of $\cosh\mu$, $\sinh\mu/\mu$ and powers of $\mu$, $\mu=\sqrt{c^2-2\lambda x}$; since the characteristic function of $xV-U$ for all $x$ is the joint characteristic function, (\ref{eq:mgf}) follows with $\lambda=-s$, $\lambda x=t$ and $D=D_j$, their kernels being twice $U$ and $V$, which does not affect the probability they compute, and the normalization being fixed by the known distribution of $\int_0^1(W-\bar W)^2\dr{r}$.  The form of the proposition exhibits the determinants as polynomials in $\lambda$; we have checked it against the limit of the finite-sample characteristic function of \cite{BaoBrodaKan2026}, obtained by Richardson extrapolation from $n=2^{20}$ and $2^{21}$, to $2\times10^{-8}$ in all three cases, at real and complex arguments and for $c\in\{-10,-2.5,0,1.5\}$, which is an independent check of the determinant of Model~4, which \cite{NabeyaTanaka1990} derived by computer algebra; Section~\ref{sec:results} verifies it against the known probabilities and moments of the limits and against simulation.  The $F_m$ are evaluated by their Taylor series in $z$ when $|z|<4$, and otherwise from the closed forms written in $\vartheta=(-z)^{1/2}$ and $e^{-2\vartheta}$ with the factor $e^\vartheta$ taken out, so that nothing overflows.
+
+Two properties of $D$ matter.  It is an entire function of $z$, so that the only branch to choose is that of $D^{-1/2}$, which is fixed by continuity from a real point, where $D>0$, and it has no zeros on the tube.  And it is a polynomial in $s$ of degree one (\Fk) or two (\Fu, \Ft), with coefficients that depend on $t$ alone, which is (\ref{eq:U}) in another guise: under the tilt $e^{tV}$ the Gaussian functionals of (\ref{eq:U}) remain Gaussian, with complex covariances, and the moment generating function of a quadratic form of rank $r$ in a Gaussian vector is the inverse square root of a polynomial of degree $r$ in its argument.  The following lemma makes this precise and gives the configuration of the roots along the contours of Section~\ref{sec:inv}.  Let $t_*=\sup\{t:\E e^{tV}<\infty\}$, the first zero of $D(0,\cdot)$ on the positive real axis, and let $(s_2(\tau),s_1(\tau))$, with $s_2(\tau)=-\infty$ in case \Fk, be the interval of convergence of $M(\cdot,\tau)$.
+
+\begin{lemma}[The roots]
+\label{lem:roots}
+Let $\tau<t_*$ and $\sigma\in(s_2(\tau),s_1(\tau))$.  For every $t$ with $\Rea t=\tau$, $D(\cdot,t)$ is a polynomial in $s$ of exact degree one (\Fk) or two (\Fu, \Ft), with roots $s_1(t),s_2(t)$ continuous in $t$; at $t=\tau$ the roots are real, with $s_2(\tau)<0<s_1(\tau)$ in cases \Fu\ and \Ft\ and $s_1(\tau)>0$ in case \Fk, and $D(\cdot,\tau)>0$ between them; and $\Rea s_2(t)<\sigma<\Rea s_1(t)$, respectively $\sigma<\Rea s_1(t)$, for every $t$ on the line.  Consequently
+\begin{equation}
+M(s,t)=\begin{cases}e^{-s/2}P(t)\{(s_1-s)(s-s_2)\}^{-1/2}&(\Fu,\Ft),\\[0.5ex]
+e^{-s/2}P(t)(s_1-s)^{-1/2}&(\Fk),\end{cases}
+\label{eq:Mfactor}
+\end{equation}
+with $P(t)\ne0$ continuous on the line and $\Rea(s_1-s_2)>0$.
+\end{lemma}
+
+In terms of the weights $\kappa_k=1/(2s_k)$, (\ref{eq:Mfactor}) says that, under the tilt $e^{tV}$, $R=U+\frac12$ is distributed as $\kappa_1Z_1^2+\kappa_2Z_2^2$ with $Z_1,Z_2$ independent standard normal, $\kappa_2=0$ in case \Fk; the sign conditions of the lemma are $\Rea\kappa_1>0>\Rea\kappa_2$, respectively $\Rea\kappa_1>0$.  With $\lambda=-s$ the roots are those of $F_0+F_1\lambda+F_2\lambda^2$, so that $s_1,s_2$ and $P(t)=\{-e^cF_2(z)\}^{-1/2}$ (\Fu, \Ft; $e^cF_2<0$ at real points, since $D$ is positive between its roots), $P(t)=\{e^cF_1(z)\}^{-1/2}$ (\Fk), are explicit in the functions of Proposition~\ref{prop:mgf}, and the moment generating function of $V$ is $M_V(t)=M(0,t)=P(t)(-s_1s_2)^{-1/2}$, respectively $P(t)s_1^{-1/2}$.
+
+\subsection{The initial observation}
+\label{sec:init}
+
+With a fixed start $\gamma_0$ the Gaussian functionals of (\ref{eq:U}) acquire means proportional to $\gamma_0$, and $R$ becomes a noncentral quadratic form of the same rank; the logarithm of the joint moment generating function gains a term quadratic in $\gamma_0$, which is in closed form.  In cases \Fu\ and \Ft\ the fixed start enters the Fredholm determinants of \citet[Theorems~1 and 2]{NabeyaSorensen1994} through $f=c\gamma_0$ and $f=c^2\gamma_0$, and in case \Fk\ it follows from the Riccati equations of the tilted process (Lemma~\ref{lem:riccati} in \ref{app:proofs}).
+
+\begin{proposition}[The joint moment generating function, fixed start]
+\label{prop:fixed}
+Let $M_0$ and $D$ be the moment generating function and the determinant of the zero start, and let $M_{\gamma_0}$ be the moment generating function of $(U,V)$ with the start $\gamma_0$.  Then, on the tube of $M_0$ and wherever the right side is finite,
+\begin{equation}
+\log M_{\gamma_0}(s,t)=\log M_0(s,t)+\gamma_0^2\,Q(s,t),
+\label{eq:fixedstart}
+\end{equation}
+where, in cases \Fu\ ($k=1$) and \Ft\ ($k=2$),
+\begin{equation}
+\begin{gathered}
+Q(s,t)=c^{2k}e^c\,\big(t+\tfrac12s^2+cs\big)\,\frac{g(z)}{D(s,t)},\\
+g=-\frac{S}{z}-\frac{2(C-1)}{z^2}\ \ (\Fu),\qquad
+g=\frac{12C}{z^3}-\frac{(24+4z)(C-1)}{z^4}-\frac{(24-z)S}{z^3}\ \ (\Ft),
+\end{gathered}
+\label{eq:g}
+\end{equation}
+both entire in $z$, and in case \Fk, with $F_0$, $F_1$ those of the case,
+\begin{equation}
+Q(s,t)=\frac{tF_1}{F_0}-\frac{s}{2}+\frac{s}{2F_0^2}\,\frac{1}{1-sF_1/F_0}\qquad(\Fk).
+\label{eq:QK}
+\end{equation}
+As a function of $s$, $Q$ is rational with simple poles at the roots $s_1$, $s_2$ of $D(\cdot,t)$ (at $s_1=F_0/F_1$ in case \Fk), and
+\begin{equation}
+\begin{gathered}
+Q(s,t)-Q(0,t)=\frac{s}{2}\Big\{\frac{\mu_1}{1-2s\kappa_1}-\frac{\mu_2}{1-2s\kappa_2}\Big\},\\
+\mu_k=-\frac{2c^{2k}\,(t+\tfrac12s_k^2+cs_k)\,g(z)}{F_2(z)\,(s_1-s_2)\,s_k^2}\qquad(\Fu,\Ft;\ k=1,2),
+\end{gathered}
+\label{eq:partial}
+\end{equation}
+and in case \Fk\ $Q(s,t)-Q(0,t)=-\frac s2+\frac s2F_0^{-2}(1-2s\kappa_1)^{-1}$, the constant $-\frac s2$ being the term $-\frac12\gamma_0^2$ of $R=\frac12\{J(1)^2-\gamma_0^2\}$.  Under the tilt $e^{tV}$, $R$ is distributed as $\frac12(X_1^2-X_2^2)$ with $X_1$, $X_2$ independent Gaussian of variances $2\kappa_1$, $-2\kappa_2$ and means $m_k$ with $m_k^2=\gamma_0^2\mu_k$; in case \Fk, $R=\frac12\{J(1)^2-\gamma_0^2\}$ with $J(1)$ of mean $\gamma_0/F_0$ and variance $F_1/F_0$.
+\end{proposition}
+
+The partial fractions (\ref{eq:partial}) are the exponent of the moment generating function of a noncentral quadratic form of rank two: under the tilt,
+\[
+\E\big(e^{sR}\big)=\prod_{k=1}^{2}(1-2s\kappa_k)^{-1/2}\exp\Big\{\frac s2\sum_{k=1}^{2}(-1)^{k-1}\frac{m_k^2}{1-2s\kappa_k}\Big\},
+\]
+and (\ref{eq:partial}) identifies the squared means, the only way in which the means enter; at real $t$ the $\mu_k$ are nonnegative, which Section~\ref{sec:results} verifies numerically.  The weights $\kappa_k$ do not depend on the start.  The term $\gamma_0^2Q(0,t)$, the correction to $\log M_V$, is $c^{2k}\gamma_0^2tg(z)/F_0(z)$ in cases \Fu\ and \Ft\ and $\gamma_0^2tF_1/F_0$ in case \Fk.  The parameter $f$ of \cite{NabeyaSorensen1994} collects the initial value and the local drift or trend, $f=|c\gamma_0+d_1|$ and $|c^2\gamma_0+cd_1+d_2|$: the initial value and the drift enter the demeaned or detrended process only through $\gamma_0(e^{cr}-1)$ and $d_1(e^{cr}-1)/c$, and the trend through $d_2(e^{cr}-1-cr)/c^2$, so that (\ref{eq:fixedstart}) also covers a local drift and trend in the data-generating process, with $f^2$ in place of $c^{2k}\gamma_0^2$.
+
+\paragraph{The stationary start}  With a stationary start the joint moment generating function is the average over $\gamma_0\sim N(0,\sigma_0^2)$, $\sigma_0^2=-1/(2c)$, of (\ref{eq:fixedstart}).  Since $\gamma_0^2\sim\sigma_0^2\chi^2_1$, averaging $e^{\gamma_0^2Q}$ multiplies $M_0$ by $(1-2\sigma_0^2Q)^{-1/2}=(1+Q/c)^{-1/2}$, which amounts to replacing $D$ by
+\begin{equation}
+D_{\rm S}(s,t)=D(s,t)+c^{2k-1}e^c\,\big(t+\tfrac12s^2+cs\big)\,g(z)\qquad(\Su,\St),
+\label{eq:Dstat}
+\end{equation}
+again a polynomial of degree two in $s$, and in case \Sk\ by
+\begin{equation}
+D_{\rm S}(s,t)=e^c\Big\{F_0(z)+\frac{S(z)}{2c}\,(2t+s^2)\Big\}\qquad(\Sk),
+\label{eq:DstatK}
+\end{equation}
+of degree two in $s$ with roots $\pm s_2$ and no linear term, as the reversibility of the stationary process requires: $(J(0),J(1))$ is exchangeable, and so is $J(1)^2-J(0)^2$ with its negative, also under the tilt by $\int_0^1J^2\dr{r}$.  Lemma~\ref{lem:roots} holds for $D_{\rm S}$ in all three stationary cases with the configuration of cases \Fu\ and \Ft, and the factorization (\ref{eq:Mfactor}) with $P(t)$ the inverse square root of the leading coefficient; $t_*$ is the first zero of $D_{\rm S}(0,\cdot)$.  Everything that follows applies to the six cases with the appropriate $D$, and to the fixed start with $M_{\gamma_0}$ in place of $M$, except where a central quadratic form is required, which we point out.
+
+\paragraph{Closed forms free of cancellation}  For $c>0$ the terms of $D(s,t)$ are of the size $e^{2c}$ while the value is of the order of one, and (\ref{eq:mgf}) loses about $2c/\ln10$ digits; at $c=5$ this costs $10^{-12}$, at $c=10$ it costs $10^{-7}$, and at $c=20$ the determinant is lost altogether.  Girsanov's theorem gives forms without this cancellation, which we use for $c>2$ and which also show that the integrands of Section~\ref{sec:double} are analytic beyond $t_*$.  Under the law of $J$ with a zero start, a functional $\Phi$ of the path has $\E_c\Phi(J)=\E\{\Phi(W)\exp[\frac c2\{W(1)^2-1\}-\frac{c^2}2\int_0^1W(r)^2\dr{r}]\}$.  Let $\bX=W(1)$ in case \Fk, $\bX=(W(1),\int_0^1W\dr{r})'$ in case \Fu\ and $\bX=(W(1),\int_0^1W\dr{r},\int_0^1rW\dr{r})'$ in case \Ft.  Then $V=\int_0^1W(r)^2\dr{r}-\bX'\bGam\bX$ with $\bGam=0$, $\diag(0,1)$ and $\diag(0,\bG^{-1})$, $\bG^{-1}$ the inverse of the Gram matrix of $(1,r)$ on $[0,1]$, with entries $4,-6,-6,12$, and by (\ref{eq:U}) $R=\frac12\bX'\bK\bX$ with $\bK=1$,
+\[
+\bK=\begin{pmatrix}1&-1\\-1&0\end{pmatrix}\ \ (\Fu),\qquad
+\bK=\begin{pmatrix}1&2&-6\\2&-12&12\\-6&12&0\end{pmatrix}\ \ (\Ft).
+\]
+With $\vartheta=(c^2-2t)^{1/2}$ and $\bQ=\diag(c,0,\ldots,0)-2t\bGam$, for functions $h$ for which the right side converges,
+\begin{equation}
+\E\big\{e^{tV}h(R)\big\}=e^{-c/2}\,\E\Big\{\exp\Big(-\frac{\vartheta^2}2\int_0^1W(r)^2\dr{r}\Big)\exp\Big(\frac12\bX'\bQ\bX\Big)h\Big(\frac12\bX'\bK\bX\Big)\Big\},
+\label{eq:girsanov}
+\end{equation}
+and under the probability measure with density $(\cosh\vartheta)^{1/2}\exp(-\frac{\vartheta^2}2\int_0^1W^2\dr{r})$ the vector $\bX$ is Gaussian with mean zero and covariance matrix $\bSig$,
+\begin{gather*}
+\Sigma_{11}=\frac{\tanh\vartheta}\vartheta,\qquad\Sigma_{12}=\frac{1-\sech\vartheta}{\vartheta^2},\qquad\Sigma_{13}=\Sigma_{22}=\frac{\vartheta-\tanh\vartheta}{\vartheta^3},\\
+\Sigma_{23}=\frac{\vartheta^2-2+2\sech\vartheta}{2\vartheta^4},\qquad\Sigma_{33}=\frac{\vartheta^3/3-\vartheta+\tanh\vartheta}{\vartheta^5},
+\end{gather*}
+even in $\vartheta$, with the values $1$, $\frac12$, $\frac13$, $\frac13$, $\frac5{24}$ and $\frac2{15}$ of Brownian motion at $\vartheta=0$.  It follows that $M_V(t)=e^{-c/2}(\cosh\vartheta\,|\bI-\bQ\bSig|)^{-1/2}$ and that, under the tilt, $R$ is a quadratic form in a Gaussian vector with covariance matrix $\bP^{-1}$, $\bP=\bSig^{-1}-\bQ$.  In case \Fk\ this gives
+\begin{equation}
+M_V(t)=e^{-c/2}\Big(\frac{\vartheta}{\sinh\vartheta}\Big)^{1/2}\eta^{-1/2},\qquad s_1=\eta=\vartheta\coth\vartheta-c,
+\label{eq:dkgirs}
+\end{equation}
+and in cases \Fu\ and \Ft\ the weights $2\kappa_1$, $2\kappa_2$ are the nonzero eigenvalues of $\bK\bP^{-1}$, that is the roots of $\alpha_2\nu^2-\alpha_1\nu+\alpha_0=0$ with $\alpha_2=|\bP|$, $\alpha_1=\tr\{\bK\adj(\bP)\}$ and $\alpha_0=-\tr\{\adj(\bK)\bP\}$ ($\alpha_0=1$ in case \Fu), so that
+\begin{equation}
+s_1+s_2=-\frac{\alpha_1}{\alpha_0},\qquad s_1-s_2=\frac{(\alpha_1^2+4\alpha_0\alpha_2)^{1/2}}{\alpha_0},\qquad
+\frac{M_V(t)}{(-s_1s_2)^{1/2}}=P(t)=\frac{e^{-c/2}}{\{\alpha_0\cosh\vartheta\,|\bSig|\}^{1/2}}.
+\label{eq:dugirs}
+\end{equation}
+All quantities are computed without cancellation for large $c$: the entries of $\bSig$ from $e^{-2\vartheta}$, the difference $\vartheta-c$ as $-2t/(\vartheta+c)$, and $\eta=(\vartheta-c)+2\vartheta e^{-2\vartheta}/(1-e^{-2\vartheta})$.  The point $t_*$, where $|\bI-\bQ\bSig|$ vanishes, enters $P(t)$ and the product $M_V(t)\varphi_t$ of Section~\ref{sec:inv} only through $\alpha_2$, polynomially, so these are analytic beyond $t_*$, up to the first zero of $\cosh\vartheta\,|\bSig|$, $\alpha_0$ or $\alpha_1^2+4\alpha_0\alpha_2$ on the real axis, which is at most $(c^2+\pi^2/4)/2$.
+\section{Inversion formulas and the single integral}
+\label{sec:inv}
+
+The distribution of a ratio $X/\sqrt Y$ is a double inversion of the joint moment generating function of $(X,Y)$ with an explicit kernel.  Let $(X,Y)$ be a random vector with $Y>0$ almost surely and moment generating function $M(s,t)$, let $Q_0=(X-c_0Y)/\sqrt Y$ for a real constant $c_0$, and for $b\in\mathbb{C}$ and $\Rea t>0$ let
+\begin{equation}
+J_m(b,t)=\int_0^\infty v^me^{-bv-tv^2}\dr{v},
+\label{eq:Jm}
+\end{equation}
+so that, with the principal branch of $\sqrt t$,
+\begin{equation}
+J_0=\frac12\sqrt{\frac\pi t}\,e^{b^2/(4t)}\erfc\Big(\frac{b}{2\sqrt t}\Big),\quad
+J_1=\frac{1-bJ_0}{2t},\quad J_2=\frac{J_0-bJ_1}{2t}.
+\label{eq:Jrec}
+\end{equation}
+
+\begin{theorem}[Inversion formulas for $(X-c_0Y)/\sqrt Y$]
+\label{th:inv}
+Let $M$ be finite in a neighborhood of $(\sigma,\tau)$ with $\tau+c_0\sigma>0$, let $I$ be an open interval, and suppose that
+\begin{equation}
+\int_{-\infty}^{\infty}\int_{-\infty}^{\infty}|M(\sigma+\iu u,\tau+\iu w)|\,e^{-\delta u^2}\dr{u}\dr{w}<\infty\quad\text{for every }\delta>0,
+\label{eq:A}
+\end{equation}
+and that for every compact $K\subset I$
+\begin{equation}
+\int_{-\infty}^{\infty}\int_{-\infty}^{\infty}|M(\sigma+\iu u,\tau+\iu w)|\,\sup_{q\in K}|J_2(q(\sigma+\iu u),\tau+c_0\sigma+\iu(w+c_0u))|\dr{u}\dr{w}<\infty.
+\label{eq:B}
+\end{equation}
+Then $Q_0$ has a continuous density on $I$, given for $q\in I$ by
+\begin{equation}
+f_{Q_0}(q)=\frac{1}{(2\pi\iu)^2}\int_{\sigma-\iu\infty}^{\sigma+\iu\infty}\int_{\tau-\iu\infty}^{\tau+\iu\infty}
+M(s,t)\,2J_2(qs,t+c_0s)\dr{t}\dr{s}.
+\label{eq:dinv}
+\end{equation}
+If moreover $\sigma>0$ and (\ref{eq:B}) holds with $J_1(qs,t+c_0s)/s$ in place of $J_2(qs,t+c_0s)$, then for $q\in I$
+\begin{equation}
+\PP(Q_0>q)=\frac{1}{(2\pi\iu)^2}\int_{\sigma-\iu\infty}^{\sigma+\iu\infty}\int_{\tau-\iu\infty}^{\tau+\iu\infty}
+M(s,t)\,\frac{2J_1(qs,t+c_0s)}{s}\dr{t}\dr{s},
+\label{eq:cinv}
+\end{equation}
+and if $\sigma<0$ the same integral equals $-\PP(Q_0\le q)$.
+\end{theorem}
+
+The kernels arise from the change of variables $(x,y)=(pv+c_0v^2,v^2)$, under which $\{(X-c_0Y)/\sqrt Y\le q\}$ becomes $\{p\le q\}$ and the Jacobian is $2v^2$: the inner integral over $v$ of the inversion formula for the density of $(X,Y)$ is (\ref{eq:Jm}) with $b=qs$ and $t+c_0s$ in place of $t$.  The conditions are mild versions of the absolute integrability of $M$ on the contour, and they are needed: for the limits of Section~\ref{sec:model} the density of $U$ is unbounded (at $U=-\frac12$ in case \Fk, where $U=\{W(1)^2-1\}/2$), so that $|M|$ decays only like $|\Ima s|^{-1/2}$ (\Fk) or $|\Ima s|^{-1}$ (\Fu, \Ft) along the contour; in $t$, $|M|$ decays like $\exp(-\frac12\Rea\mu)$ with $\Rea\mu\sim|\Ima t|^{1/2}$, and both conditions hold, with $I=\mathbb{R}$.  The proof is in \ref{app:proofs}.
+
+The double integrals (\ref{eq:dinv}) and (\ref{eq:cinv}) can be evaluated by quadrature, but not efficiently: the kernel $J_2(qs,t)$ is in its Gaussian regime where $\Ima s$ and $\Ima t$ have opposite signs and $|\Ima s|$ is up to a few times $|\Ima t|$, and there it oscillates with the phase $q^2(\Ima s)^2/(4\Ima t)$, which no grid resolves in the far field.  The polynomial structure of Lemma~\ref{lem:roots} removes the $s$-integral altogether.  The inverse two-sided Laplace transform of (\ref{eq:Mfactor}) in $s$ at the point $x$ is explicit,
+\begin{equation}
+\frac{1}{2\pi\iu}\int_{\sigma-\iu\infty}^{\sigma+\iu\infty}M(s,t)e^{-sx}\dr{s}=P(t)\,\varphi_t(X),\qquad X=x+\tfrac12,
+\label{eq:phit}
+\end{equation}
+with
+\begin{equation}
+\varphi_t(X)=\begin{cases}\dfrac{e^{-s_1X}}{(\pi X)^{1/2}}\,\mathbf{1}\{X>0\}&(\Fk),\\[2ex]
+\dfrac1\pi\,e^{-(s_1+s_2)X/2}K_0\Big(\dfrac{(s_1-s_2)|X|}{2}\Big)&(\Fu,\Ft),\end{cases}
+\label{eq:varphi}
+\end{equation}
+the first a scaled $\chi^2_1$ density, the second the density of a difference of two scaled $\chi^2_1$ variables, both continued analytically in $s_1$, $s_2$ and $t$; the convergence of the integrals behind (\ref{eq:phit}) requires $\Rea s_2<\sigma<\Rea s_1$ and $\Rea(s_1-s_2)>0$, which Lemma~\ref{lem:roots} provides.  Up to the normalization, $\varphi_t$ is the density of $R$ under the tilt $e^{tV}$: its total mass is $(-s_1s_2)^{-1/2}=M_V(t)/P(t)$, respectively $s_1^{-1/2}$.  Inserting (\ref{eq:phit}) into (\ref{eq:dinv}) and (\ref{eq:cinv}), with the $v$-integral of (\ref{eq:Jm}) written out, gives the density and the distribution function as single integrals over $t$.  Let
+\begin{equation}
+X(v)=c_0v^2+xv+\tfrac12,
+\label{eq:Xv}
+\end{equation}
+the argument of $\varphi_t$ along the parabola $u=xv+c_0v^2$ in the $(u,v)$-plane, on whose boundary $U=x\sqrt V+c_0V$.
+
+\begin{theorem}[The density and distribution function]
+\label{th:single}
+Let $0<\tau<t_*$.  In each of the six cases, with $D$ as in Section~\ref{sec:mgf}, the limit $\tau$ has a continuous density $f(x)$ and distribution function $\cF(x)$ given by
+\begin{equation}
+f(x)=\frac{1}{2\pi\iu}\int_{\tau-\iu\infty}^{\tau+\iu\infty}P(t)\,\Phi^f_x(t)\dr{t},\qquad
+\cF(x)=\frac{1}{2\pi\iu}\int_{\tau-\iu\infty}^{\tau+\iu\infty}P(t)\,\Phi_x(t)\,\frac{\dr{t}}{t},
+\label{eq:single}
+\end{equation}
+where
+\begin{equation}
+\begin{aligned}
+\Phi^f_x(t)&=\int_0^\infty2v^2e^{-tv^2}\varphi_t\big(X(v)\big)\dr{v},\\
+\Phi_x(t)&=\int_0^\infty2tv\,e^{-tv^2}\Psi_t\big(X(v)\big)\dr{v}
+=\Psi_t\big(\tfrac12\big)+\int_0^\infty e^{-tv^2}\,(x+2c_0v)\,\varphi_t\big(X(v)\big)\dr{v},
+\end{aligned}
+\label{eq:Phidef}
+\end{equation}
+and $\Psi_t(X)=\int_{-\infty}^X\varphi_t(u)\dr{u}$.
+\end{theorem}
+
+The second form of $\Phi_x$ is an integration by parts in $v$; the boundary term at $v=0$ is the mass of $\varphi_t$ on $(-\infty,\frac12)$.  At $c_0=0$ the parabola is the line $u=xv$, and $\Phi_x(t)=\int_{-\infty}^{\infty}\varphi_t(u+\frac12)\,tW_x(u,t)\dr{u}$ with $tW_x(u,t)=\int2tve^{-tv^2}\dr{v}$ over $\{v>0:xv\ge u\}$, which is $1-e^{-tu^2/x^2}$ for $u<0$ and $0$ otherwise when $x<0$, and $e^{-t\max(u/x,0)^2}$ when $x>0$.  The convergence of the $v$-integrals at infinity needs $\Rea(t+c_0s_d)>0$, $s_d$ the root that governs the decay of $\varphi_t$ in the direction in which $X(v)$ moves ($s_1$ for $X\to+\infty$, $s_2$ for $X\to-\infty$); this holds on the whole line, because $\Rea s_1>0>\Rea s_2$ there by Lemma~\ref{lem:roots}, and $c_0$ and $s_d$ have the same sign whenever $X\to\pm\infty$ requires it.  The conditions of Theorem~\ref{th:inv} hold with the kernel $J_2(xs,t+c_0s)$ for $\sigma$ with $\tau+c_0\sigma>0$.
+
+The transforms (\ref{eq:Phidef}) are special functions of $t$, $s_1(t)$ and $s_2(t)$.  For case \Fk\ let
+\begin{equation}
+\begin{aligned}
+\cP_k(\beta,\gamma)&=\int_0^\infty X^{k-1/2}e^{-\beta X^2-\gamma X}\dr{X}
+=\Gamma(k+\tfrac12)(2\beta)^{-(2k+1)/4}e^{\gamma^2/(8\beta)}D_{-k-1/2}\{\gamma(2\beta)^{-1/2}\},\\
+\cQ_k(\alpha,\beta)&=\int_0^\infty u^k(1+u)^{-1/2}e^{-\alpha u^2-\beta u}\dr{u},
+\end{aligned}
+\label{eq:PQ}
+\end{equation}
+for $\Rea\beta>0$ and $\Rea\alpha>0$, the first a parabolic cylinder function, the second an incomplete one, with $\cQ_0(0,\beta)=e^\beta(\pi/\beta)^{1/2}\erfc(\beta^{1/2})$ and $\cQ_k=(-\partial_\beta)^k\cQ_0$.  For the other cases let
+\begin{equation}
+\cG^{\pm}_k(a;t)=\int_{\pm(X-1/2)>0}(X-\tfrac12)^ke^{-a(X-1/2)^2}\varphi_t(X)\dr{X},
+\label{eq:G}
+\end{equation}
+the Gaussian transforms of $\varphi_t$ over the two half-lines, with $\cG^+_0(0;t)+\cG^-_0(0;t)=(-s_1s_2)^{-1/2}$, the total mass of $\varphi_t$.
+
+\begin{corollary}[Closed forms at $c_0=0$]
+\label{cor:closed}
+Let $c_0=0$ and $y=1/(4x^2)$.  In case \Fk,
+\begin{align}
+\Phi_x(t)&=\frac{\erf\{(s_1/2)^{1/2}\}}{s_1^{1/2}}+\frac{e^{-s_1/2}}{(2\pi)^{1/2}}\,\cQ_0\Big(\frac{t}{4x^2},\frac{s_1}{2}\Big)-\frac{\mathbf{1}\{x<0\}}{\pi^{1/2}}\,e^{-ty}\,\cP_0\Big(\frac{t}{x^2},s_1-\frac{t}{x^2}\Big),\label{eq:PhiK}\\
+\Phi^f_x(t)&=\frac{e^{-s_1/2}}{2x^3(2\pi)^{1/2}}\,\cQ_2\Big(\frac{t}{4x^2},\frac{s_1}{2}\Big)+\frac{2\,\mathbf{1}\{x<0\}}{|x|^3\pi^{1/2}}\,e^{-ty}\Big(\cP_2-\cP_1+\frac{\cP_0}{4}\Big)\Big(\frac{t}{x^2},s_1-\frac{t}{x^2}\Big).\label{eq:PhifK}
+\end{align}
+In cases \Fu\ and \Ft, and in the three stationary cases,
+\begin{equation}
+\begin{gathered}
+\Phi_x(t)=\begin{cases}(-s_1s_2)^{-1/2}-\cG^+_0(0;t)+\cG^+_0(t/x^2;t)&(x>0),\\
+\cG^-_0(0;t)-\cG^-_0(t/x^2;t)&(x<0),\end{cases}\qquad
+\Phi^f_x(t)=\frac{2\,\cG^{\pm}_2(t/x^2;t)}{|x|^3},
+\end{gathered}
+\label{eq:PhiUT}
+\end{equation}
+with $\cG^+$ for $x>0$ and $\cG^-$ for $x<0$.
+\end{corollary}
+
+The structure of (\ref{eq:PhiK}) is that of the general case.  The terms without the factor $e^{-ty}$ are analytic in $t$ and vary on the scale of $t$ itself; the terms with it, present for $x<0$ only, are the contributions of a neighborhood of the support edge $X=0$ of $\varphi_t$, where the kernel $e^{-tu^2/x^2}$ takes the value $e^{-ty}$, and they oscillate in $\Ima t$ with the period $2\pi/y=8\pi x^2$.  In the other cases the edge is the logarithmic singularity of $K_0$ at $X=0$, and the same two parts are present inside $\cG^-_0(t/x^2;t)$ and $\cG^-_2(t/x^2;t)$.  With $c_0\ne0$ the edge $X=0$ is met at the positive roots of $X(v)$, of which there are none, one or two: for $c_0<0$ exactly one, for every $x$, so that the oscillating part is present also for $x>0$; for $c_0>0$ two when $x<-\sqrt{2c_0}$, between which $X<0$ and $\varphi_t$ vanishes in case \Fk, and none otherwise.  Each root $v_j$ carries the factor $e^{-tv_j^2}$, oscillating in $\Ima t$ with the period $2\pi/v_j^2$.  In case \Fk\ with $c_0>0$ the two roots merge at $x=-\sqrt{2c_0}$, where the density has a logarithmic singularity: the $t$-ratio centered at an explosive null value has an infinite density at the point $-\sqrt{2c_0}$, the largest value that $\tau=-(\frac12+c_0V)/\sqrt V$ takes on the event $J(1)=0$, where $R=0$.  The separation of the two parts, and the evaluation of all the transforms to twelve digits, is the subject of \ref{app:num}.
+
+At $c=c_0=0$ in case \Fk, Theorem~\ref{th:single} can be compared with \cite{Abadir1995}.  His starting point, the joint density after the inversion in the argument of $U$ (his (2.13)), is (\ref{eq:phit})--(\ref{eq:varphi}) at $c=0$.  He then carries out the inversion in $t$ analytically: for $x<0$ by a binomial expansion, which gives a convergent triple series of incomplete gamma functions (his (2.11)), and for $x\ge0$ by changing the order of integration, which leaves a single integral of a parabolic cylinder function (his (2.17) and (2.18)).  Evaluated in 30-digit arithmetic, his distribution function and density agree with (\ref{eq:single}) to $6\times10^{-16}$ at sixteen points of $[-4,3]$, and his mode of the density, $-0.724$, with ours, $-0.7235$.  One statement of his does not survive the comparison: his (3.6), repeated from \citet[p.~316]{Abadir1992}, puts the density of $\hat\tau$ at zero at $(\pi e)^{-1/2}=0.3422$, on the argument that the densities of $R/\sqrt S$ and of $R/S$ at zero both equal that of $R$ at zero; for a ratio, $f_{R/\sqrt S}(0)=\E(\sqrt S\mid R=0)f_R(0)$, and the value is $f(0)=0.325567$, which his own (2.18) gives as well at $x=0.001$.
+
+\section{The second representation: the integral over the denominator}
+\label{sec:double}
+
+Theorem~\ref{th:single} integrates out the denominator first and keeps the contour in $t$.  Doing the two inversions in the other order gives a representation in which the outer integral runs over the value $v$ of $V$ and the inner one is a one-dimensional inversion in $t$, for which the line may be moved, for each $v$, to a path through the saddle point of $\log M_V(t)-tv$, on which the integrand decays fast whatever $x$.  This is the route of the finite-sample theory in \cite{BaoBrodaKan2026}, where it is the natural one, and in the limit it has two uses: it reaches the fixed start $\gamma_0\ne0$ in cases \Fu\ and \Ft, where $\varphi_t$ is the density of a noncentral form and has no closed form, and it is an independent computation of everything else.  Recall $R=U+\frac12$ and $a(v)=\frac12+x\sqrt v+c_0v$, so that
+\begin{equation}
+\cF(x)=\PP\{R\le a(V)\}=\int_0^\infty H(v;x)\dr{v},\qquad H(v;x)=\E\big[\delta(V-v)\,\mathbf{1}\{R\le a(v)\}\big].
+\label{eq:limrep}
+\end{equation}
+Under the tilt $e^{tV}$, for real $t<t_*$ and by analytic continuation on the contours, $R$ is $\kappa_1Z_1^2+\kappa_2Z_2^2$ with the weights $\kappa_k=1/(2s_k)$ of Lemma~\ref{lem:roots}, and its normalized density is $(-s_1s_2)^{1/2}\varphi_t$, respectively $s_1^{1/2}\varphi_t$; so $M_V(t)$ times that density is $P(t)\varphi_t(r)$, and the joint density of $(R,V)$ is
+\begin{equation}
+h(r,v)=\frac1{2\pi\iu}\int_{\sigma-\iu\infty}^{\sigma+\iu\infty}P(t)\,\varphi_t(r)\,e^{-tv}\dr{t},
+\label{eq:hrv}
+\end{equation}
+for any real $\sigma<t_*$.
+
+\begin{theorem}[The double integrals]
+\label{th:double}
+Let $\sigma<t_*$ be real.  (i) For every $v>0$,
+\begin{equation}
+H(v;x)=\frac1{2\pi\iu}\int_{\sigma-\iu\infty}^{\sigma+\iu\infty}M_V(t)\,e^{-tv}\,\cP\big(\kappa_1(t),\kappa_2(t);a(v)\big)\dr{t},
+\label{eq:Hlim}
+\end{equation}
+where, with $\phi(l;\omega^2)=(2\pi\omega^2)^{-1/2}e^{-l^2/(2\omega^2)}$ and $l_0=\sqrt{\max(0,-2a)}$,
+\begin{equation}
+\cP(\kappa_1,\kappa_2;a)=2\int_{l_0}^\infty\phi(l;-2\kappa_2)\,\erf\Big(\sqrt{\frac{2a+l^2}{4\kappa_1}}\Big)\dr{l}
+\label{eq:Pkappa}
+\end{equation}
+in cases \Fu\ and \Ft, and $\cP(\kappa_1,0;a)=\erf(\sqrt{a/(2\kappa_1)})$ for $a>0$ and $0$ for $a\le0$ in case \Fk; (\ref{eq:Pkappa}) requires $\Rea\kappa_1>0>\Rea\kappa_2$ on the line of integration, which Lemma~\ref{lem:roots} provides.  The line may be replaced by any path $\Gamma$ that crosses the real axis once, at $\sigma$, lies in $\Rea t\ge\sigma$ and tends to infinity in the lower and the upper half-plane at its two ends, provided the sign conditions hold on $\Gamma$ and on the region between $\Gamma$ and the line, and the integrals of the integrand over the parts of the circles $|t|=\varrho$ between $\Gamma$ and the line tend to zero as $\varrho\to\infty$.
+
+(ii) With $h$ as in (\ref{eq:hrv}) and $a'(v)=x/(2\sqrt v)+c_0$, the density and distribution function of the limit are the double integrals
+\begin{align}
+f(x)&=\int_0^\infty\sqrt v\;h\big(a(v),v\big)\dr{v},
+\label{eq:flim}\\
+\cF(x)&=\cP\big(\kappa_1(0),\kappa_2(0);\tfrac12\big)+\int_0^\infty a'(v)\,G\big(a(v),v\big)\dr{v},
+\label{eq:Flim}\\
+G(r,v)&=\frac1{2\pi\iu}\int_{\sigma'-\iu\infty}^{\sigma'+\iu\infty}P(t)\,\varphi_t(r)\,\frac{e^{-tv}}t\dr{t},
+\label{eq:Glim}
+\end{align}
+where $0<\sigma'<t_*$; the first term is $\PP(R\le\frac12)$, and $G(r,v)=\int_v^\infty h(r,v')\dr{v'}$.  The lines may be replaced by paths $\Gamma$ as in (i); for $G$, a path that crosses the real axis at a negative point adds the residue $(-s_1s_2)^{1/2}\varphi_0(r)$, the density of $R$ without tilt.
+\end{theorem}
+
+For real weights $\kappa_1>0>\kappa_2$, $\cP$ is the probability that $\kappa_1Z_1^2+\kappa_2Z_2^2\le a$, conditioning on $Z_2$; for the complex weights on the line of integration it is the analytic continuation of that probability in $(\kappa_1,\kappa_2)$, with no branch ambiguity, since the square roots in (\ref{eq:Pkappa}) are of nonnegative reals and of numbers with positive real part.  Part (ii) replaces the probability $\cP$, itself an integral, by the density of $R$ under the tilt, so that both the density and the distribution function are double integrals with closed-form integrands.  The density (\ref{eq:flim}) integrates the joint density of $(R,V)$ along the curve $r=a(v)$, as in the construction of \cite{DanielsYoung1991} for the Studentized mean; the distribution function (\ref{eq:Flim}) follows from (\ref{eq:limrep}) by an integration by parts in $v$.  Integrating over $v$ first instead, in closed form, gives back Theorem~\ref{th:single}.  In case \Fk\ the probability $\cP$ is an error function, so part (i) is already a double integral; we use it there, because at the support edge $a(v)=0$ the density $\varphi_t$ has an inverse square-root singularity and part (ii) is then accurate only to about $10^{-8}$.  In cases \Fu\ and \Ft\ we use part (ii).  The proof is in \ref{app:proofs}.
+
+\paragraph{The initial observation}  With a fixed start, $R$ is the noncentral form of Proposition~\ref{prop:fixed} under the tilt, and the theorem holds with $M_{\gamma_0}(0,t)$ in place of $M_V$, the weights unchanged, and $\cP$ replaced by
+\begin{equation}
+\cP(\kappa_1,\kappa_2;a)=2\int_{l_0}^\infty\bar\phi(l;m_2,-2\kappa_2)\,\bar F\big((2a+l^2)^{1/2};m_1,2\kappa_1\big)\dr{l},
+\label{eq:Pnc}
+\end{equation}
+where $\bar\phi(l;m,w)=\frac12\{\phi(l-m;w)+\phi(l+m;w)\}$ and $\bar F(r;m,w)=\frac12\{\erf[(r-m)/(2w)^{1/2}]+\erf[(r+m)/(2w)^{1/2}]\}$, the probability that $X^2\le r^2$ for $X\sim N(m,w)$; in case \Fk, $\cP=\bar F((2a+\gamma_0^2)^{1/2};\gamma_0/F_0,F_1/F_0)$ for $2a+\gamma_0^2>0$ and $0$ otherwise.  Both are even in the means, so only $m_k^2=\gamma_0^2\mu_k$ enters, and they are analytic in the weights and the squared means under the sign conditions.  Part (ii) holds with the density of $R$ under the tilt in place of $(-s_1s_2)^{1/2}\varphi_t$: in case \Fk\ with a fixed start it is $\{\phi(\tilde r-m;w)+\phi(\tilde r+m;w)\}/\tilde r$ with $\tilde r=(2r+\gamma_0^2)^{1/2}$, $m=\gamma_0/F_0$ and $w=F_1/F_0$, on $2r+\gamma_0^2>0$, and with a stationary start it is (\ref{eq:varphi}) with the roots of $D_{\rm S}$.  So five of the six configurations are double integrals with closed-form integrands: case \Fk\ with a zero or a fixed start through part (i), and the stationary starts and cases \Fu\ and \Ft\ with a zero start through part (ii).  In cases \Fu\ and \Ft\ with a fixed start the density of $R$ under the tilt is that of $\frac12(X_1^2-X_2^2)$ with independent Gaussian $X_k$ of nonzero means, the density of a product of two correlated noncentral normal variables, which has no closed form (it can be written as a double series of Whittaker functions, by expanding each noncentral $\chi^2_1$ as a Poisson mixture of central $\chi^2_{1+2j}$); there we use part (i) with (\ref{eq:Pnc}), a triple integral, with the squared means from (\ref{eq:partial}).  With a fixed start the support edge of case \Fk\ moves to $a(v)=-\gamma_0^2/2$, where $J(1)=0$, and in the other cases the kink of the density of $R$ stays at $a(v)=0$, where $X_1^2=X_2^2$.
+
+\paragraph{Analyticity beyond $t_*$}  The integrands of the double integrals with a zero start are analytic beyond $t_*$ by the Girsanov forms of Section~\ref{sec:init}.  In case \Fk, for $a>0$,
+\begin{equation}
+M_V(t)\,\cP(\kappa_1,0;a)\,e^{-tv}=e^{-c/2}\Big(\frac{\vartheta}{\sinh\vartheta}\Big)^{1/2}\frac{\erf\{(a\eta)^{1/2}\}}{\eta^{1/2}}\,e^{-tv},
+\label{eq:dkprod}
+\end{equation}
+and the factor $\eta^{-1/2}$ of $M_V$, which is infinite at $t_*$, where $\eta=0$, cancels: $\erf(w)/w$ is an entire function of $w^2$, so (\ref{eq:dkprod}) is analytic up to the first zero of $\sinh\vartheta/\vartheta$, at $t=(c^2+\pi^2)/2$.  In cases \Fu\ and \Ft\ the product $P(t)\varphi_t(r)$ of (\ref{eq:dugirs}) is analytic up to $(c^2+\pi^2/4)/2$ at most, where $\cosh\vartheta=0$.  This matters for $c>0$.  There the saddle point of the whole integrand on the real axis often lies beyond $t_*$, while a path through the saddle point of $\log M_V(t)-tv$ alone must cross the axis to the left of $t_*$; along such a path the factor $\cP$ or $\varphi_t(a(v))$ varies over many orders of magnitude, and the integral loses accuracy (in case \Fk\ with $c_0=0$ the error of that route at $x=0$ is $2\times10^{-9}$ at $c=2$ and $5\times10^{-3}$ at $c=5$, where the probability is $0.0170$; in cases \Fu\ and \Ft\ it fails at $c=5$).  With a zero start we therefore integrate, for each $v$, along a path through the saddle point of the logarithm of the whole integrand.  With an initial observation the integrands are not of this form, and we integrate along a parabola through the saddle point of $\log M_V(t)-tv$, with the sign conditions checked at every node; this route is accurate to $10^{-11}$ for $c\le2$, and the programs warn when their error estimates exceed $10^{-10}$, as they do by $c=3$ with a fixed start in cases \Fu\ and \Ft.  The single integral of Theorem~\ref{th:single} has no such limitation, because its contour is the fixed line $\Rea t=\tau<t_*$ on which the factorization of Lemma~\ref{lem:roots} holds, and it is the route we take wherever it applies.
+\section{Moments}
+\label{sec:mom}
+
+The moments of the limits need no inversion.  The gamma integral
+\[
+V^{-p/2}=\frac{1}{\Gamma(p/2)}\int_0^\infty s^{p/2-1}e^{-sV}\dr{s}
+\]
+turns them into one-dimensional integrals of the moment generating function at real arguments.
+
+\begin{proposition}[Moments of the limit]
+\label{prop:mom}
+Let $\tau=(U-c_0V)/\sqrt V$ and let $p\ge1$ be an integer.  Then
+\begin{equation}
+\E\big(\tau^p\big)=\frac{1}{\Gamma(p/2)}\int_0^\infty s^{p/2-1}\,m_p(s)\dr{s},\qquad
+m_p(s)=\frac{\partial^pM(u,-s-c_0u)}{\partial u^p}\Big|_{u=0},
+\label{eq:mom}
+\end{equation}
+with $M$ the moment generating function of the case: (\ref{eq:mgf}) with a zero start, (\ref{eq:fixedstart}) with a fixed start, and (\ref{eq:mgf}) with $D_{\rm S}$ in place of $D$ with a stationary start.
+\end{proposition}
+
+The moments exist for every $p$: by the Cauchy--Schwarz inequality
+\[
+\E\big(|U-c_0V|^pe^{-sV}\big)\le\big\{\E(U-c_0V)^{2p}\,M(0,-2s)\big\}^{1/2},
+\]
+and $M(0,-2s)=D(0,-4s-c^2)^{-1/2}$ decays like $e^{-s^{1/2}}$ up to a power of $s$, so the integral of $s^{p/2-1}\E(|U-c_0V|^pe^{-sV})$ converges at both ends; Fubini's theorem gives (\ref{eq:mom}) from the gamma integral, and differentiation under the expectation, which the moment generating function permits near $u=0$, gives the inner derivative.  The moment generating function is analytic in $u$ in the disc $|u|<\min_k|s_k(-s)|$ around $0$, by Lemma~\ref{lem:roots} applied on the real line $t=-s$, and the derivatives are computed as Cauchy integrals on a circle of $0.4$ times that radius with $64$ nodes (smaller when $c_0\ne0$, so that the argument $-s-c_0u$ of $V$ stays in the domain, and with an initial observation), the branch of $D^{-1/2}$ continued around the circle from its real point; for $c>0$ the Girsanov forms of Section~\ref{sec:init} replace (\ref{eq:mgf}), which at $c=5$ would leave relative errors of order $10^{-6}$ in the fourth moment.  The integral over $s$ is the trapezoidal rule in $\log s$ on $[e^{t_0},e^8]$, $t_0=\min(-60,-2c-40)$, with the step $0.05$, whose error, estimated from the rule with twice the step, is below $10^{-10}$ for the first four moments.  A set of four moments takes a fraction of a second.
+
+\section{Numerical evaluation}
+\label{sec:numerics}
+
+Both representations are evaluated to eleven or twelve digits in MATLAB, by the programs \texttt{ltratio\_cdf}, \texttt{ltratio\_pdf}, \texttt{ltratio\_icdf} and \texttt{ltratio\_mom} that accompany the paper; the single integral is the default, and the double integral is selected by an option and used automatically for a fixed nonzero start in cases \Fu\ and \Ft.  This section outlines the two computations; \ref{app:num} gives the details.
+
+\paragraph{The single integral}  The line of (\ref{eq:single}) is $\Rea t=\tau$ with $\tau=1$ for $c\le0$ and a zero start, where $t_*$ exceeds $1$ in the three cases ($1.23$, $4.93$ and $19.7$ at $c=0$, increasing as $c$ decreases), and $\tau=\min(1,t_*/2)$ otherwise ($t_*$ is $0.046$, $0.10$ and $0.97$ at $c=3$, $4\times10^{-7}$ to $10^{-6}$ at $c=10$, and $15.1$, $23.8$ and $37.8$ with a stationary start at $c=-5$).  The integrand is conjugate symmetric on the line, so the integral is twice the real part of the integral over $\Ima t=w>0$.  Its two parts are treated differently.  The part of $P(t)\Phi_x(t)/t$ without the oscillating factors is analytic in a strip around the line and decays like $\exp(-\frac12\sqrt w)$, the decay of $P$: with $w=\tau\sinh u$ the trapezoidal rule in $u$ converges geometrically, and $123$ nodes with the step $0.075$, up to $w=4900$, give $10^{-15}$.  Each part with a factor $e^{-tv_j^2}$, $v_j$ a root of $X(v)$ ($v_j=1/(2|x|)$ at $c_0=0$ and $x<0$), is written as $G_j(w)e^{-\iu wv_j^2}$ with $G_j$ smooth and integrated by Filon's method: $G_j$ is interpolated by Legendre polynomials on panels that grow geometrically from the scale $\min(\frac12,1/v_j^2)$ of the pole at $t=0$, with $20$ Gauss--Legendre nodes each, and the oscillation is integrated exactly, $\int_{-1}^1P_n(x)e^{-\iu\Omega x}\dr{x}=2(-\iu)^nj_n(\Omega)$.  The parts are separated inside the transforms (\ref{eq:Phidef}) by an entire partition of unity, so that each remains analytic in $t$, and the transforms themselves are evaluated by Gauss--Legendre rules on paths in the complex $v$-plane on which the Gaussian factor decays instead of oscillating, with the function $e^zK_0(z)$ evaluated by series and asymptotic expansions to $10^{-14}$.  For $c>0$, and with $c_0<0$ in the upper tail, the exponent $-tv^2-s_dX(v)$ of the integrand has a saddle point whose phase grows like $x^2$ along the line; where its change between the nodes of the trapezoidal rule exceeds $\frac14$, the smooth part is integrated instead on geometric panels with Gauss--Legendre rules whose node counts follow the phase.  With $c_0\ne0$ the roots of $X(v)$, and for $c_0>0$ the vertex of the parabola, are breakpoints of the inner integral, and the paths between them are straight pieces along the directions of steepest descent of the exponent at their ends, joined through the real axis where a direct connection would cross a region in which the Gaussian factor grows.
+
+\paragraph{The double integral}  For each $v$ the inner inversion runs along a path through a saddle point.  With a zero start the integrand is the product (\ref{eq:dkprod}) or $P(t)\varphi_t(a(v))e^{-tv}$ in the Girsanov forms, analytic beyond $t_*$; its saddle point $\hat s$ on the real axis is found by a safeguarded secant iteration, and the integral is taken along the better, by a nested-rule error estimate, of two paths through $\hat s$: a parabola that turns into a wedge, and a vertical line in the $\vartheta$-plane, a parabola in $t$ opening to the right.  In case \Fk\ a third route writes $\erf=1-\erfc$ and inverts the density of $V$ and the remainder separately, each through its own saddle point.  With an initial observation the integrand is $M_V$ times $\cP$ of (\ref{eq:Pnc}), or times the tilted density, and the path is the parabola $t(\theta)=s^*+\mu\theta^2-2\iu\mu\theta$ of the Talbot method \citep{WeidemanTrefethen2007} through the saddle point $s^*$ of $\log M_V(t)-tv$, which opens to the right around the real singularities of $M_V$, with $\mu$ at least $4.5$, so that $\Rea(-z)^{1/2}\ge3$ along it, the branch of $\log D$ continued from $s^*$, and the sign conditions of Theorem~\ref{th:double} checked at every node.  Each inner integral uses the trapezoidal rule with $96$ nodes after a sinh substitution, with the nested rule of twice the step as error estimate, and the node count is doubled up to twice where the estimate requires it.  The outer integral over $v$ uses Gauss--Legendre rules in $\log v$ over $[e^{-8}\E V,e^6\E V]$ in parts of length at most two, with breakpoints at the zeros of $a(v)$, where a cosine map removes the singularities of the integrand, graded toward the sharp step of the integrand in the far upper tail for $c>c_0$, and bisected where an error estimate from the Legendre coefficients of the integrand exceeds $10^{-12}$; in (\ref{eq:Flim}) the boundary term becomes $\PP\{R\le a(v_0)\}$ at the lower end $v_0$.  The programs return an error estimate with each value and warn when it exceeds $10^{-10}$.
+
+\paragraph{Cost}  A value of the distribution function or the density by the single integral takes $0.1$ to $0.25$ seconds in MATLAB on one thread of a laptop for $c\le5$ and $c_0=0$, in all six cases, and $0.3$ to $2$ seconds with $c_0\ne0$ around the center of the distribution, rising to $12$ seconds far in the upper tail at $c=5$, $c_0=-5$, where the saddle part needs three outer nodes per radian of its phase; the double integral takes $0.06$ to $0.3$ seconds with a zero start and $0.3$ to $1.3$ seconds with an initial observation.  Both need about $10^5$ evaluations of the integrand per value; the Julia implementation of the single integral takes $7$ to $17$ milliseconds per value on six threads.  A quantile, by Newton's method on the distribution function with the density as derivative, takes a few values.
+
+\paragraph{Accuracy}  Doubling every node count of the single integral changes the distribution function by at most $4\times10^{-13}$ and the density, relative to its value, by $10^{-11}$, over $x\in[-4,3]$ for the three cases at $c=0$ and $c=-5$; by at most $2\times10^{-12}$ at $c=-10$ and $-20$ around the center of the distribution; by at most $3\times10^{-12}$ for $c=1,2,3,5$ over $x\in[-4,80]$, where the density integrates to one to $10^{-9}$ and moving the line to $\tau=t_*/4$ changes nothing beyond $3\times10^{-12}$; and by at most $6\times10^{-13}$ in the stationary cases at $c=-1$, $-5$ and $-20$.  The trapezoidal rule in $w$ with the step $0.15$ applied to the undivided integrand agrees to the same accuracy.  Table~\ref{tab:acc} sets the two representations against each other: over the six cases, both sides of the unit root, the local null values of the checks of \cite{BaoBrodaKan2026} and the stationary start, the distribution functions agree to $7\times10^{-12}$ at worst and the densities to $2\times10^{-10}$ relative, the latter at the points $2.5$ standard deviations out, which is the accuracy of the double integral itself.  The two computations share only Proposition~\ref{prop:mgf}, in two different forms, and nothing of the quadrature.
+
+\begin{table}[tbp]
+\caption{The two representations against each other}
+\label{tab:acc}
+\begin{center}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{rrcccccccc}
+\toprule
+ & & \multicolumn{3}{c}{$\max|\cF_{\rm single}-\cF_{\rm double}|$} & \multicolumn{3}{c}{$\max|f_{\rm single}/f_{\rm double}-1|$} & \multicolumn{2}{c}{time (s)}\\
+\cmidrule(lr){3-5}\cmidrule(lr){6-8}\cmidrule(lr){9-10}
+$c$ & $c_0$ & \Fk & \Fu & \Ft & \Fk & \Fu & \Ft & single & double\\
+\midrule
+$0$ & $0$ & $1\cdot10^{-14}$ & $6\cdot10^{-13}$ & $1\cdot10^{-12}$ & $1\cdot10^{-12}$ & $2\cdot10^{-12}$ & $4\cdot10^{-12}$ & 0.20 & 0.11\\
+$-5$ & $0$ & $1\cdot10^{-14}$ & $3\cdot10^{-12}$ & $3\cdot10^{-12}$ & $1\cdot10^{-12}$ & $5\cdot10^{-12}$ & $2\cdot10^{-11}$ & 0.18 & 0.06\\
+$-20$ & $0$ & $9\cdot10^{-14}$ & $2\cdot10^{-12}$ & $3\cdot10^{-12}$ & $2\cdot10^{-11}$ & $2\cdot10^{-10}$ & $1\cdot10^{-10}$ & 0.15 & 0.09\\
+$2$ & $0$ & $1\cdot10^{-15}$ & $9\cdot10^{-13}$ & $8\cdot10^{-13}$ & $9\cdot10^{-12}$ & $2\cdot10^{-12}$ & $2\cdot10^{-12}$ & 0.07 & 0.07\\
+$5$ & $0$ & $2\cdot10^{-13}$ & $5\cdot10^{-14}$ & $1\cdot10^{-13}$ & $2\cdot10^{-14}$ & $1\cdot10^{-14}$ & $4\cdot10^{-12}$ & 0.24 & 0.29\\
+$0$ & $-5$ & $1\cdot10^{-15}$ & $6\cdot10^{-13}$ & $1\cdot10^{-12}$ & $2\cdot10^{-13}$ & $3\cdot10^{-12}$ & $4\cdot10^{-12}$ & 0.52 & 0.08\\
+$2$ & $1$ & $7\cdot10^{-16}$ & $8\cdot10^{-13}$ & $5\cdot10^{-13}$ & $1\cdot10^{-13}$ & $2\cdot10^{-12}$ & $1\cdot10^{-12}$ & 0.41 & 0.07\\
+$-2.5$ & $-5$ & $8\cdot10^{-16}$ & $2\cdot10^{-12}$ & $1\cdot10^{-12}$ & $1\cdot10^{-12}$ & $4\cdot10^{-12}$ & $3\cdot10^{-12}$ & 0.46 & 0.06\\
+$5$ & $2$ & $2\cdot10^{-15}$ & $7\cdot10^{-14}$ & $1\cdot10^{-13}$ & $1\cdot10^{-10}$ & $6\cdot10^{-12}$ & $1\cdot10^{-12}$ & 0.32 & 0.27\\
+$5$ & $-5$ & $5\cdot10^{-13}$ & $6\cdot10^{-14}$ & $9\cdot10^{-14}$ & $5\cdot10^{-11}$ & $2\cdot10^{-12}$ & $1\cdot10^{-12}$ & 1.73 & 0.30\\
+$-10$ & $-20$ & $2\cdot10^{-15}$ & $3\cdot10^{-12}$ & $1\cdot10^{-12}$ & $5\cdot10^{-12}$ & $5\cdot10^{-12}$ & $2\cdot10^{-11}$ & 0.44 & 0.08\\
+$2$ & $2$ & $1\cdot10^{-14}$ & $8\cdot10^{-13}$ & $5\cdot10^{-13}$ & $6\cdot10^{-13}$ & $1\cdot10^{-12}$ & $2\cdot10^{-12}$ & 0.60 & 0.08\\
+$-2$ & $-2$ & $1\cdot10^{-15}$ & $1\cdot10^{-12}$ & $1\cdot10^{-12}$ & $2\cdot10^{-13}$ & $3\cdot10^{-12}$ & $2\cdot10^{-12}$ & 0.47 & 0.06\\
+$-5$ & $3$ & $9\cdot10^{-16}$ & $3\cdot10^{-12}$ & $2\cdot10^{-12}$ & $6\cdot10^{-13}$ & $6\cdot10^{-12}$ & $3\cdot10^{-12}$ & 0.63 & 0.07\\
+\midrule
+ & & \Sk & \Su & \St & \Sk & \Su & \St & &\\
+\cmidrule(lr){3-5}\cmidrule(lr){6-8}
+$-5$ & $0$ & $2\cdot10^{-12}$ & $2\cdot10^{-12}$ & $2\cdot10^{-12}$ & $3\cdot10^{-12}$ & $4\cdot10^{-12}$ & $7\cdot10^{-11}$ & 0.19 & 0.18\\
+$-20$ & $0$ & $7\cdot10^{-12}$ & $7\cdot10^{-12}$ & $7\cdot10^{-12}$ & $2\cdot10^{-11}$ & $4\cdot10^{-11}$ & $2\cdot10^{-10}$ & 0.17 & 0.16\\
+\bottomrule
+\end{tabular}
+\end{center}
+{\small Zero start (fixed-start cases) and stationary start.  The largest differences between Theorem~\ref{th:single} and Theorem~\ref{th:double} over six or seven points per configuration, at the mean plus $-2.5$ to $2.5$ standard deviations; the relative density differences are over the points with $f>10^{-8}$.  Time: the median per value of the distribution function in MATLAB on one thread of a laptop.  At $c=5$, $c_0=2$ in case \Fk\ the double integral flags one point far in the upper tail, $x=103.0$, where it is off by $5\cdot10^{-8}$ and the single integral is unchanged under node doubling; that point is excluded.}
+\end{table}
+
+\paragraph{Known values}  In case \Fk\ with $c_0=0$ the limit at $x=0$ is known: $\PP(\tau\le0)=\PP\{J(1)^2\le1\}=\erf\{(2w)^{-1/2}\}$ with $w=\Var J(1)=(e^{2c}-1)/(2c)$, which at $c=0$ is $2\Phi(1)-1$; with a fixed start, $\PP(\tau\le0)=\PP\{J(1)^2\le1+\gamma_0^2\}$ with $J(1)\sim N(\gamma_0e^c,w)$.  Both representations reproduce these to $3\times10^{-13}$ for $c\in\{-30,-10,-2.5,0,1,2,5,10,20\}$ with a zero start, where at $c=20$ the probability is $1.04\times10^{-8}$, and to $2\times10^{-15}$ with $\gamma_0=1.5$ at $c=-5$ and $c=2$.  In case \Fu\ they give $\PP(\tau_\mu\le0)=0.957565589880$, against the $0.95756559$ that \cite{BaoKan2026} obtain from the distribution of the coefficient statistic, since $\{\hat\tau_\mu\le0\}=\{\phih\le1\}$.  When $c_0\ne0$ the probability at $x=0$ is $\PP(U-c_0V\le0)$, which has an independent one-dimensional representation, $-(2\pi\iu)^{-1}\int_{\sigma-\iu\infty}^{\sigma+\iu\infty}M(\zeta,-c_0\zeta)\zeta^{-1}\dr{\zeta}$ with $\sigma<0$, that decays fast along the line because of the factor in $V$; at $(c,c_0)=(0,-5)$, $(2,1)$, $(-10,-20)$, $(-2.5,-5)$, $(5,2)$, $(5,-5)$, $(10,5)$ and $(10,-5)$ the three computations agree to $1.2\times10^{-11}$ in all three cases, and at $(20,10)$, where the probabilities are about $2\times10^{-8}$, to $10^{-16}$.  The stationary-start distribution function equals the fixed-start one averaged over $\gamma_0\sim N(0,\sigma_0^2)$, an identity that neither computation uses: with 24-point Gauss--Hermite quadrature over $\gamma_0$, at $c=-5$ and $x=-2$, the two agree to $8\times10^{-13}$, $8\times10^{-14}$ and $1.2\times10^{-13}$ in cases \Sk, \Su\ and \St, and as $\gamma_0\to0$ the fixed-start distribution functions tend to those of the zero start, to $4\times10^{-13}$ at $\gamma_0=10^{-6}$.  The closed form (\ref{eq:fixedstart}) agrees with the Richardson limit of the finite-sample moment generating function of \cite{BaoBrodaKan2026} to $4\times10^{-9}$, the accuracy of that extrapolation, and its partial fractions (\ref{eq:partial}) fit the limit as a function of $s$ with no room for a further linear or quadratic term; at real arguments the squared means $\mu_k$ are positive, and the prediction of (\ref{eq:partial}) at a third value of $s$ from two others holds to $10^{-16}$.  The densities agree with fifth-order central differences of the distribution functions to $4\times10^{-13}$.  Finally, two million paths of the Ornstein--Uhlenbeck process, by Euler's scheme with $1000$ steps, give the limiting functionals (\ref{eq:limit}) directly: at $c=0$ and $c=-5$ with a zero start, and at $c=-5$ and $-10$ with a stationary start, the simulated distribution functions at $x=-3,-2,-1,0$ agree with the exact ones to within $0.003$ at all $48$ points, the differences being the discretization error of the scheme, which at this number of paths exceeds the sampling error of $3\times10^{-4}$ (for $\hat\tau_\tau$ at $c=0$ and $x=-2$, with $4\times10^5$ paths, the difference is $-0.013$, $-0.007$ and $-0.003$ with $250$, $500$ and $1000$ steps, and within the sampling error of $0.0008$ with $2000$ and $4000$); with a fixed start $\gamma_0=1.5$ and with a stationary start, $2\times10^5$ simulated regressions at $n=1000$ and $\phi=1-5/n$ agree with the limits within about one standard error at $x\in\{-3,-2,-1,0\}$ in all six cases.
+
+\section{Numerical results}
+\label{sec:results}
+
+\subsection{Quantiles and critical values}
+\label{sec:quant}
+
+Table~\ref{tab:quant} gives the quantiles of the three limiting distributions at the unit root and under the local alternative $c=-5$, with a zero start, and the asymptotic critical values of \cite{MacKinnon2010}, which agree to within $1.3\times10^{-4}$, consistent with their standard errors.  The Richardson extrapolation of the exact finite-sample quantiles of \cite{BaoBrodaKan2026} from $n=500$, $1000$ and $2000$ is within $10^{-5}$ of these in 22 of the 27 cases at $c=0$, and off by up to $6\times10^{-5}$ in the upper tails, mainly of $\hat\tau$, where the finite-sample quantiles approach their limit more slowly.  For $\hat\tau$ the limiting density has the sharp peak near $-0.72$ and the shoulder to its right that \cite{Abadir1995} obtained.
+
+\begin{table}[tbp]
+\caption{Quantiles of the limiting Dickey--Fuller $t$-ratios}
+\label{tab:quant}
+\begin{center}
+\scriptsize
+\setlength{\tabcolsep}{1.8pt}
+\begin{tabular}{llrrrrrrrrrr}
+\toprule
+ & $c$ & 1\% & 2.5\% & 5\% & 10\% & 25\% & 50\% & 90\% & 95\% & 97.5\% & 99\%\\
+\midrule
+$\hat\tau$ & $0$ & $-2.5658$ & $-2.2274$ & $-1.9409$ & $-1.6167$ & $-1.0913$ & $-0.5001$ & $0.8875$ & $1.2831$ & $1.6230$ & $2.0145$\\
+\quad M10 & & $-2.5657$ & & $-1.9410$ & $-1.6168$ & & & & & & \\
+ & $-5$ & $-3.2587$ & $-2.9735$ & $-2.7368$ & $-2.4751$ & $-2.0674$ & $-1.6623$ & $-1.0126$ & $-0.8321$ & $-0.6579$ & $-0.4310$\\
+$\hat\tau_\mu$ & $0$ & $-3.4304$ & $-3.1221$ & $-2.8616$ & $-2.5668$ & $-2.0874$ & $-1.5664$ & $-0.4403$ & $-0.0785$ & $0.2380$ & $0.6067$\\
+\quad M10 & & $-3.4303$ & & $-2.8615$ & $-2.5668$ & & & & & & \\
+ & $-5$ & $-3.7216$ & $-3.4345$ & $-3.1943$ & $-2.9258$ & $-2.4999$ & $-2.0632$ & $-1.3233$ & $-1.1126$ & $-0.9143$ & $-0.6634$\\
+$\hat\tau_\tau$ & $0$ & $-3.9587$ & $-3.6614$ & $-3.4105$ & $-3.1270$ & $-2.6685$ & $-2.1806$ & $-1.2464$ & $-0.9400$ & $-0.6597$ & $-0.3251$\\
+\quad M10 & & $-3.9588$ & & $-3.4105$ & $-3.1271$ & & & & & & \\
+ & $-5$ & $-4.1316$ & $-3.8452$ & $-3.6044$ & $-3.3338$ & $-2.9002$ & $-2.4477$ & $-1.6594$ & $-1.4348$ & $-1.2267$ & $-0.9653$\\
+\bottomrule
+\end{tabular}
+\end{center}
+{\small Zero start, no drift, $c_0=0$.  Quantiles of the limits of $\hat\tau$, $\hat\tau_\mu$ and $\hat\tau_\tau$ under $\phi=1+c/n$ from Theorem~\ref{th:single}; M10: the asymptotic critical values of \cite{MacKinnon2010}.  To five digits, at the probabilities $0.01$, $0.025$, $0.05$, $0.10$, $0.50$, $0.90$, $0.95$, $0.975$, $0.99$ and $c=0$:
+$-2.56580$, $-2.22741$, $-1.94087$, $-1.61670$, $-0.50014$, $0.88754$, $1.28314$, $1.62295$, $2.01451$ ($\hat\tau$),
+$-3.43035$, $-3.12209$, $-2.86157$, $-2.56679$, $-1.56643$, $-0.44030$, $-0.07847$, $0.23801$, $0.60667$ ($\hat\tau_\mu$),
+$-3.95868$, $-3.66140$, $-3.41045$, $-3.12702$, $-2.18060$, $-1.24636$, $-0.94004$, $-0.65970$, $-0.32511$ ($\hat\tau_\tau$).}
+\end{table}
+
+\subsection{Local alternatives and the local null value}
+\label{sec:larsson}
+
+Table~\ref{tab:larsson} sets the limit against the values that \cite{Larsson1995} tabulated for case \Fk, for the Dickey--Fuller statistic under the explosive local alternative $\phi=e^{\beta/n}$ and for the $t$-ratio centered at the true value, $c=c_0=\beta$.  His simulated values, from $10^5$ series of length $400$, agree with the limit to within $0.006$ and mostly within their sampling error; the two largest differences, $0.84$ against $0.846$ at $\beta=1$, $z=2$ in panel A and $0.071$ against $0.0747$ at $\beta=2$, $z=-2$ in panel B, are of four to five standard errors (in the latter the exact finite-sample probability at $n=400$ is $0.0756$ \citep{BaoBrodaKan2026}, so the finite sample does not account for it).  His approximation (3.4) to his exact upper-tail formula is accurate only far in the upper tail: at $\beta=2$ it gives $0.05$ and $0.14$ at $z=0.5$ and $1$, where the limit is $0.277$ and $0.343$.  His saddlepoint tail approximations are close in the lower tail at $\beta=1$ ($0.029$ for $0.026$ at $z=-2$) but not at $\beta=2$ ($0.003$ for $0.015$), and in panel B they miss the upper tail ($0.59$ and $0.92$ for $0.961$ and $0.987$ at $\beta=2$).
+
+\begin{table}[tbp]
+\caption{The limiting distribution of $\hat\tau$ under local alternatives: \cite{Larsson1995} and the exact values}
+\label{tab:larsson}
+\begin{center}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{rrrrrcrrrr}
+\toprule
+\multicolumn{10}{l}{\emph{A. Dickey--Fuller test, $\PP(\hat\tau\le z)$ under $\phi=e^{\beta/n}$ ($c=\beta$, $c_0=0$; his Table B.3)}}\\[0.3ex]
+ & \multicolumn{4}{c}{$\beta=1$} & & \multicolumn{4}{c}{$\beta=2$}\\
+\cmidrule(lr){2-5}\cmidrule(lr){7-10}
+$z$ & Sim. & (3.4) & Tail & Exact & & Sim. & (3.4) & Tail & Exact\\
+\midrule
+$-2$   & 0.026 & & 0.029 & 0.026405 & & 0.015 & & 0.003 & 0.015333\\
+$-1.5$ & 0.076 & & 0.096 & 0.075778 & & 0.042 & & 0.019 & 0.043064\\
+$-1$   & 0.17  & & 0.30  & 0.171927 & & 0.093 & &       & 0.094033\\
+$0$    & 0.42  & &       & 0.424176 & & 0.21  & &       & 0.215288\\
+$0.5$  & 0.55  & 0.47 & & 0.545650 & & 0.28  & 0.05 & & 0.277173\\
+$1$    & 0.66  & 0.61 & & 0.661230 & & 0.34  & 0.14 & & 0.342599\\
+$2$    & 0.84  & 0.83 & & 0.845905 & & 0.48  & 0.36 & & 0.479265\\
+$3$    & 0.948 & 0.945 & & 0.947926 & & 0.61 & 0.54 & & 0.611544\\
+$5$    & 0.998 & 0.998 & & 0.997702 & & 0.82 & 0.80 & & 0.818787\\
+$8$    & 1     & 1     & & 0.999998 & & 0.964 & 0.960 & & 0.962540\\
+\midrule
+\multicolumn{10}{l}{\emph{B. $t$-ratio centered at the true value, $\PP(\hat\tau_0\le z)$ with $c=c_0=\beta$ (his Table B.2)}}\\[0.3ex]
+ & \multicolumn{4}{c}{$\beta=-2$} & & \multicolumn{4}{c}{$\beta=2$}\\
+\cmidrule(lr){2-5}\cmidrule(lr){7-10}
+$z$ & Sim. & & Tail & Exact & & Sim. & & Tail & Exact\\
+\midrule
+$-2$   & 0.039 & & 0.040 & 0.039149 & & 0.071 & & 0.081 & 0.074729\\
+$-1.5$ & 0.11  & & 0.10  & 0.109743 & & 0.19  & & 0.33  & 0.191272\\
+$-1$   & 0.24  & &       & 0.244738 & & 0.32  & &       & 0.322495\\
+$0$    & 0.65  & &       & 0.647192 & & 0.65  & &       & 0.650436\\
+$1$    & 0.92  & &       & 0.917900 & & 0.90  & &       & 0.901895\\
+$1.5$  & 0.97  & & 0.61  & 0.969410 & & 0.96  & & 0.59  & 0.960805\\
+$2$    & 0.99  & & 0.94  & 0.990543 & & 0.99  & & 0.92  & 0.987266\\
+$3$    & 0.999 & & 0.998 & 0.999515 & & 0.999 & & 0.998 & 0.999303\\
+\bottomrule
+\end{tabular}
+\end{center}
+{\small Case \Fk, zero start.  Sim.: \cite{Larsson1995}, Tables B.2 and B.3, column~1, from $10^5$ simulated series of length 400 (standard error at most $1.5\times10^{-3}$); (3.4): his approximation (3.4) to his exact upper-tail formula (3.3); Tail: his saddlepoint tail approximations (Theorem~4.1); blank where he gives none.  Exact: Theorem~\ref{th:single}.}
+\end{table}
+
+\subsection{Local power and the initial observation}
+\label{sec:power}
+
+Table~\ref{tab:init} gives the limiting power of the $5\%$ tests, with the limiting critical values of Table~\ref{tab:quant}, against $\phi=1+c/n$ with a fixed start of $\xi$ stationary standard deviations ($\gamma_0=\xi/\sqrt{-2c}$) and with a stationary start; for $\hat\tau$, whose null distribution itself depends on a start of this order, the critical value is held at its zero-start value.  Four features stand out.
+\begin{itemize}
+\item Power rises with the initial deviation, and most without deterministic terms: at $c=-5$ it rises from $0.318$ at $\xi=0$ to $0.720$ at $\xi=3$ for $\hat\tau$, from $0.117$ to $0.208$ for $\hat\tau_\mu$, and only from $0.083$ to $0.090$ for $\hat\tau_\tau$.  This agrees with the power curves of \cite{MullerElliott2003} and the simulations of \cite{HarveyLeybourneTaylor2009}, in which the power of the least squares Dickey--Fuller tests grows with the magnitude of the initial deviation, unlike that of the GLS-detrended tests.
+\item Close to the unit root the effect reverses for $\hat\tau_\tau$: at $c=-2.5$ its power falls from $0.0595$ at $\xi=0$ to $0.0570$ at $\xi=3$, and from $0.0595$ to $0.0592$ with a stationary start.
+\item The stationary start behaves almost exactly like the fixed start $\xi=1$, its root mean square: at $c=-5$ the powers are $0.362$ and $0.361$ for $\hat\tau$ and $0.125$ and $0.124$ for $\hat\tau_\mu$.
+\item The stationary-start powers reproduce the simulations of \cite{Elliott1999}.  His large-sample powers of the Dickey--Fuller $t$-tests with a stationary start (his Table~2, from $T=1000$ and $20{,}000$ replications) are $0.13$, $0.33$, $0.62$ and $0.86$ with an intercept and $0.08$, $0.19$, $0.39$ and $0.63$ with a trend, at $c=-5$, $-10$, $-15$ and $-20$.  The limits are $0.125$, $0.325$, $0.618$ and $0.859$, and $0.084$, $0.188$, $0.379$ and $0.621$.
+\end{itemize}
+The last rows of each panel are the exact powers at $n=100$ with a stationary start from \cite{BaoBrodaKan2026}, which use the exact finite-sample critical values.  The limit is an excellent guide to the size-adjusted power at $n=100$ near the unit root, within $0.005$ for $c\ge-5$, and it understates power further away, by up to $0.045$ for $\hat\tau_\tau$ at $c=-20$; for $\hat\tau_\tau$ at $c=-15$ and $-20$ the values of \cite{Elliott1999} lie between the limit and the exact power at $n=100$ ($0.404$ and $0.664$), as a sample of $T=1000$ would.
+
+\begin{table}[tbp]
+\caption{Limiting power of the 5\% Dickey--Fuller tests and the initial observation}
+\label{tab:init}
+\begin{center}
+\small
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{llrrrrrr}
+\toprule
+ & Start & \multicolumn{6}{c}{$c$}\\
+\cmidrule(lr){3-8}
+ & & $-30$ & $-20$ & $-15$ & $-10$ & $-5$ & $-2.5$\\
+\midrule
+$\hat\tau$ & $\xi=0$ & 1.000 & 0.998 & 0.967 & 0.758 & 0.318 & 0.144 \\
+ & $\xi=1$ & 1.000 & 0.999 & 0.974 & 0.792 & 0.361 & 0.173 \\
+ & $\xi=2$ & 1.000 & 0.999 & 0.988 & 0.877 & 0.499 & 0.277 \\
+ & $\xi=3$ & 1.000 & 1.000 & 0.997 & 0.958 & 0.720 & 0.499 \\
+ & stationary & 1.000 & 0.998 & 0.973 & 0.789 & 0.362 & 0.176 \\
+ & stationary, $n=100$ & 1.000 & 0.999 & 0.976 & 0.802 & 0.369 & 0.178 \\[0.4ex]
+$\hat\tau_\mu$ & $\xi=0$ & 0.995 & 0.844 & 0.593 & 0.304 & 0.117 & 0.072 \\
+ & $\xi=1$ & 0.996 & 0.860 & 0.619 & 0.325 & 0.124 & 0.074 \\
+ & $\xi=2$ & 0.998 & 0.901 & 0.691 & 0.391 & 0.152 & 0.081 \\
+ & $\xi=3$ & 0.999 & 0.948 & 0.795 & 0.507 & 0.208 & 0.098 \\
+ & stationary & 0.996 & 0.859 & 0.618 & 0.325 & 0.125 & 0.074 \\
+ & stationary, $n=100$ & 0.997 & 0.883 & 0.646 & 0.337 & 0.126 & 0.074 \\[0.4ex]
+$\hat\tau_\tau$ & $\xi=0$ & 0.940 & 0.606 & 0.366 & 0.182 & 0.083 & 0.059 \\
+ & $\xi=1$ & 0.945 & 0.621 & 0.379 & 0.188 & 0.084 & 0.059 \\
+ & $\xi=2$ & 0.959 & 0.666 & 0.417 & 0.206 & 0.086 & 0.058 \\
+ & $\xi=3$ & 0.975 & 0.734 & 0.483 & 0.241 & 0.090 & 0.057 \\
+ & stationary & 0.945 & 0.621 & 0.379 & 0.188 & 0.084 & 0.059 \\
+ & stationary, $n=100$ & 0.965 & 0.664 & 0.404 & 0.195 & 0.084 & 0.059 \\
+\bottomrule
+\end{tabular}
+\end{center}
+{\small $\PP(\tau\le x_{0.05})$ under $\phi=1+c/n$, no drift, $c_0=0$, with $x_{0.05}$ the limiting 5\% critical value at the unit root with a zero start ($-1.94087$, $-2.86157$, $-3.41045$).  $\xi$: fixed start $y_0=\sigma\sqrt n\,\xi/\sqrt{-2c}$, from Theorem~\ref{th:single} ($\xi=0$) and Theorem~\ref{th:double} with (\ref{eq:Pnc}) ($\xi>0$); stationary: $y_0$ from the stationary distribution, with $D_{\rm S}$ of Section~\ref{sec:init}; stationary, $n=100$: the exact finite-sample power of \cite{BaoBrodaKan2026} with the exact critical values.}
+\end{table}
+
+\subsection{Moments}
+\label{sec:momnum}
+
+Table~\ref{tab:mom} gives the mean and standard deviation of the limit of the Dickey--Fuller statistic under local alternatives, with a zero and with a stationary start, from Proposition~\ref{prop:mom}.  At the unit root the first six moments of the three limits agree with the eight-digit values of \cite{Nabeya1999}, computed from the formula of \cite{Sawa1978} with Simpson's rule, to within one unit in their last digit; the second moment of $\hat\tau_\mu$, $3.05599535$, is also the expectation $3.0560$ of the limiting likelihood ratio statistic in \cite{Larsson1997}.  Under local alternatives the first four moments agree with Gauss--Legendre integration of the densities of Theorem~\ref{th:single} to $2\times10^{-11}$ relative ($\hat\tau_\mu$ at $c=-5$, $\hat\tau_\tau$ at $c=-10$, $\hat\tau_\tau$ at $c=c_0=-5$, and with a stationary start), and on the explosive side to $1.2\times10^{-10}$ at $c=c_0=10$; on that side the means of the Dickey--Fuller statistic grow fast, $59.0696374465$ and $45.7021278187$ in cases \Fk\ and \Fu\ at $c=5$.  As $c$ decreases the distribution moves to the left and becomes narrower, and the shift is largest without deterministic terms: from $c=0$ to $c=-5$ the mean falls by $1.28$ for $\hat\tau$, by $0.56$ for $\hat\tau_\mu$ and by $0.29$ for $\hat\tau_\tau$, which is the ordering of the local powers in Table~\ref{tab:init}.  A stationary start moves the mean further to the left for $\hat\tau$ at every $c$, and for $\hat\tau_\mu$ and $\hat\tau_\tau$ from $c=-5$ and $c=-10$ on; closer to the unit root it moves them slightly to the right, the counterpart of the small loss of power there.  It changes the standard deviation by at most $0.016$.
+
+\begin{table}[tbp]
+\caption{Mean and standard deviation of the limit of the Dickey--Fuller $t$-ratio under local alternatives}
+\label{tab:mom}
+\begin{center}
+\small
+\begin{tabular}{llrrrrr}
+\toprule
+ & Start & \multicolumn{5}{c}{$c$}\\
+\cmidrule(lr){3-7}
+ & & $0$ & $-2.5$ & $-5$ & $-10$ & $-20$\\
+\midrule
+$\hat\tau$ & zero & $-0.4231$ & $-1.2636$ & $-1.7066$ & $-2.3352$ & $-3.2366$\\
+ & & (0.9811) & (0.6548) & (0.5867) & (0.5461) & (0.5239)\\
+ & stationary &  & $-1.3590$ & $-1.7775$ & $-2.3874$ & $-3.2747$\\
+ & &  & (0.6500) & (0.5883) & (0.5490) & (0.5261)\\[0.4ex]
+$\hat\tau_\mu$ & zero & $-1.5330$ & $-1.8373$ & $-2.0960$ & $-2.5924$ & $-3.4084$\\
+ & & (0.8403) & (0.6949) & (0.6381) & (0.5836) & (0.5458)\\
+ & stationary &  & $-1.8347$ & $-2.1226$ & $-2.6279$ & $-3.4404$\\
+ & &  & (0.7100) & (0.6424) & (0.5853) & (0.5473)\\[0.4ex]
+$\hat\tau_\tau$ & zero & $-2.1814$ & $-2.2927$ & $-2.4738$ & $-2.8644$ & $-3.5905$\\
+ & & (0.7499) & (0.7086) & (0.6640) & (0.6110) & (0.5652)\\
+ & stationary &  & $-2.2862$ & $-2.4731$ & $-2.8779$ & $-3.6118$\\
+ & &  & (0.7133) & (0.6684) & (0.6129) & (0.5664)\\
+\bottomrule
+\end{tabular}
+\end{center}
+{\small Mean and, in parentheses, standard deviation of the limit of the Dickey--Fuller $t$-ratio ($c_0=0$) under $\phi=1+c/n$, no drift, from Proposition~\ref{prop:mom}; the stationary start requires $c<0$.  At $c=0$ the values are those of \cite{Nabeya1999}.}
+\end{table}
+
+\section{Conclusion}
+\label{sec:concl}
+
+The limiting distribution of the Dickey--Fuller $t$-ratio is a single integral of special functions: the Fredholm determinant that generates the numerator and the denominator of the limit is a polynomial of degree at most two in the argument of the numerator, which makes one of the two inversions explicit, and what remains is an integral along a line in the complex plane that is evaluated to twelve digits in a fraction of a second.  The representation covers the three regressions, local alternatives on both sides of the unit root, the $t$-ratio centered at the unit root or at any local null value, and a zero or a stationary initial observation; a fixed initial observation enters the moment generating function through a closed-form quadratic term, and reaches the distribution function through the second representation, a double integral along saddle-point paths, which also checks the first.  The moments are one-dimensional integrals.  The critical values, local powers and moments that have been obtained by simulation since \cite{DickeyFuller1979} are now exact.
+
+The structure exploited here, a quadratic form of low rank in the numerator under a tilt of the denominator, arises wherever a $t$-ratio is formed from a Gaussian process: the limits of the Dickey--Fuller tests with a drift or a trend in the data-generating process \citep{NabeyaSorensen1994}, which Proposition~\ref{prop:fixed} already covers through the parameter $f$, and, after a convolution with a normal, the $t$-ratio in a predictive regression with a near-integrated regressor; Theorem~\ref{th:inv} applies to them without change.
+
+\section*{Declaration of the Use of Generative AI}
+An AI assistant (Claude, Anthropic) was used in drafting and editing the text and in writing and checking the replication code; all results were verified by the authors, who take full responsibility for them.
+\appendix
+
+\section{Proofs}
+\label{app:proofs}
+
+\paragraph{Proof of Theorem~\ref{th:inv}}
+Assume first that
+\begin{equation}
+\int_{-\infty}^{\infty}\int_{-\infty}^{\infty}|M(\sigma+\iu u,\tau+\iu w)|\dr{u}\dr{w}<\infty.
+\label{eq:L1}
+\end{equation}
+Then, by the inversion theorem for the bivariate two-sided Laplace transform, $(X,Y)$ has a continuous density
+\[
+f(x,y)=\frac{1}{(2\pi\iu)^2}\int_{\sigma-\iu\infty}^{\sigma+\iu\infty}\int_{\tau-\iu\infty}^{\tau+\iu\infty}M(s,t)e^{-sx-ty}\dr{t}\dr{s},
+\]
+and $|f(x,y)|\le Ce^{-\sigma x-\tau y}$ with $C$ equal to $(2\pi)^{-2}$ times (\ref{eq:L1}).  The map $(p,v)\mapsto(pv+c_0v^2,v^2)$ takes $\mathbb{R}\times(0,\infty)$ one-to-one onto itself with Jacobian $2v^2$, and $pv+c_0v^2-c_0v^2\le q\sqrt{v^2}$ if and only if $p\le q$, so
+\[
+\PP(Q_0\le q)=\int_{-\infty}^q\int_0^\infty2v^2f(pv+c_0v^2,v^2)\dr{v}\dr{p}.
+\]
+The inner integrand is bounded by $2Cv^2e^{-\sigma pv-(\tau+c_0\sigma)v^2}$, which is integrable locally uniformly in $p$ since $\tau+c_0\sigma>0$; hence the inner integral is continuous in $p$ and is the density of $Q_0$.  Inserting the inversion formula, the absolute integrand is $2v^2|M(s,t)|e^{-\sigma qv-(\tau+c_0\sigma)v^2}$, whose integral is $2J_2(\sigma q,\tau+c_0\sigma)$ times (\ref{eq:L1}), so by Fubini the $v$-integral may be done first; it is $2J_2(qs,t+c_0s)$, which gives (\ref{eq:dinv}).  For (\ref{eq:cinv}), integrate (\ref{eq:dinv}) over $p>q$: since $\int_q^\infty\int_0^\infty v^2e^{-\sigma pv-(\tau+c_0\sigma)v^2}\dr{v}\dr{p}<\infty$ for $\sigma>0$, the order of integration may be changed, and
+\[
+\int_q^\infty2J_2(ps,t+c_0s)\dr{p}=2\int_0^\infty v^2e^{-(t+c_0s)v^2}\int_q^\infty e^{-psv}\dr{p}\dr{v}=\frac{2J_1(qs,t+c_0s)}{s}.
+\]
+For $\sigma<0$ integrate over $p<q$ instead, where $\int_{-\infty}^qe^{-psv}\dr{p}=-e^{-qsv}/(sv)$.
+
+In general, let $Z$ be standard normal and independent of $(X,Y)$, and for $\epsilon>0$ let $Q_\epsilon=(X+\epsilon Z-c_0Y)/\sqrt Y$.  The moment generating function of $(X+\epsilon Z,Y)$ is $M(s,t)e^{\epsilon^2s^2/2}$, and $|e^{\epsilon^2s^2/2}|=e^{\epsilon^2(\sigma^2-u^2)/2}$, so it satisfies (\ref{eq:L1}) by (\ref{eq:A}), and by the first part $Q_\epsilon$ has the continuous density $f_\epsilon(q)$ given by (\ref{eq:dinv}) with $e^{\epsilon^2s^2/2}$ inserted.  Let $g(q)$ denote the right side of (\ref{eq:dinv}).  For $\epsilon\le1$ the integrands of $f_\epsilon$ and $g$ are dominated by $e^{\sigma^2/2}$ times the integrand of (\ref{eq:B}), so $g$ is continuous on $I$ and, by dominated convergence, $f_\epsilon\to g$ uniformly on compact subsets of $I$ as $\epsilon\to0$.  Since $Q_\epsilon\to Q_0$ almost surely, for $a<b$ in $I$ that are continuity points of the distribution function of $Q_0$, $\PP(a<Q_0\le b)=\lim_{\epsilon\to0}\PP(a<Q_\epsilon\le b)=\lim_{\epsilon\to0}\int_a^bf_\epsilon(q)\dr{q}=\int_a^bg(q)\dr{q}$.  As $g$ is bounded on compact subsets of $I$, the distribution function of $Q_0$ is continuous on $I$, the identity extends to all $a<b$ in $I$, and $g$ is the density of $Q_0$ on $I$.  For (\ref{eq:cinv}), the first part gives $\PP(Q_\epsilon>q)$ as the integral with $e^{\epsilon^2s^2/2}$ inserted, which converges to the right side of (\ref{eq:cinv}) by dominated convergence, while $\PP(Q_\epsilon>q)\to\PP(Q_0>q)$ because $q$ is a continuity point; the case $\sigma<0$ is the same.  \qed
+
+\paragraph{Proof of Lemma~\ref{lem:roots}}
+Write the Gaussian path as $\xi$ with covariance operator $\Sigma$, $U=\frac12\langle\xi,A\xi\rangle-\frac12$ and $V=\langle\xi,B\xi\rangle$ with $B\ge0$ of trace class, and $A=R^*A_1R$ with $R$ of rank $r$ onto $\mathbb{R}^r$ and $A_1$ a nonsingular symmetric $r\times r$ matrix: $r=1$ with $A_1=1$ in case \Fk, where $U=\{J(1)^2-1\}/2$, and $r=2$ with $A_1$ indefinite in cases \Fu\ and \Ft, where $U+\frac12$ is $\frac12J(1)^2-\bar JJ(1)$ and $\frac12J(1)^2+2J(1)m_0-6J(1)m_1-6m_0^2+12m_0m_1$, $m_k=\int_0^1r^kJ\dr{r}$, whose matrices have determinants $-1$ and $0$ with rank $2$.  By the formula for the moment generating function of Gaussian quadratic forms, on the tube $M(s,t)=e^{-s/2}\det(I-2t\Sigma B-2s\Sigma A)^{-1/2}$, and since $(I-2t\Sigma B)^{-1}\Sigma=(\Sigma^{-1}-2tB)^{-1}=:\Sigma_t$ and $\det(I-2s\Sigma_tR^*A_1R)=\det(I_r-2sA_1R\Sigma_tR^*)$,
+\[
+D(s,t)=\det(I-2t\Sigma B)\,\det(I_r-2sA_1R\Sigma_tR^*),
+\]
+a polynomial in $s$ of degree $r$ with leading coefficient $(-2)^r\det A_1\det(R\Sigma_tR^*)\det(I-2t\Sigma B)$.  For $\Rea t<t_*$ the operator $\Sigma^{-1}-2tB$ has positive definite real part, hence so has its inverse $\Sigma_t$ and the $r\times r$ matrix $R\Sigma_tR^*$, which is therefore nonsingular (a complex symmetric matrix $G$ with $v^*(\Rea G)v>0$ for $v\ne0$ has $v^*Gv\ne0$); this is the accretivity argument of \cite{BaoKan2026}.  And $\det(I-2t\Sigma B)=D(0,t)\ne0$ for $\Rea t<t_*$, since $|M_V(t)|\le M_V(\Rea t)<\infty$.  So the degree is exactly $r$ and the roots are continuous in $t$.  At real $t=\tau$, $\Sigma_\tau$ is a covariance, $A_1R\Sigma_\tau R^*$ is similar to the symmetric matrix $(R\Sigma_\tau R^*)^{1/2}A_1(R\Sigma_\tau R^*)^{1/2}$, whose inertia is that of $A_1$ by Sylvester's law, and the roots $s_j=1/(2\lambda_j)$, $\lambda_j$ its eigenvalues, are real with the signs stated; $D(\cdot,\tau)$ is positive at $s=0$, vanishes only at the roots, and the component of $\{D>0\}$ containing $0$ is the interval of convergence of $M(\cdot,\tau)$.  Finally, $|M(s,t)|\le M(\sigma,\tau)<\infty$ on the tube, so $D(s,t)\ne0$ there: no root crosses the line $\Rea s=\sigma$ as $t$ moves along the contour, and the configuration at $t=\tau$ persists.  In the stationary cases the path is $(\gamma_0,W)$ with $\gamma_0$ an independent Gaussian coordinate, and (\ref{eq:U}) is again a quadratic form of rank two, in $(J(0),J(1))$ in case \Sk; the argument is unchanged.  With a fixed start the same argument, with the mean of $\xi$ carried along, shows that the weights do not depend on the start and that the configuration of the roots is the same.  \qed
+
+\paragraph{Proof of Theorem~\ref{th:single} and Corollary~\ref{cor:closed}}
+Apply Theorem~\ref{th:inv} to $(X,Y)=(U,V)$ and insert (\ref{eq:phit}).  In (\ref{eq:dinv}), with $J_2$ written out,
+\[
+\frac{1}{2\pi\iu}\int_{\sigma-\iu\infty}^{\sigma+\iu\infty}M(s,t)\,2J_2(xs,t+c_0s)\dr{s}
+=\int_0^\infty2v^2e^{-tv^2}\Big\{\frac{1}{2\pi\iu}\int_{\sigma-\iu\infty}^{\sigma+\iu\infty}M(s,t)e^{-s(xv+c_0v^2)}\dr{s}\Big\}\dr{v},
+\]
+and the inner integral is the inverse transform (\ref{eq:phit}) at the point $xv+c_0v^2$, so that the integrand over $v$ is $2v^2e^{-tv^2}P(t)\varphi_t(X(v))$ and the outer integral is $P(t)\Phi^f_x(t)$; the interchange is justified by the absolute convergence that Lemma~\ref{lem:roots} and the decay of $P$ provide.  For (\ref{eq:cinv}) the same steps with
+\[
+\frac{2J_1(xs,t+c_0s)}{s}=2\int_0^\infty ve^{-tv^2}\,\frac{e^{-s(xv+c_0v^2)}}{s}\dr{v},\qquad
+\frac{e^{-su}}{s}=\int_u^\infty e^{-sy}\dr{y},
+\]
+give the distribution function as the integral over $v$ of $2tve^{-tv^2}$ times $P(t)\Psi_t(X(v))$, divided by $t$, which is the first form of $\Phi_x$ in (\ref{eq:Phidef}); the $1/t$ comes from writing $2ve^{-tv^2}$ as $2tve^{-tv^2}/t$.  The second form is the integration by parts
+\[
+\int_0^\infty\frac{\dr{}}{\dr{v}}\big(-e^{-tv^2}\big)\Psi_t\big(X(v)\big)\dr{v}=\Psi_t\big(\tfrac12\big)+\int_0^\infty e^{-tv^2}X'(v)\varphi_t\big(X(v)\big)\dr{v}.
+\]  At $c_0=0$ the closed forms of Corollary~\ref{cor:closed} follow by writing the integrals over $(0,\frac12)$ as the difference of the integrals over $(0,\infty)$ and $(\frac12,\infty)$ in case \Fk, where $\int_0^\infty X^{k-1/2}e^{-\beta X^2-\gamma X}\dr{X}$ is $\cP_k$ and $\int_{1/2}^\infty$ is $\cQ_k$ after $X=\frac12(1+u)$, and by the definition (\ref{eq:G}) otherwise.  \qed
+
+\begin{lemma}[The tilted process given its start]
+\label{lem:riccati}
+In case \Fk\ with a fixed start $\gamma_0$, for real $t<t_*$ and real $u$,
+\begin{equation}
+\E\big\{e^{\iu uJ(1)+tV}\big\}=\{e^cF_0(z)\}^{-1/2}\exp\Big(-\frac{u^2}{2}\,\frac{F_1(z)}{F_0(z)}
++\iu u\,\frac{\gamma_0}{F_0(z)}+\gamma_0^2\,\frac{tF_1(z)}{F_0(z)}\Big),
+\label{eq:riccati}
+\end{equation}
+with $F_0$, $F_1$ of case \Fk\ at $z=2t-c^2$.  Under the tilt $e^{tV}$, $J(1)$ given $J(0)=\gamma_0$ is therefore Gaussian with mean $\gamma_0/F_0$ and variance $F_1/F_0$, and the tilt multiplies the moment generating function of $V$ by $e^{\gamma_0^2tF_1/F_0}$.
+\end{lemma}
+
+\paragraph{Proof}
+Let $h(r,x)=\E\{\exp(\iu uJ(1)+t\int_r^1J(q)^2\dr{q})\mid J(r)=x\}$.  By the Feynman--Kac formula, $\partial_rh+cx\,\partial_xh+\frac12\partial_{xx}h+tx^2h=0$ with $h(1,x)=e^{\iu ux}$.  The trial $h=\exp\{\alpha(r)x^2+\beta(r)x+\delta(r)\}$ gives the Riccati system $\alpha'+2c\alpha+2\alpha^2+t=0$, $\beta'+(c+2\alpha)\beta=0$, $\delta'+\alpha+\frac12\beta^2=0$ with $\alpha(1)=0$, $\beta(1)=\iu u$, $\delta(1)=0$.  With $\alpha=k'/(2k)$ the first equation is $k''+2ck'+2tk=0$, solved by $k(r)=e^{-cr}g(r)$, $g(r)=\cosh\mu(1-r)-(c/\mu)\sinh\mu(1-r)$, $\mu^2=c^2-2t=-z$, which satisfies $k'(1)=0$; then $g(0)=C-cS=F_0$, $k'(0)/k(0)=2tS/F_0$ and $\alpha(0)=tF_1/F_0$.  The second gives $\beta=\iu ue^{-cr}/k(r)$, so $\beta(0)=\iu u/F_0$.  The third gives $\delta(0)=\int_0^1\{k'/(2k)+\frac12\beta^2\}\dr{r}=-\frac12\log\{e^cF_0\}-\frac12u^2\int_0^1g(r)^{-2}\dr{r}$, and since $g''=\mu^2g$, the Wronskian of $g$ and $g_2(r)=\sinh\mu(1-r)/\mu$ is constant, $gg_2'-g'g_2=-1$, so that $\int_0^1g^{-2}\dr{r}=g_2(0)/g(0)=S/F_0$.  Evaluating $h$ at $(0,\gamma_0)$ gives (\ref{eq:riccati}); its continuation to complex $t$ and $u$ holds on the tube.  \qed
+
+\paragraph{Proof of Proposition~\ref{prop:fixed}}
+In case \Fk, $R=\frac12\{J(1)^2-\gamma_0^2\}$, and by Lemma~\ref{lem:riccati}, under the tilt, $J(1)\sim N(\gamma_0/F_0,F_1/F_0)$ while $M_V$ gains $e^{\gamma_0^2tF_1/F_0}$; the moment generating function of $\frac12X^2$ for $X\sim N(m,w)$ is $(1-sw)^{-1/2}\exp\{\frac12sm^2/(1-sw)\}$, which gives (\ref{eq:QK}) after the subtraction of the zero-start value.  In cases \Fu\ and \Ft\ the dependence (\ref{eq:fixedstart})--(\ref{eq:g}) of $\log M$ on the start is Theorems~1 and 2 of \cite{NabeyaSorensen1994}, in the notation of Proposition~\ref{prop:mgf}, whose parameter $f$ is $c\gamma_0$ and $c^2\gamma_0$ here.  For the partial fractions, note that $R$ is invariant to $J\mapsto J+a+br$ (to $J\mapsto J+a$ in case \Fu), as the regression is; one checks this directly on (\ref{eq:U}).  The functionals $(J(0),J(1),\bar J,K)$ change by $(a,a+b,a+b/2,a/2+b/3)$, so $R$ is a quadratic form in two linear combinations of them that are invariant, whose coefficients do not involve the start.  With $J=\gamma_0h+J_0$, $h(r)=e^{cr}$ and $J_0$ the zero-start process, these combinations are Gaussian with means proportional to $\gamma_0$, also under the tilt, and the covariance under the tilt does not involve $\gamma_0$; so $R=\frac12(X_1^2-X_2^2)$ with $X_1$, $X_2$ independent Gaussian in the eigenbasis of the quadratic form, of variances $2\kappa_1$, $-2\kappa_2$ with the weights of the zero start, and means proportional to $\gamma_0$.  The moment generating function of this noncentral form is $\prod_{k=1}^2(1-2s\kappa_k)^{-1/2}\exp\{\frac s2\sum_{k=1}^2(-1)^{k-1}m_k^2/(1-2s\kappa_k)\}$, so that $Q(s,t)-Q(0,t)$ is of the form (\ref{eq:partial}) with $m_k^2=\gamma_0^2\mu_k$, and the $\mu_k$ are read off the residues of (\ref{eq:g}) at the roots: with $D(s,t)=e^cF_2(s-s_1)(s-s_2)$ the residue of $Q$ at $s_k$ is $c^{2k}(t+\frac12s_k^2+cs_k)g(z)/\{F_2(s_k-s_{k'})\}$, $k'\ne k$, and that of the right side of (\ref{eq:partial}) is $-\frac12\mu_1s_1^2$ at $s_1$ and $\frac12\mu_2s_2^2$ at $s_2$.  Both sides are rational in $s$ with the same poles and the same value at $s=0$, and tend to constants as $s\to\infty$, so they agree once the residues do.  \qed
+
+\paragraph{Proof of (\ref{eq:Dstat}) and (\ref{eq:DstatK})}
+Since $\gamma_0^2\sim\sigma_0^2\chi^2_1$ with $\sigma_0^2=-1/(2c)$, $\E\exp(\gamma_0^2Q)=(1-2\sigma_0^2Q)^{-1/2}=(1+Q/c)^{-1/2}$, and $D(1+Q/c)$ is (\ref{eq:Dstat}).  In case \Sk, by Lemma~\ref{lem:riccati}, averaging over $\gamma_0\sim N(0,\sigma_0^2)$ with the weight $e^{\gamma_0^2tF_1/F_0}$ leaves $J(0)$ Gaussian with variance $\tilde\sigma^2=\sigma_0^2/(1-2\sigma_0^2tF_1/F_0)$ and multiplies the moment generating function of $V$ by $(1-2\sigma_0^2tF_1/F_0)^{-1/2}$, so that under the tilt the pair $(J(0),J(1))$ is Gaussian with $\Var J(0)=\tilde\sigma^2$, $\Cov\{J(0),J(1)\}=\tilde\sigma^2/F_0$ and $\Var J(1)=\tilde\sigma^2/F_0^2+F_1/F_0$.  With $R=\frac12\{J(1)^2-J(0)^2\}$ and $\Lambda={\rm diag}(-1,1)$, $\E e^{sR}=\det(I-s\Sigma\Lambda)^{-1/2}$, so $D_{\rm S}=e^cF_0(1-2\sigma_0^2tF_1/F_0)\{1-s(\Sigma_{22}-\Sigma_{11})-s^2\det\Sigma\}$.  Here $\det\Sigma=\tilde\sigma^2F_1/F_0$, and $\Sigma_{22}-\Sigma_{11}$ vanishes: by $C^2-zS^2=1$, $1-2tS^2=(C-cS)(C+cS)=F_0(C+cS)$, so that $\tilde\sigma^2/F_0^2+F_1/F_0-\tilde\sigma^2$, which equals $\{\sigma_0^2(C+cS)+F_1-\sigma_0^2F_0\}\tilde\sigma^2/(\sigma_0^2F_0)$ after the substitution of $\tilde\sigma^2$, is $(2c\sigma_0^2S+S)\tilde\sigma^2/(\sigma_0^2F_0)=0$ since $2c\sigma_0^2=-1$.  Multiplying out gives (\ref{eq:DstatK}).  \qed
+
+\paragraph{Proof of Theorem~\ref{th:double}}
+By (\ref{eq:U}), $R$ is a quadratic form $R=\frac12\bm\ell'\bm Q\bm\ell$ in a vector $\bm\ell$ of at most three Gaussian functionals of $W$, of rank one or two.  Approximate $W$ on a grid of $N$ points: $V$ becomes a quadratic form $\bm x'\bm K_V\bm x$ in $\bm x\sim N(\bm0,\bI_N)$, with $\bm K_V$ positive semidefinite, and $\bm\ell=\bm\Gamma\bm x$.  Let $t=\sigma+\iu y$ with $\sigma$ real and $\bP=\bI_N-2t\bm K_V$, whose real part $\bI_N-2\sigma\bm K_V$ is positive definite when $\sigma<t_*$.  For bounded measurable $h$, completing the square in the Gaussian integral gives
+\[
+\E\big\{e^{tV}h(\bm\ell)\big\}=|\bP|^{-1/2}\int h(\bm l)\,\phi_{\bSig}(\bm l)\dr{\bm l},\qquad\bSig=\bm\Gamma\bP^{-1}\bm\Gamma',
+\]
+where $\phi_{\bSig}$ is the Gaussian density formula evaluated at the complex covariance $\bSig$, a complex-valued function.  It is integrable because $\Rea\bSig^{-1}$, a Schur complement of the accretive matrix $\bP$ after a change of coordinates, is positive definite.  With $h=\mathbf{1}\{R\le a\}$ the integral is an analytic function of $\bSig$ on this set.  For real $\bSig$ it is the probability that $\kappa_1Z_1^2+\kappa_2Z_2^2\le a$, where $\kappa_1$, $\kappa_2$ are the nonzero eigenvalues of $\frac12\bSig\bm Q$, which equals (\ref{eq:Pkappa}), as the integral over $Z_1$ given $Z_2$ shows.  The right side of (\ref{eq:Pkappa}) is analytic in $(\kappa_1,\kappa_2)$ where $\Rea\kappa_1>0>\Rea\kappa_2$, so the two agree there by analytic continuation.  The moment generating function of $R$ under the tilt, $\prod_{k=1}^2(1-2s\kappa_k)^{-1/2}$, identifies the $\kappa_k$ with $1/(2s_k)$, by Lemma~\ref{lem:roots}.  Letting $N\to\infty$, the finite-dimensional quantities converge to those of the limit, locally uniformly in $t$, because the moment generating functions do.  Finally $\E\{e^{tV}\mathbf{1}(R\le a)\}$ is the Laplace transform of the measure $\E\{\,\cdot\,;R\le a\}$ in $v$, and (\ref{eq:Hlim}) is its inversion on the line $\Rea t=\sigma$.  For the path $\Gamma$, the integrand of (\ref{eq:Hlim}) is analytic on the region between $\Gamma$ and the line: the singularities of $M_V$ are the zeros of $D(0,\cdot)$, the Fredholm determinant of the positive semidefinite covariance kernel of $V$, which are real; the weights are analytic wherever they are distinct, which the sign conditions ensure, and $\cP$ is analytic in them there.  By assumption, the integrals over the arcs of the circles $|t|=\varrho$ that join $\Gamma$ and the line tend to zero as $\varrho\to\infty$; Cauchy's theorem on the bounded regions cut off by these arcs then moves the line to $\Gamma$.
+
+For part (ii), take $h$ in the Gaussian integral to be a function of $R$ alone.  For real $\bSig$ the law of $R$ is that of $\kappa_1Z_1^2+\kappa_2Z_2^2$, whose density is $(-s_1s_2)^{1/2}\varphi_t$ (respectively $s_1^{1/2}\varphi_t$): in case \Fk\ the scaled $\chi^2_1$ density, and in cases \Fu\ and \Ft\ the convolution of the densities of $\kappa_1Z_1^2$ and $\kappa_2Z_2^2$, which reduces with $K_0(w)=\int_0^\infty e^{-w\cosh q}\dr{q}$ to (\ref{eq:varphi}).  Both sides are analytic in $(\kappa_1,\kappa_2)$ where $\Rea\kappa_1>0>\Rea\kappa_2$, so, as for part (i), $\E\{e^{tV}h(R)\}=P(t)\int_{-\infty}^{\infty}h(r)\varphi_t(r)\dr{r}$ on the line, and in the limit $N\to\infty$.  Hence $P(t)\varphi_t(r)$ is the Laplace transform in $v$ of the joint density of $(R,V)$, and (\ref{eq:hrv}) is its inversion.  The integral converges absolutely for $r\ne0$: with $\Rea s_1>0>\Rea s_2$, $|e^{-(s_1+s_2)r/2}K_0((s_1-s_2)|r|/2)|$ behaves like $|e^{-s_1r}|$ for $r>0$ and like $|e^{-s_2r}|$ for $r<0$ when $|t|$ is large, so $\varphi_t(r)$ grows at most like a power of $|t|$, while $P$ decays like $\exp(-\frac12|\Ima t|^{1/2})$.  Then $H(v;x)=\int_{-\infty}^{a(v)}h(r,v)\dr{r}$, and differentiating $\int_0^\infty H(v;x)\dr{v}$ in $x$, with $\partial a/\partial x=\sqrt v$, gives (\ref{eq:flim}).  For the distribution function, $G(r,v)=\int_v^\infty h(r,v')\dr{v'}$ is the density of $R$ on the event $\{V>v\}$, and for $\sigma'>0$ the integral of (\ref{eq:hrv}) over $v'>v$ may be taken under the $t$-integral, which gives (\ref{eq:Glim}).  Moving its line across the simple pole at $t=0$, where $M_V(0)=1$, gives the residue $(-s_1s_2)^{1/2}\varphi_0(r)$.  With $\Psi(v)=\int_{-\infty}^{a(v)}G(r,v)\dr{r}=\PP\{R\le a(v),\,V>v\}$ and $\partial G/\partial v=-h$,
+\[
+\Psi'(v)=a'(v)\,G\big(a(v),v\big)-H(v;x).
+\]
+Since $\Psi(0)=\PP(R\le\frac12)$, $\Psi(v)\to0$ as $v\to\infty$, and $G(r,v)$ is bounded near $v=0$ for $r=a(v)$ near $\frac12$, so that $a'(v)G(a(v),v)$ is integrable at $v=0$, integrating over $v\in(0,\infty)$ gives (\ref{eq:Flim}).  At $t=0$ the weights are real, and $\PP(R\le\frac12)=\cP(\kappa_1(0),\kappa_2(0);\frac12)$ by part (i).  With a fixed start the Gaussian integral has the deterministic part of $\bm\ell$ carried along, $\E\{e^{tV}h(\bm\ell)\}=|\bP|^{-1/2}e^{\gamma_0^2Q(0,t)}\int h(\bm l)\phi_{\bSig}(\bm l-\bm m)\dr{\bm l}$ with a complex mean $\bm m$ proportional to $\gamma_0$, and for real $\bSig$ and $\bm m$ the integral with $h=\mathbf{1}\{R\le a\}$ is $\PP\{\frac12(X_1^2-X_2^2)\le a\}$ for independent $X_k\sim N(m_k,\pm2\kappa_k)$, which is (\ref{eq:Pnc}) after conditioning on $X_2$ and replacing $X_2$ by $|X_2|$; the right side of (\ref{eq:Pnc}) depends on the means only through $m_k^2$ and is analytic in the weights and in $m_k^2$, so analytic continuation and the limit $N\to\infty$ give the result as before, with $m_k^2=\gamma_0^2\mu_k$ by Proposition~\ref{prop:fixed}.  With a stationary start $R$ is a central form of rank two in the Gaussian vector that includes $\gamma_0$, and the theorem applies with $D_{\rm S}$.  \qed
+
+\section{Numerical details}
+\label{app:num}
+
+\subsection{The single integral}
+\label{app:single}
+
+\paragraph{The transforms}  The transforms (\ref{eq:Phidef}) are integrals of $\varphi_t$ against Gaussian kernels over half-lines and finite segments of the $v$-axis.  At $c_0=0$ in case \Fk\ the segment integrals are written as differences of half-line integrals, which are the special functions (\ref{eq:PQ}); otherwise the Gaussian transforms are evaluated by quadrature as follows, and the same rules, with the $K_0$ kernel replaced by $X^{-1/2}$, evaluate (\ref{eq:PQ}).  For $x<0$ and $c_0=0$ the integrals over $(0,\frac12)$ in $X$ contain the contributions of the support edge $X=0$, which carry the factor $e^{-ty}$, $y=1/(4x^2)$, and oscillate in $\Ima t$ with the period $8\pi x^2$, and the contributions of the neighborhood of $X=\frac12$, where the Gaussian factor is centered, which are analytic in $t$ without oscillation.  They are separated by a partition of unity, $\chi(X)=\frac12[1+\erf\{\kappa(\frac14-X)\}]$ with $\kappa=24$, applied to the integrand over $(0,\frac12)$: $\chi$ is entire, $1$ and $0$ at the ends of the segment to $10^{-16}$, so that both parts are integrals of analytic functions between the same real endpoints, hence analytic and conjugate symmetric in $t$, and only the part with $\chi$ carries the factor $e^{-ty}$.  The partition is applied to the complex path point on a fixed path, so that its definition does not depend on $t$.  In case \Fk\ the same partition, in the variable $v$ with $\kappa=12/v^*$, $v^*=1/(2|x|)$, reproduces the split of (\ref{eq:PhiK}) up to terms of relative size $10^{-16}$.
+
+\paragraph{The paths}  The half-lines from $X=\frac12$ and from the edge $X=0$ outward are rotated by $-\frac12\arg t$, on which the Gaussian factor decays without oscillating, and the segment $(0,\frac12)$ is bulged into the half-plane $\Ima(X-\frac12)^2<0$ along a fixed curve with unit slope at both ends, the direction of steepest descent there, and height $\frac1{16}$, which keeps $|\chi|\le e^{9/4}$ on it.  The endpoint singularities, $X^{-1/2}$ in case \Fk\ and $\log X$ otherwise, are removed by the substitution $X=\delta u^4$; each path is divided at the scales of its factors, the width $|x|(2\Ima t)^{-1/2}$ of the Gaussian, the decay lengths of the exponentials and the distance $1/\kappa$ over which $\chi$ varies, with $32$ to $96$ nodes per piece and the pieces growing geometrically along the half-lines.  The constant part of the kernel in the cases with the $K_0$ kernel is the total mass $(-s_1s_2)^{-1/2}$ minus a short integral over $X>\frac12$ on the ray $X=\frac12+re^{-\iu\arg s_1}$, on which $\varphi_t$ decays without oscillating, or, when $|s_1|$ is small, the integral over $X<\frac12$ with the ray $X=-re^{-\iu\arg(-s_2)}$ from the edge.  The branches of $P(t)$, $s_1(t)$, $s_2(t)$ and $(-s_1s_2)^{-1/2}$ are fixed by continuity from the real point $t=\tau$ along each set of nodes; for $c>2$ the roots and $P(t)$ come from the Girsanov forms (\ref{eq:dugirs}), and the smaller root in modulus from the product of the roots rather than the quadratic formula, which loses it to cancellation when the roots differ by orders of magnitude (at $c=10$ they are about $-100$ and $3\times10^{-8}$).
+
+\paragraph{The Bessel function}  The function $e^zK_0(z)$, needed at points with $\Rea z\ge0$ only, is evaluated to $10^{-14}$ by its power series for $|z|<2$, by Taylor expansions about the centers of cells of side $\frac12$ for $|z|<25$, the coefficients following from $K_0$ and $K_1$ at the center through Bessel's equation, and by its asymptotic series beyond, at a tenth of the cost of a library routine.
+
+\paragraph{The outer integral}  The part without oscillating factors is integrated by the trapezoidal rule in $u$, $w=\tau\sinh u$, with the step $0.075$ up to $w=4900$ ($123$ nodes).  Each part with a factor $e^{-tv_j^2}$ is integrated by Filon's method on panels that grow geometrically from $\min(\frac12,1/v_j^2,\tau/2)$, the scale of the pole at $t=0$ and of the transient of the transition region of $\chi$, which oscillates at the frequency $3v_j^2/4$ and dies out over $300/v_j^2$; below $w=300/v_j^2$ the panels are at most $25/v_j^2$ long, $G_j$ is interpolated at $20$ Gauss--Legendre nodes by Legendre polynomials, and the moments $\int_{-1}^1P_n(x)e^{-\iu\Omega x}\dr{x}=2(-\iu)^nj_n(\Omega)$ integrate the oscillation exactly; $18$ to $25$ panels reach $w=4900$.  This part is omitted when $3\tau v_j^2/16>40$, where it is below $10^{-17}$.
+
+\paragraph{The saddle factor}  For $c>0$ the roots $s_1$, $s_2$ at $t=\tau$ approach zero as $c$ grows, and the Gaussian parts of the transforms, of the form $\int_0^\infty A(u)e^{-tu^2/x^2-su}\dr{u}$ with $A$ algebraic and $s=s_1$ or $s_2$, grow or oscillate along the ray $u=re^{-\iu\arg(t)/2}$ for $x>0$ large: the model integral with $A=1$ is $\frac12x(\pi/t)^{1/2}e^{z^2}\erfc(z)$ with $z=sx/(2t^{1/2})$, which for $\Rea z<0$ contains the term $2e^{z^2}$ of the saddle point $u_0=-sx^2/(2t)$ of the exponent.  For $\Rea z<0$ these parts are taken along the segment from $0$ to $u_0$ and the line of steepest descent from $u_0$, on which the exponent is $z^2\lambda(2-\lambda)$, $0\le\lambda\le1$, and $z^2-|t|r^2/x^2$, and otherwise along the level curve $\Ima(tu^2/x^2+su)=0$ from $0$, on which the exponent is $-v^2$ for real $v$ and $u=2v^2/\{s+(s^2+4tv^2/x^2)^{1/2}\}$, which ends in the valley of the positive real axis precisely when $\Rea z\ge0$.  The factor $e^{z^2}$, present for $c>0$ beyond a small value of $w$ and never for $c\le0$, where $\Rea z\ge0$ along the line, oscillates in $w$ with a phase that grows like $x^2$; where its change between the nodes of the trapezoidal rule exceeds $\frac14$, the smooth part is integrated instead on the geometric panels with Gauss--Legendre rules whose node counts follow the phase.  The cost then grows with $x^2$ in the upper tail.
+
+\paragraph{The local null value}  With $c_0\ne0$ the breakpoints of the inner integral in $v$ are the positive roots of $X(v)$ and, for $c_0>0$ and $-\sqrt{2c_0}<x<0$, the vertex $v_0=-x/(2c_0)$ of the parabola, where $X$ has the complex roots $v_0\pm\iu\ell$, $\ell=(X(v_0)/c_0)^{1/2}$, from which the cuts of $X^{-1/2}$ or $\log X$ run vertically away from the real axis; the paths leave $v_0$ within $45$ degrees of the real axis, so that they pass the branch points at the distance $0.7\ell$ at least, the first pieces of the quadrature at $v_0$ have the length $\ell$, and the ray from $v_0$ is straight.  The first piece at a root $v_j$ has the length $\ell_j/2$, $\ell_j$ the distance of the nearest other root, and the first piece at $v=0$ the length $\ell_0/2$, $\ell_0$ the distance of the nearest root from $0$ (for $c_0<0$ and large $x$ the negative root $1/(2c_0v_1)\approx-1/(2x)$ lies close to $0$).  On a finite segment between two breakpoints $a<b$ the integrand is $W(v)e^{E(v)}\varphi^{\rm alg}_t(X(v))$ with the exponent $E(v)=-tv^2-s_dX(v)=-\alpha v^2-\beta_0v-\frac12s_d$, $\alpha=t+c_0s_d$, $\beta_0=s_dx$, a quadratic in $v$, and the path is three straight pieces: from $a$ and from $b$ in the directions of steepest descent of $E$ at the ends, each kept within $80$ degrees of the segment and stopped where the exponent has fallen by $60$, where its quadratic part turns it up, at the depth $L/8$, or at the half-length $L/2$; and the connection between their ends, which is the straight line unless the exponent along it rises above its values at the ends, and otherwise the polyline through the real axis, on which the exponent is that of the integrand itself (when $\Rea\alpha\approx0$ and $\Ima\beta_0$ is large the two descent pieces end on opposite sides of the real axis, and a straight connection crosses the quadrant in which $e^{-\alpha v^2}$ grows by $e^{17}$ and more).  Every piece is integrated by Gauss--Legendre rules on sub-pieces graded toward the ends, with the node counts set by the change of $E$ in modulus and phase at $1.2$ nodes per unit plus $16$ for a stationary point of the phase inside, and sub-pieces on which the exponent is below $\max\{E(a),E(b)\}-58$ are skipped; $X$ is formed from the offset from the nearer root, so that it is exact near the roots.  The exponent has its saddle at $v^*=-\beta_0/(2\alpha)$, where it exceeds its value at $0$ by $\beta_0^2/(4\alpha)$.  With $c_0<0$ and large $x$ the saddle sits inside the segment at $v^*\approx b/4$, with a phase of about $0.005x^2\Ima t$ in cases \Fu\ and \Ft\ at $c=5$, which the trapezoidal rule cannot follow; the phase is therefore computed also when a breakpoint is present, whenever $0<\Rea v^*<v_1$, and the smooth part takes the Gauss--Legendre route of the saddle factor, with the partition $\chi$ between the smooth and the edge parts placed midway between $v^*$ and $v_1$ and sharpened to $\kappa=12/(v_1-v^*)$, so that the saddle leaks into the edge part by at most $\erf(-6)$, and the depth of the paths reduced to $1.5/\kappa$.  The saddle part needs about three outer nodes per radian of the phase over the range in which it is not negligible, about $600$ at $x=57$ and $3000$ at $x=266$ for $c=5$, $c_0=-5$, in addition to the $400$ or so of the other parts.  For $c_0=0$ the general machinery reproduces the values of the specialized code to $10^{-13}$.
+
+\paragraph{The moments}  The derivatives in (\ref{eq:mom}) are Cauchy integrals,
+\[
+m_p(s)=\frac{p!}{Nr^p}\sum_{k=0}^{N-1}M(re^{\iu\theta_k},-s-c_0re^{\iu\theta_k})\,e^{-\iu p\theta_k},\qquad\theta_k=\frac{2\pi k}{N},
+\]
+with $N=64$ and $r=0.4\min_k|s_k(-s)|$, the roots of $D(\cdot,-s)$ being real; a circle on which $\log D$ does not return to its starting value encloses a zero of $D$, and its radius is halved.  The $s$-integral is the trapezoidal rule in $\log s$: the integrand is smooth in $\log s$ and decays at both ends, like $s^{p/2}$ at the left and like $\exp(-s^{1/2})$ at the right, so the rule converges geometrically.
+
+\subsection{The double integral}
+\label{app:double}
+
+\paragraph{Zero start: the inversions}  For each pair $(v,a(v))$ let $\ell(t)$ be the logarithm of the integrand, (\ref{eq:dkprod}) in case \Fk\ and $\log\{P(t)\varphi_t(a(v))\}-tv$ in cases \Fu\ and \Ft, in the Girsanov forms of Section~\ref{sec:init}, with the exponent $-a\eta-tv$ of (\ref{eq:dkprod}) written as $-(a-cv)\eta-cv\epsilon+\delta^2v/2$, $\delta=\vartheta-c$ and $\epsilon=\eta-\delta$, which avoids the cancellation between $a\eta$ and $tv$ at large $v$.  We find its saddle point $\hat s$ on the real axis, left of the first point where one of $\cosh\vartheta\,|\bSig|$, $\alpha_0$ and $\alpha_1^2+4\alpha_0\alpha_2$ leaves $(0,\infty)$ (found by bisection), by bracketing and the Illinois variant of regula falsi on $\ell'$, with finite-difference steps scaled by the width $\ell''(\hat s)^{-1/2}$, and integrate along two paths through $\hat s$, keeping the result with the smaller error estimate.  The first is
+\[
+t(\tau)=\hat s+\mu\frac{\tau^2}{(1+\tau^2/16)^{1/2}}-2\iu\mu\tau,\qquad\mu=\frac1{2\ell''(\hat s)^{1/2}},
+\]
+a parabola near $\hat s$ that turns into the wedge $\Rea t-\hat s=2|\Ima t|$ far out.  The second is the vertical line $\vartheta=\vartheta_A+\iu y$ in the $\vartheta$-plane, a parabola $t=(c^2-\vartheta^2)/2$ opening to the right, along which $|e^{-tv}|$ decays like $e^{-y^2v/2}$; we take $\vartheta_A=\max\{\hat\vartheta,\frac12\operatorname{asinh}(a/(6v)^{1/2}),1\}$, with $\hat\vartheta$ the value at $\hat s$, so that the oscillating part $a\vartheta(\coth\vartheta-1)$ of $a\eta$ stays small against $y^2v/2$.  In case \Fk\ a third route writes $\erf=1-\erfc$ and inverts the density of $V$ and the remainder separately, each along a path through its own saddle point left of $t_*$, with $\erfc$ from the Faddeeva function \citep{Weideman1994}; it is the better one when $\cP$ is close to one.  Each integral uses the trapezoidal rule with $96$ nodes after a sinh substitution, with the nested rule of twice the step as error estimate, and the node count is doubled up to three times until that estimate is below $10^{-13}\max(1,|I|)$, $I$ the value.  For $G$ in (\ref{eq:Glim}) the crossing point is kept at least one saddle-point width from the pole at $t=0$, and the residue is added when it lies to the left.  The distribution function in case \Fk\ comes from part (i) and its density from (\ref{eq:flim}), whose integrand $e^{-c/2}(\vartheta/\sinh\vartheta)^{1/2}e^{-a\eta}(\pi a)^{-1/2}$ is the derivative of (\ref{eq:dkprod}) in $a$; in cases \Fu\ and \Ft\ both come from part (ii).
+
+\paragraph{The outer integral}  The outer integral over $v$ uses Gauss--Legendre rules in $\log v$ on the interval from $v_0$ to $e^6\E_{\Fk}V$, where
+\[
+\E_{\Fk}V=\frac{e^{2c}-1-2c}{4c^2},
+\]
+the mean of $\int_0^1J(r)^2\dr{r}$, bounds $\E V$ in all three cases, and $v_0=3\times10^{-3}$ in cases \Fu\ and \Ft\ and the smaller of $3\times10^{-3}$ and $e^{-8}\E V$ in case \Fk; lowering $v_0$ to $10^{-5}$ changes the results by less than $10^{-10}$ for $c$ down to $-50$.  The parts are of length at most two, with $32$ nodes in case \Fk\ and $64$ in cases \Fu\ and \Ft, and with breakpoints at the zeros of $a(v)$, where the variable is mapped by $z\mapsto\frac12(1-\cos\pi z)$ (twice in cases \Fu\ and \Ft, for the logarithmic singularity of $\varphi_t$ at $r=0$), so that the distance to the breakpoint behaves like the fourth power of the variable.  For $c_0>0$ and $x$ near $-(2c_0)^{1/2}$ the two zeros of $a(v)$ merge, and the parts are graded geometrically toward them; at $x=-(2c_0)^{1/2}$ the density in case \Fk\ is infinite and is returned as such.  Two further devices handle the far upper tail for $c>c_0$.  There $R$ is close to $(c-c_0)V$, and the outer integrand has a sharp step in $\log v$, and the density a narrow bump, near the point where $a(v)$ crosses the conditional mean of $R$ given $V=v$.  We compute that point and the width of the step from the tilt at the saddle point of $\log M_V(s)-sv$: the width is the conditional standard deviation of $R$, from the double saddle-point formula $K_{uu}-K_{us}^2/K_{ss}$ for the conditional variance, divided by the slope of $a(v)$ minus the conditional mean, and when it is below $0.1$ the parts are graded geometrically toward the point, starting from twice the width.  In addition, a part is bisected, up to twelve times, when an error estimate from the Legendre coefficients of its integrand exceeds $10^{-12}$ and ten times the noise level of the inner integrals; the estimate is the larger of the last two coefficients, extrapolated by their decay from the middle ones.  With the fixed rule alone, the distribution function in case \Fk\ at $c=5$ is off by $3\times10^{-3}$ at $x=126$, with no warning, and the density is lost beyond $x\approx320$.  In (\ref{eq:Flim}) the boundary term becomes $\PP\{R\le a(v_0)\}$ at the lower end $v_0$, with the weights at $t=0$.  Pairs $(v,a(v))$ at which the saddle-point approximation of the inner integral, times the outer weight, is below $e^{-35}$ are skipped.  The outer estimates, plus the outer rule applied to the error estimates of the inner integrals, are returned as an error estimate, and values whose estimate exceeds $10^{-10}$ are flagged.
+
+\paragraph{With an initial observation}  The inner integrals are one-dimensional inversions of $M_{\gamma_0}(0,t)\cP$ (fixed start, through (\ref{eq:Pnc})) or of $M_V$ times the tilted density (stationary start).  On the line itself the integrand decays only like $\exp(-|y|^{1/2}/2)$ in $y=\Ima t$, while $e^{-tv}$ makes it oscillate with period $2\pi/v$, so a direct rule needs many nodes, and we use the parabola $t(\theta)=s^*+\mu\theta^2-2\iu\mu\theta$, $\theta\in(-\infty,\infty)$, through the saddle point $s^*(v)$ of $\log M_V(s)-sv$ on the real axis (safeguarded Newton iteration, which keeps a bracket because $\log M_V$ is convex on its real domain), which opens to the right around the real singularities of $M_V$.  Along it $|e^{-tv}|=e^{-s^*v}e^{-\mu v\theta^2}$.  We take $\mu=\max\{1/(2\ell_2^{1/2}),4.5\}$, $\ell_2$ the second derivative of $\log M_V$ at $s^*$; the first choice turns the saddle-point Gaussian into $e^{-\theta^2/2}$, and the bound keeps $\Rea(-z)^{1/2}\ge3$ along the path, so that $e^{-2\vartheta}$ is small there.  The sign conditions of Theorem~\ref{th:double} do not hold on the whole parabola: in case \Fk, with $w=z^{1/2}=u+\iu v'$, $\kappa_1=1/\{2(w\cot w-c)\}$ and $\Rea\kappa_1>0$ if and only if $u\sin2u+v'\sinh2v'>c(\cosh2v'-\cos2u)$, which fails near $u=3\pi/4+k\pi$ once $u$ exceeds about $(2\mu)^{1/2}\sinh\{2(2\mu)^{1/2}\}$, at $|\theta|\approx202$ for $c=0$ and $\mu=4.5$.  We therefore use the parabola only for $|\theta|\le\Theta$, where $e^{-\mu v\Theta^2}<10^{-18}$, and close the path by the vertical rays $\Rea t=s^*+\mu\Theta^2$, whose contribution we neglect; the cutoff, like the range of the outer integral, is a practical choice, tested numerically: doubling the exponent at the cutoff and widening the range of $v$ to $[e^{-12},e^9]\E V$ changes the distribution function by less than $10^{-11}$.  In all our computations $\Theta\le9$, far inside the region where the conditions hold, and the routine checks them at every node it uses and on a grid of intermediate parabolas on request.  Along the parabola $\log M_V=-\frac12\log D(0,z)$ is continued from $s^*$, where $D>0$: we write $\log D=c+\vartheta+\log q$ with $\vartheta=(-z)^{1/2}$, continuous on the path because $\Ima(-z)>0$ there, and $q=De^{-c-\vartheta}$, which varies slowly and whose logarithm is unwrapped on a grid refined until the phase changes by less than $\pi/4$ between neighbors.  The real part of the integrand is even in $\theta$, and the trapezoidal rule is applied to $\theta\ge0$ after the substitution $\theta=\theta_w\sinh\tau$, with $\theta_w=1/(2\mu\ell_2^{1/2})$ the width of the saddle-point Gaussian, with $96$ nodes up to the point where $e^{-\mu v\theta^2}<10^{-18}$, doubled up to twice where the nested-rule estimate exceeds $10^{-9}$ of the largest column of the piece; with a fixed start in cases \Fu\ and \Ft\ the initial-value term has an essential singularity at the end of the domain of $M_{\gamma_0}(0,\cdot)$, toward which $s^*$ moves as $v$ grows, and the crossing point is kept at a relative distance of $2\%$ from the end.  Only an approximate $s^*$ is needed: any real point of the domain gives the same integral, and $s^*$ and $\ell_2$ only place and scale the path.  The boundary term $\PP(R\le\frac12)$ of (\ref{eq:Flim}) has real weights and is computed once for each $x$ from (\ref{eq:Pkappa}) or (\ref{eq:Pnc}), by $96$-point Gauss--Legendre after the substitution $l=\sqrt{2a}\sinh\tau$ when $a>0$ and $l=(u^2-2a)^{1/2}$ when $a<0$, as is the inner integral over $l$ of (\ref{eq:Pnc}) at every node.  The outer integral is the rule above in $\log v$ over $[e^{-8},e^6]\E V$ with $64$ nodes per part.
+
+\paragraph{Accuracy of the double integral}  Doubling the outer and the inner node counts changes the distribution function and the density by at most $5\times10^{-11}$ with a zero start ($c\in[-30,10]$, $c_0\in[-40,10]$) and by $1.5\times10^{-9}$ at $c=c_0=20$.  In the far upper tail at $c=5$, where the outer integrand has the sharp step described above, the density integrated over $[-80,500]$ by a $400$-point Gauss--Legendre rule has mass $1+2\times10^{-9}$ in case \Fk\ and $1+2\times10^{-10}$ in case \Fu, and reproduces the means of Proposition~\ref{prop:mom} to $10^{-8}$, the remaining differences being the truncation and the rule of that integral.  With an initial observation, in case \Fk\ at $x=0$, where the exact value is a noncentral $\chi^2_1$ probability, the parabola route is accurate to $10^{-13}$ for $c\le2$; in cases \Fu\ and \Ft\ with a fixed start it agrees with the limit of the Richardson-extrapolated finite-sample initial-value terms of \cite{BaoBrodaKan2026} to $10^{-7}$, the accuracy of that extrapolation, and the sign conditions held at every node used for $c\le2$.
+
+\bibliography{LTR_BBK}
+
+\end{document}

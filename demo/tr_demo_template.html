@@ -1,0 +1,547 @@
+<title>Dickey-Fuller Limit Explorer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* layout: a fixed control rail on the left, two charts and a figures strip on the right; stacks at phone width */
+:root {
+  --bg: #f6f7f8; --panel: #ffffff; --fg: #1d2630; --muted: #5d6b78; --line: #d9dfe5; --grid: #e9edf0;
+  --accent: #0d6f7a; --accent-soft: #cfe7ea; --limit: #b4731a; --focus: #0d6f7a;
+  --display: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --sans: "IBM Plex Sans", "Segoe UI", Helvetica, Arial, sans-serif;
+  --mono: "IBM Plex Mono", Consolas, "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #15191d; --panel: #1d2329; --fg: #e6eaee; --muted: #9aa7b3; --line: #313a43; --grid: #262d35;
+  --accent: #4fb9c4; --accent-soft: #1f4a4f; --limit: #e0a452; --focus: #4fb9c4; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #15191d; --panel: #1d2329; --fg: #e6eaee; --muted: #9aa7b3; --line: #313a43; --grid: #262d35;
+  --accent: #4fb9c4; --accent-soft: #1f4a4f; --limit: #e0a452; --focus: #4fb9c4; color-scheme: dark; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 14px; line-height: 1.45;
+  padding-block: 0; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 24px; padding: 18px 0 10px; border-bottom: 1px solid var(--line); }
+header h1 { font-family: var(--display); font-weight: 600; font-size: 1.45rem; margin: 0; letter-spacing: 0.01em; text-wrap: balance; }
+header .sub { color: var(--muted); font-size: 0.9rem; margin: 2px 0 0; }
+.theme { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.theme button { background: var(--panel); color: var(--muted); border: 0; padding: 5px 11px; font: inherit; font-size: 0.82rem; cursor: pointer; }
+.theme button + button { border-left: 1px solid var(--line); }
+.theme button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+main { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 20px; padding: 18px 0 28px; }
+@media (max-width: 820px) { main { grid-template-columns: 1fr; } }
+.rail { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.field { display: grid; gap: 4px; }
+.field label, .field .lab { font-size: 0.8rem; letter-spacing: 0.03em; color: var(--muted); }
+.field .row { display: flex; gap: 8px; align-items: center; }
+input[type="number"], select { font: inherit; font-family: var(--mono); font-size: 0.9rem; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 5px; padding: 5px 7px; width: 100%; min-width: 0; }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.seg button { font: inherit; font-size: 0.85rem; text-align: left; padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--fg); cursor: pointer; }
+.seg button b { font-family: var(--mono); font-weight: 500; }
+.seg button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.hint { color: var(--muted); font-size: 0.8rem; margin: 0; }
+.radios { display: grid; gap: 4px; }
+.radios label { display: flex; align-items: baseline; gap: 8px; font-size: 0.88rem; min-width: 0; cursor: pointer; }
+.radios input { accent-color: var(--accent); flex: none; position: relative; top: 1px; }
+.radios span { min-width: 0; flex: 1 1 auto; }
+.check { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; min-width: 0; }
+.check span { min-width: 0; flex: 1 1 auto; }
+.hint mjx-container { font-size: 0.95em; }
+.rail > * { min-width: 0; max-width: 100%; }
+.check input { accent-color: var(--accent); }
+.status { font-family: var(--mono); font-size: 0.78rem; color: var(--muted); min-height: 1.2em; }
+.charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; min-width: 0; }
+@media (max-width: 1100px) { .charts { grid-template-columns: 1fr; } }
+.chart { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 10px 6px; min-width: 0; }
+.chart h2 { font-family: var(--display); font-weight: 400; font-size: 1.05rem; margin: 0 0 4px 6px; }
+.chart canvas { width: 100%; height: 300px; display: block; }
+.xlabel { text-align: center; font-size: 0.85rem; color: var(--muted); margin-top: -4px; }
+.legend { display: flex; gap: 16px; font-size: 0.8rem; color: var(--muted); margin: 4px 6px 0; flex-wrap: wrap; }
+.legend span::before { content: ""; display: inline-block; width: 18px; height: 0; border-top: 2px solid var(--accent); vertical-align: middle; margin-right: 6px; }
+.legend span.lim::before { border-top: 2px dashed var(--limit); }
+.read { font-family: var(--mono); font-size: 0.78rem; font-variant-numeric: tabular-nums; color: var(--fg); min-height: 1.3em; margin: 2px 6px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.read span { margin-left: 14px; }
+.read .lim { color: var(--limit); }
+.chart canvas { cursor: crosshair; touch-action: pan-y; }
+.figs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.figs.figs5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.group { display: grid; gap: 6px; min-width: 0; }
+.gt { font-size: 0.8rem; letter-spacing: 0.03em; color: var(--muted); }
+.tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.btn { font: inherit; font-size: 0.82rem; padding: 5px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--fg); cursor: pointer; }
+.btn:hover { border-color: var(--accent); }
+textarea { width: 100%; min-width: 0; font-family: var(--mono); font-size: 0.78rem; line-height: 1.4; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px; resize: vertical; }
+mjx-container { color: inherit; }
+@media (max-width: 700px) { .figs, .figs.figs5 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.fig { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+.fig .k { font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.fig .v { font-family: var(--mono); font-size: 1.12rem; font-variant-numeric: tabular-nums; margin-top: 2px; }
+.note { grid-column: 1 / -1; color: var(--muted); font-size: 0.82rem; line-height: 1.5; max-width: 75ch; }
+.note code { font-family: var(--mono); }
+.right { display: grid; gap: 16px; min-width: 0; align-content: start; }
+.varline { font-family: var(--mono); font-size: 0.85rem; color: var(--fg); }
+@media (prefers-reduced-motion: no-preference) { .fig .v { transition: color 0.2s; } }
+</style>
+
+<header>
+  <div>
+    <h1>Dickey&ndash;Fuller <i>t</i>-Ratio: Limiting Distribution Explorer</h1>
+    <p class="sub">Density, distribution function, moments and quantiles of the local-to-unity limit of the least squares \(t\)-ratio in \(y_t = \alpha + \delta t + \phi y_{t-1} + \sigma e_t\), \(e_t\) i.i.d. \(N(0,1)\), under \(\phi = 1 + c/n\), for the test of \(\phi_0 = 1 + c_0/n\): \(\hat\tau_0 \Rightarrow (U - c_0V)/\sqrt{V}\), computed exactly from the joint moment generating function of \((U,V)\): the single integral of Bao, Broda and Kan, &ldquo;The Exact Limiting Distribution of the Dickey&ndash;Fuller <i>t</i>-Ratio&rdquo;, and its double-integral companion for a fixed start.</p>
+  </div>
+  <div class="theme" role="group" aria-label="Color theme">
+    <button type="button" id="th-auto" aria-pressed="true">Auto</button>
+    <button type="button" id="th-light" aria-pressed="false">Light</button>
+    <button type="button" id="th-dark" aria-pressed="false">Dark</button>
+  </div>
+</header>
+
+<main>
+  <section class="rail" aria-label="Parameters">
+    <div class="field">
+      <span class="lab">Case</span>
+      <div class="seg" id="cases">
+        <button type="button" data-cas="DK" aria-pressed="false"><b>DK</b><br>fixed start, intercept known</button>
+        <button type="button" data-cas="SK" aria-pressed="false"><b>SK</b><br>stationary start, intercept known</button>
+        <button type="button" data-cas="DU" aria-pressed="true"><b>DU</b><br>fixed start, intercept unknown</button>
+        <button type="button" data-cas="SU" aria-pressed="false"><b>SU</b><br>stationary start, intercept unknown</button>
+        <button type="button" data-cas="DT" aria-pressed="false"><b>DT</b><br>fixed start, intercept and trend</button>
+        <button type="button" data-cas="ST" aria-pressed="false"><b>ST</b><br>stationary start, intercept and trend</button>
+      </div>
+    </div>
+    <div class="field">
+      <label for="c">Local-to-unity parameter \(c = n(\phi-1)\)</label>
+      <div class="row"><input type="number" id="c" value="0" step="0.1" min="-50" max="10"></div>
+      <input type="range" id="c-slider" min="-30" max="10" step="0.05" value="0" aria-label="c slider">
+      <p class="hint">\(-50\le c\le 10\) with a zero start (\(c\le 2\) with a fixed start \(\gamma_0\ne0\), where the double integral is used); \(c<0\) with a stationary start (the slider is restricted accordingly).</p>
+    </div>
+    <div class="field">
+      <span class="lab">Null value \(\phi_0 = 1 + c_0/n\) of the test</span>
+      <div class="radios" id="c0mode" role="radiogroup">
+        <label><input type="radio" name="c0mode" value="df" checked><span>\(c_0 = 0\): the Dickey&ndash;Fuller test of \(\phi = 1\) (under local alternatives when \(c \ne 0\))</span></label>
+        <label><input type="radio" name="c0mode" value="true"><span>\(c_0 = c\): the \(t\)-ratio centered at the true \(\phi\)</span></label>
+        <label><input type="radio" name="c0mode" value="other"><span>other \(c_0\)</span></label>
+      </div>
+      <div class="row" id="c0-row" hidden><input type="number" id="c0" value="-5" step="0.1" min="-50" max="10" aria-label="c0"></div>
+    </div>
+    <div class="field" id="g0-field">
+      <label for="g0">Fixed start \(\gamma_0 = y_0/(\sigma\sqrt{n})\)</label>
+      <div class="row"><input type="number" id="g0" value="0" step="0.1" min="-10" max="10"></div>
+      <input type="range" id="g0-slider" min="-3" max="3" step="0.05" value="0" aria-label="fixed start">
+      <p class="hint" id="g0-hint"></p>
+    </div>
+    <div class="field">
+      <label class="check"><input type="checkbox" id="shownorm" checked><span>show \(N(0,1)\) for comparison</span></label>
+    </div>
+    <div class="status" id="status" aria-live="polite"></div>
+  </section>
+
+  <section class="right">
+    <div class="varline" id="varline">variable: \(\hat\tau_\mu\)</div>
+    <div class="charts">
+      <div class="chart"><h2>Density</h2><canvas id="pdf" height="300"></canvas><div class="xlabel" id="xl-pdf">\(\hat\tau_\mu\)</div><div class="legend" id="leg-pdf"></div><div class="read" id="rd-pdf" aria-live="off"></div></div>
+      <div class="chart"><h2>Distribution function</h2><canvas id="cdf" height="300"></canvas><div class="xlabel" id="xl-cdf">\(\hat\tau_\mu\)</div><div class="legend" id="leg-cdf"></div><div class="read" id="rd-cdf" aria-live="off"></div></div>
+    </div>
+    <div class="group"><div class="gt" id="mt">Moments of the limit</div>
+    <div class="figs" id="figs">
+      <div class="fig"><div class="k">mean</div><div class="v" id="v-mean">&ndash;</div></div>
+      <div class="fig"><div class="k">standard deviation</div><div class="v" id="v-sd">&ndash;</div></div>
+      <div class="fig"><div class="k">skewness</div><div class="v" id="v-skew">&ndash;</div></div>
+      <div class="fig"><div class="k">excess kurtosis</div><div class="v" id="v-kurt">&ndash;</div></div>
+    </div></div>
+    <div class="group"><div class="gt" id="qt">Quantiles of the limit</div>
+    <div class="figs figs5">
+      <div class="fig"><div class="k">1%</div><div class="v" id="v-q01">&ndash;</div></div>
+      <div class="fig"><div class="k">5%</div><div class="v" id="v-q05">&ndash;</div></div>
+      <div class="fig"><div class="k">median</div><div class="v" id="v-med">&ndash;</div></div>
+      <div class="fig"><div class="k">95%</div><div class="v" id="v-q95">&ndash;</div></div>
+      <div class="fig"><div class="k">99%</div><div class="v" id="v-q99">&ndash;</div></div>
+    </div></div>
+    <p class="note" id="note"></p>
+    <div class="group"><div class="gt">LaTeX</div>
+      <div class="row tools"><button type="button" class="btn" id="tex-add">Add this row to the table</button><button type="button" class="btn" id="tex-clear">Clear rows</button><button type="button" class="btn" id="tex-copy">Copy</button><span class="status" id="tex-status"></span></div>
+      <textarea id="latex" rows="9" spellcheck="false" aria-label="LaTeX table"></textarea>
+    </div>
+  </section>
+</main>
+
+<script>
+window.MathJax = { tex: { inlineMath: [['\\(', '\\)']] }, svg: { fontCache: 'global' }, options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] } };
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.js"></script>
+<script type="text/plain" id="core">
+__CORE__
+</script>
+<script>
+(function () {
+  // ---------- theme ----------
+  const root = document.documentElement;
+  const thBtns = { auto: document.getElementById('th-auto'), light: document.getElementById('th-light'), dark: document.getElementById('th-dark') };
+  function setTheme(mode, save) {
+    if (mode === 'auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', mode);
+    for (const k in thBtns) thBtns[k].setAttribute('aria-pressed', String(k === mode));
+    if (save) { try { localStorage.setItem('trlim-theme', mode); } catch (e) {} }
+    requestAnimationFrame(drawAll);
+  }
+  for (const k in thBtns) thBtns[k].addEventListener('click', () => setTheme(k, true));
+  let saved = null; try { saved = localStorage.getItem('trlim-theme'); } catch (e) {}
+  setTheme(saved === 'light' || saved === 'dark' ? saved : 'auto', false);
+  if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => requestAnimationFrame(drawAll));
+
+  // ---------- workers ----------
+  // Every value is an independent integral, so the points are shared out over a pool of
+  // workers; each worker keeps the engine of the current parameters.
+  const coreSrc = document.getElementById('core').textContent;
+  const workerSrc = coreSrc + `
+    const engines = new Map();
+    function eng(P) {
+      const key = JSON.stringify(P); let E = engines.get(key);
+      if (!E) { if (engines.size >= 3) engines.clear(); E = TRL.engine(P.cas, P.c, { c0: P.c0, g0: P.g0 }); engines.set(key, E); }
+      return E;
+    }
+    function icdf(E, p, x0, sd) {
+      // safeguarded Newton iteration on F(x) = p, the density from the same evaluation
+      const pts = []; const ev = (x) => { const v = E.point(x); pts.push([x, v.F, v.f]); return v; };
+      let a = -Infinity, b = Infinity, x = x0, v = ev(x);
+      for (let it = 0; it < 60; it++) {
+        const g = v.F - p;
+        if (g < 0) a = Math.max(a, x); else b = Math.min(b, x);
+        if (Math.abs(g) < 1e-11) break;
+        let xn = (v.f > 0) ? x - g / v.f : NaN;
+        const lim = 2 * sd;
+        if (!(xn > a && xn < b) || Math.abs(xn - x) > lim) {
+          if (isFinite(a) && isFinite(b)) xn = (a + b) / 2;
+          else xn = x + (g < 0 ? lim : -lim);
+        }
+        if (Math.abs(xn - x) < 1e-10 * Math.max(1, Math.abs(x))) { x = xn; break; }
+        x = xn; v = ev(x);
+      }
+      return { x, pts };
+    }
+    self.onmessage = function (ev) {
+      const m = ev.data;
+      try {
+        const E = eng(m.P);
+        if (m.type === 'moments') self.postMessage({ id: m.id, m: E.moments(4).m });
+        else if (m.type === 'icdf') { const r = icdf(E, m.p, m.x0, m.sd); self.postMessage({ id: m.id, x: r.x, pts: r.pts }); }
+        else if (m.type === 'points') self.postMessage({ id: m.id, pts: m.xs.map(x => { const v = E.point(x); return [x, v.F, v.f]; }) });
+      } catch (err) { self.postMessage({ id: m.id, error: err.message }); }
+    };
+  `;
+  const blobUrl = URL.createObjectURL(new Blob([workerSrc], { type: 'text/javascript' }));
+  const NW = Math.max(2, Math.min(8, (navigator.hardwareConcurrency || 4) - 1));
+  let pool = [], gen = 0, jobId = 0;
+  function newPool() {
+    pool.forEach(w => w.w.terminate());
+    pool = []; gen++;
+    for (let i = 0; i < NW; i++) {
+      const w = { w: new Worker(blobUrl), busy: false, q: [] };
+      w.w.onmessage = (ev) => { const cb = w.cbs[ev.data.id]; delete w.cbs[ev.data.id]; w.n--; if (cb) cb(ev.data); };
+      w.w.onerror = (e) => { status.textContent = 'error: ' + e.message; };
+      w.cbs = {}; w.n = 0;
+      pool.push(w);
+    }
+  }
+  function job(i, msg) {
+    const g = gen;
+    return new Promise((res, rej) => {
+      const w = pool[i % pool.length], id = ++jobId;
+      w.cbs[id] = (d) => { if (g !== gen) return rej(new Error('cancelled')); if (d.error) rej(new Error(d.error)); else res(d); };
+      w.n++; w.w.postMessage(Object.assign({ id }, msg));
+    });
+  }
+  function leastBusy() { let k = 0; for (let i = 1; i < pool.length; i++) if (pool[i].n < pool[k].n) k = i; return k; }
+  // evaluate F and f at xs, shared out over the pool, in small chunks so that the work balances
+  async function points(P, xs, onProgress) {
+    const chunks = []; const cs = Math.max(1, Math.min(4, Math.ceil(xs.length / (2 * NW))));
+    for (let i = 0; i < xs.length; i += cs) chunks.push(xs.slice(i, i + cs));
+    const out = []; let done = 0;
+    await Promise.all(chunks.map((ch) => job(leastBusy(), { type: 'points', P, xs: ch }).then(d => { out.push(...d.pts); done += ch.length; if (onProgress) onProgress(done, xs.length); })));
+    return out;
+  }
+
+  // ---------- controls ----------
+  const $ = (id) => document.getElementById(id);
+  const status = $('status');
+  const ctl = { cas: 'DU', c: 0, c0mode: 'df', c0: -5, g0: 0, showNorm: true };
+  const caseBtns = Array.from(document.querySelectorAll('#cases button'));
+  const statCase = () => ctl.cas[0] === 'S';
+  function cRange() { return statCase() ? [-50, -0.05] : (ctl.g0 !== 0 ? [-50, 2] : [-50, 10]); }
+  function setCase(cs) {
+    ctl.cas = cs; caseBtns.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.cas === cs)));
+    const sl = $('c-slider'), num = $('c');
+    const cmax = cRange()[1];
+    sl.min = -30; sl.max = cmax; num.max = cmax;
+    if (ctl.c > cmax) { ctl.c = statCase() ? -5 : cmax; num.value = ctl.c; }
+    sl.value = Math.max(parseFloat(sl.min), Math.min(parseFloat(sl.max), ctl.c));
+    $('g0-field').hidden = statCase();
+    g0hint();
+    schedule();
+  }
+  function g0hint() {
+    const h = $('g0-hint');
+    if (ctl.cas === 'DK') h.innerHTML = 'The limit depends on the start also at \\(c = 0\\).';
+    else h.innerHTML = 'The regression removes \\(\\gamma_0\\) itself; the start matters only when \\(c \\ne 0\\). With \\(\\gamma_0 \\ne 0\\) and \\(c \\ne 0\\) each value is a triple integral (the double integral with the noncentral probability inside) and takes noticeably longer; \\(c\\le 2\\) there.';
+    typeset([h]);
+  }
+  caseBtns.forEach(b => b.addEventListener('click', () => setCase(b.dataset.cas)));
+  function link(numId, sliderId, key, fromSlider, clamp) {
+    const num = $(numId), sl = $(sliderId);
+    num.addEventListener('input', () => { const v = clamp(parseFloat(num.value)); if (isFinite(v)) { ctl[key] = v; sl.value = v; schedule(); } });
+    num.addEventListener('change', () => { const v = clamp(parseFloat(num.value)); if (isFinite(v)) { num.value = v; ctl[key] = v; sl.value = v; schedule(); } });
+    sl.addEventListener('input', () => { const v = fromSlider(parseFloat(sl.value)); ctl[key] = v; num.value = v; schedule(); });
+  }
+  link('c', 'c-slider', 'c', v => Math.round(v * 100) / 100, v => { const [a, b] = cRange(); return Math.max(a, Math.min(b, v)); });
+  link('g0', 'g0-slider', 'g0', v => Math.round(v * 100) / 100, v => Math.max(-10, Math.min(10, v)));
+  $('g0').addEventListener('change', () => setCase(ctl.cas)); $('g0-slider').addEventListener('change', () => setCase(ctl.cas));
+  $('c0mode').addEventListener('change', () => { const r = document.querySelector('#c0mode input:checked'); if (r) { ctl.c0mode = r.value; $('c0-row').hidden = r.value !== 'other'; schedule(); } });
+  $('c0').addEventListener('input', () => { const v = parseFloat($('c0').value); if (isFinite(v)) { ctl.c0 = Math.max(-50, Math.min(10, v)); schedule(); } });
+  $('shownorm').addEventListener('change', () => { ctl.showNorm = $('shownorm').checked; drawAll(); });
+
+  let timer = null;
+  function schedule() { clearTimeout(timer); timer = setTimeout(run, 250); }
+  const c0Of = () => ctl.c0mode === 'df' ? 0 : ctl.c0mode === 'true' ? ctl.c : ctl.c0;
+  let last = null, runNo = 0;
+  async function run() {
+    if (statCase() && !(ctl.c < 0)) { status.textContent = 'A stationary start requires c < 0.'; return; }
+    const my = ++runNo; newPool();
+    const t0 = performance.now();
+    const P = { cas: ctl.cas, c: ctl.c, c0: c0Of(), g0: statCase() ? 0 : ctl.g0 };
+    const R = { P, pts: [], stats: null, q: {}, stage: 0 };
+    const keep = (arr) => { R.pts.push(...arr); };
+    const say = (s) => { if (my === runNo) status.textContent = s; };
+    try {
+      say('computing moments...');
+      const mom = (await job(0, { type: 'moments', P })).m;
+      const mean = mom[0], v2 = mom[1] - mean * mean, sd = Math.sqrt(v2);
+      const m3 = mom[2] - 3 * mean * mom[1] + 2 * mean ** 3, m4 = mom[3] - 4 * mean * mom[2] + 6 * mean * mean * mom[1] - 3 * mean ** 4;
+      R.stats = { mean, sd, skew: m3 / (v2 * sd), kurt: m4 / (v2 * v2) - 3 };
+      showStats(R);
+      say('computing quantiles...');
+      const ps = [0.005, 0.01, 0.05, 0.5, 0.95, 0.99, 0.995];
+      const sk = R.stats.skew, ku = R.stats.kurt;
+      const qs = await Promise.all(ps.map((p, i) => {
+        const z = qnorm(p), w = z + (z * z - 1) * sk / 6 + (z ** 3 - 3 * z) * ku / 24 - (2 * z ** 3 - 5 * z) * sk * sk / 36;
+        return job(i, { type: 'icdf', P, p, x0: mean + sd * w, sd }).then(d => { keep(d.pts); return d.x; });
+      }));
+      ps.forEach((p, i) => R.q[p] = qs[i]);
+      showStats(R);
+      // the plotted range: the 0.5% to the 99.5% quantile, each end extended until the density has
+      // fallen to 0.3% of its value at the median (batches of trial points, one per worker)
+      let lo = R.q[0.005], hi = R.q[0.995];
+      const fmed = interpF(R.pts, R.q[0.5]).f;
+      const step = (hi - lo) / 12; let kl = 0, kh = 0, dl = false, dh = false;
+      const fAt = (x) => { const p = R.pts.find(p => p[0] === x); return p ? p[2] : null; };
+      const mid = (lo + hi) / 2; keep(await points(P, [mid]));
+      const fref = Math.max(fmed, fAt(mid));
+      while ((!dl || !dh) && kl < 30 && kh < 30) {
+        const xs = [], half = dl || dh ? NW : Math.ceil(NW / 2);
+        if (!dh) for (let k = 0; k < half; k++) xs.push(hi + (kh + k + 1) * step);
+        if (!dl) for (let k = 0; k < half; k++) xs.push(lo - (kl + k + 1) * step);
+        if (!xs.length) break;
+        say('finding the plotted range...');
+        keep(await points(P, xs));
+        if (!dh) { for (let k = 0; k < half; k++) { kh++; if (fAt(hi + kh * step) <= 0.003 * fref) { dh = true; break; } } }
+        if (!dl) { for (let k = 0; k < half; k++) { kl++; if (fAt(lo - kl * step) <= 0.003 * fref) { dl = true; break; } } }
+      }
+      // f at the end that ends the extension is below the threshold; with no extension at all
+      // (density already small at the quantile) the range stays at the quantile
+      const fh = fAt(hi + step), fl = fAt(lo - step);
+      hi = (fh !== null && fh <= 0.003 * fref && kh === 1) ? hi : hi + kh * step;
+      lo = (fl !== null && fl <= 0.003 * fref && kl === 1) ? lo : lo - kl * step;
+      if (kh === 1 && fh <= 0.003 * fref) hi = R.q[0.995];
+      if (kl === 1 && fl <= 0.003 * fref) lo = R.q[0.005];
+      R.lo = lo; R.hi = hi;
+      // stage 1: a uniform grid; stage 2: extra points where F is steep (equally spaced
+      // probability levels inverted on the stage-1 cdf), so that a sharp peak is resolved
+      const N1 = 81, N2 = 80, pl = 0.005;
+      const xs1 = []; for (let i = 0; i < N1; i++) xs1.push(lo + (hi - lo) * i / (N1 - 1));
+      keep(await points(P, xs1, (d, n) => say('density and distribution function: ' + d + ' of ' + (N1 + N2) + ' points')));
+      R.stage = 1; publish(R, my);
+      const s1 = inRange(R);
+      const dx = (hi - lo) / (N1 - 1), extra = [];
+      for (let k = 0; k < N2; k++) {
+        const p = pl + (1 - 2 * pl) * (k + 0.5) / N2;
+        for (let i = 0; i < s1.length - 1; i++) { const a = s1[i], b = s1[i + 1];
+          if (a[1] <= p && p < b[1] && b[1] > a[1]) { const r = a[0] + (p - a[1]) / (b[1] - a[1]) * (b[0] - a[0]); if (Math.min(r - a[0], b[0] - r) > 0.08 * dx) extra.push(r); break; } }
+      }
+      keep(await points(P, extra, (d) => say('density and distribution function: ' + (N1 + d) + ' of ' + (N1 + extra.length) + ' points')));
+      R.stage = 2; R.ms = Math.round(performance.now() - t0); publish(R, my);
+    } catch (e) { if (e.message !== 'cancelled' && my === runNo) status.textContent = e.message; }
+  }
+  function inRange(R) {
+    const s = R.pts.filter(p => p[0] >= R.lo - 1e-12 && p[0] <= R.hi + 1e-12).sort((a, b) => a[0] - b[0]);
+    const u = []; for (const p of s) if (!u.length || p[0] - u[u.length - 1][0] > 1e-12) u.push(p);
+    return u;
+  }
+  function interpF(pts, x) { const s = pts.slice().sort((a, b) => a[0] - b[0]); let best = s[0]; for (const p of s) if (Math.abs(p[0] - x) < Math.abs(best[0] - x)) best = p; return { F: best[1], f: best[2] }; }
+  function qnorm(p) { // Acklam's rational approximation
+    const a = [-3.969683028665376e+01, 2.209460984245205e+02, -2.759285104469687e+02, 1.383577518672690e+02, -3.066479806614716e+01, 2.506628277459239e+00];
+    const b = [-5.447609879822406e+01, 1.615858368580409e+02, -1.556989798598866e+02, 6.680131188771972e+01, -1.328068155288572e+01];
+    const c = [-7.784894002430293e-03, -3.223964580411365e-01, -2.400758277161838e+00, -2.549732539343734e+00, 4.374664141464968e+00, 2.938163982698783e+00];
+    const d = [7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e+00, 3.754408661907416e+00];
+    const pl = 0.02425;
+    if (p < pl) { const q = Math.sqrt(-2 * Math.log(p)); return (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1); }
+    if (p > 1 - pl) return -qnorm(1 - p);
+    const q = p - 0.5, r = q * q;
+    return (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1);
+  }
+  const nice = (v) => v === null || v === undefined || !isFinite(v) ? '–' : fmt(v);
+  const tauTex = (cas) => cas[1] === 'K' ? '\\hat\\tau' : cas[1] === 'U' ? '\\hat\\tau_\\mu' : '\\hat\\tau_\\tau';
+  const casName = { DK: 'fixed start, intercept known', DU: 'fixed start, intercept unknown', DT: 'fixed start, intercept and trend unknown', SK: 'stationary start, intercept known', SU: 'stationary start, intercept unknown', ST: 'stationary start, intercept and trend unknown' };
+  function showStats(R) {
+    const s = R.stats || {};
+    $('v-mean').textContent = nice(s.mean); $('v-sd').textContent = nice(s.sd); $('v-skew').textContent = nice(s.skew); $('v-kurt').textContent = nice(s.kurt);
+    $('v-q01').textContent = nice(R.q[0.01]); $('v-q05').textContent = nice(R.q[0.05]); $('v-med').textContent = nice(R.q[0.5]); $('v-q95').textContent = nice(R.q[0.95]); $('v-q99').textContent = nice(R.q[0.99]);
+    const P = R.P, tt = tauTex(P.cas);
+    const parTex = P.cas[0] === 'D' ? ', \\ \\gamma_0 = ' + P.g0 : ', \\ J(0)\\sim N(0,\\,-1/(2c))';
+    $('varline').innerHTML = 'variable: limit of \\(' + tt + '\\) for \\(\\phi_0 = 1 + c_0/n\\) &nbsp;|&nbsp; ' + P.cas + ': ' + casName[P.cas] + ', \\(c = ' + P.c + ', \\ c_0 = ' + P.c0 + parTex + '\\)';
+    $('mt').innerHTML = 'Moments of the limit of \\(' + tt + '\\)';
+    $('qt').innerHTML = 'Quantiles of the limit of \\(' + tt + '\\)';
+    typeset([$('varline'), $('mt'), $('qt')]);
+    if (R.stats && R.q[0.5] !== undefined) { curRow = texRow(R); renderTex(); }
+  }
+  function publish(R, my) {
+    if (my !== runNo) return;
+    const s = inRange(R);
+    last = { x: s.map(p => p[0]), F: s.map(p => Math.min(1, Math.max(0, p[1]))), f: s.map(p => Math.max(0, p[2])), P: R.P, stage: R.stage };
+    let note = '';
+    note += 'The plotted range runs from the 0.5% to the 99.5% quantile, extended until the density falls below 0.3% of its value at the median. ';
+    if (R.P.cas[0] === 'S') note += 'With a stationary start \\(J(0)\\sim N(0,-1/(2c))\\), the limit of the stationary distribution of \\(y_0/(\\sigma\\sqrt{n})\\), the moment generating function is the stationary determinant \\(D_S\\) of Section 3.1 of the paper, in closed form. ';
+    const fixed = R.P.cas[0] === 'D' && R.P.g0 !== 0 && (R.P.cas === 'DK' || R.P.c !== 0);
+    if (fixed) note += 'With a fixed start the initial-value term of the moment generating function is in closed form (Proposition 2 of the paper), and ' + (R.P.cas === 'DK' ? 'each value is a double integral (Theorem 3, part (i), with the noncentral chi-square probability in closed form). ' : 'each value is the double integral of Theorem 3 with the noncentral probability, a one-dimensional integral, inside it (a triple integral in all). ');
+    if (R.P.cas !== 'DK' && R.P.cas[0] === 'D' && R.P.g0 !== 0 && R.P.c === 0) note += 'At \\(c = 0\\) the limit does not depend on \\(\\gamma_0\\) in case ' + R.P.cas + '. ';
+    note += 'Density and distribution function on ' + last.x.length + ' points (denser where the distribution function is steep) plus five quantiles and four moments. ' +
+      (fixed ? '' : 'Every value of the density and distribution function is the single integral of Theorem 2 of the paper along the line \\(\\operatorname{Re} t = \\tau\\) (the inversion in the argument of \\(U\\) is explicit' + (R.P.c0 !== 0 ? '; with \\(c_0 \\ne 0\\) the kernel runs along a parabola' : '') + '), ') +
+      (fixed ? 'Each moment is ' : 'each moment ') + 'a single integral of the moment generating function at real arguments (Proposition 3); computed in ' + NW + ' parallel workers.';
+    $('note').innerHTML = note; typeset([$('note')]);
+    status.textContent = R.stage === 2 ? (R.ms / 1000).toFixed(1) + ' s' : status.textContent;
+    drawAll();
+  }
+  function typeset(els) { if (window.MathJax && MathJax.typesetPromise) MathJax.typesetPromise(els).catch(() => {}); }
+  function texnum(v) {
+    if (v === null || v === undefined || !isFinite(v)) return '--';
+    const a = Math.abs(v);
+    if (a === 0) return '0';
+    if (a < 1e-3 || a >= 1e5) { const e = Math.floor(Math.log10(a)); const mant = v / Math.pow(10, e); return Number(mant.toPrecision(4)) + ' \\times 10^{' + e + '}'; }
+    return Number(v.toPrecision(5)).toString();
+  }
+  // ---------- LaTeX table ----------
+  let rows = [], curRow = null;
+  function texRow(R) {
+    const P = R.P, s = R.stats;
+    const g = P.cas[0] === 'D' ? String(P.g0) : '--';
+    const cells = ['\\textsf{' + P.cas + '}', String(P.c), String(P.c0), g, texnum(s.mean), texnum(s.sd), texnum(s.skew), texnum(s.kurt), texnum(R.q[0.01]), texnum(R.q[0.05]), texnum(R.q[0.5]), texnum(R.q[0.95]), texnum(R.q[0.99])];
+    return cells.map((v, i) => (i >= 1 && v !== '--') ? '$' + v + '$' : v).join(' & ') + ' \\\\';
+  }
+  function renderTex() {
+    const head = '% limiting distribution of the least squares t-ratio under phi = 1 + c/n, test of phi_0 = 1 + c_0/n (Bao, Broda and Kan)\n' +
+      '\\begin{tabular}{lllrrrrrrrrrr}\n\\toprule\n' +
+      'Case & $c$ & $c_0$ & $\\gamma_0$ & mean & sd & skewness & excess kurtosis & \\multicolumn{5}{c}{quantiles}\\\\\n' +
+      '\\cmidrule(lr){9-13}\n & & & & & & & & 0.01 & 0.05 & 0.50 & 0.95 & 0.99\\\\\n\\midrule\n';
+    const body = rows.concat(curRow ? [curRow + '   % current'] : []).join('\n');
+    $('latex').value = head + body + '\n\\bottomrule\n\\end{tabular}';
+  }
+  $('tex-add').addEventListener('click', () => { if (curRow) { rows.push(curRow); renderTex(); $('tex-status').textContent = rows.length + ' row' + (rows.length > 1 ? 's' : '') + ' kept'; } });
+  $('tex-clear').addEventListener('click', () => { rows = []; renderTex(); $('tex-status').textContent = ''; });
+  $('tex-copy').addEventListener('click', () => {
+    const ta = $('latex'); const done = () => { $('tex-status').textContent = 'copied'; };
+    const fallback = () => { ta.focus(); ta.select(); try { document.execCommand('copy'); done(); } catch (e) { $('tex-status').textContent = 'select the text and copy it'; } };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(ta.value).then(done, fallback); else fallback();
+  });
+  function fmt(v) { const a = Math.abs(v); if (a !== 0 && (a < 1e-3 || a >= 1e6)) return v.toExponential(4); return Number(v.toPrecision(5)).toString(); }
+
+  // ---------- plotting ----------
+  function cssVar(name) { return getComputedStyle(root).getPropertyValue(name).trim(); }
+  function niceStep(span, target) { const raw = span / target, p = Math.pow(10, Math.floor(Math.log10(raw))), r = raw / p; return (r < 1.5 ? 1 : r < 3.5 ? 2 : r < 7.5 ? 5 : 10) * p; }
+  // linear interpolation of a sampled curve (xs increasing); null outside the sampled range
+  function interp(xs, ys, v) {
+    const n = xs.length; if (!n || v < xs[0] || v > xs[n - 1]) return null;
+    let lo = 0, hi = n - 1; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (xs[m] <= v) lo = m; else hi = m; }
+    if (hi === lo) return ys[lo];
+    const w = (v - xs[lo]) / (xs[hi] - xs[lo]); return ys[lo] + w * (ys[hi] - ys[lo]);
+  }
+  function draw(canvas, x, series, yFixed, hx) {
+    const dpr = window.devicePixelRatio || 1; const W = canvas.clientWidth, H = canvas.clientHeight || 300;
+    canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+    const ctx = canvas.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+    const muted = cssVar('--muted'), grid = cssVar('--grid'), line = cssVar('--line');
+    const ml = 52, mr = 14, mt = 10, mb = 24; const pw = W - ml - mr, ph = H - mt - mb;
+    canvas._st = (x && x.length) ? { x, series, yFixed, ml, pw, x0: x[0], x1: x[x.length - 1] } : null;
+    if (!x || !x.length) { ctx.fillStyle = muted; ctx.font = '13px ' + cssVar('--sans'); ctx.fillText('computing…', ml + 8, mt + 20); return; }
+    const x0 = x[0], x1 = x[x.length - 1];
+    let y0 = 0, y1 = yFixed ? 1 : 0; if (!yFixed) for (const s of series) for (const v of s.y) if (isFinite(v)) y1 = Math.max(y1, v); if (!yFixed) y1 *= 1.06; if (y1 <= 0) y1 = 1;
+    const X = (v) => ml + (v - x0) / (x1 - x0) * pw, Y = (v) => mt + ph - (v - y0) / (y1 - y0) * ph;
+    ctx.font = '11px ' + cssVar('--mono'); ctx.fillStyle = muted; ctx.strokeStyle = grid; ctx.lineWidth = 1;
+    const sx = niceStep(x1 - x0, 6), sy = niceStep(y1 - y0, 5);
+    for (let v = Math.ceil(x0 / sx) * sx; v <= x1 + 1e-12 * sx; v += sx) { const px = Math.round(X(v)) + 0.5; ctx.beginPath(); ctx.moveTo(px, mt); ctx.lineTo(px, mt + ph); ctx.stroke(); const lab = fmtTick(v, sx); ctx.textAlign = 'center'; ctx.fillText(lab, px, mt + ph + 16); }
+    for (let v = y0; v <= y1 + 1e-12 * sy; v += sy) { const py = Math.round(Y(v)) + 0.5; ctx.beginPath(); ctx.moveTo(ml, py); ctx.lineTo(ml + pw, py); ctx.stroke(); ctx.textAlign = 'right'; ctx.fillText(fmtTick(v, sy), ml - 6, py + 4); }
+    ctx.strokeStyle = line; ctx.strokeRect(ml + 0.5, mt + 0.5, pw, ph);
+    if (x0 < 0 && x1 > 0) { ctx.strokeStyle = line; ctx.setLineDash([2, 3]); ctx.beginPath(); ctx.moveTo(Math.round(X(0)) + 0.5, mt); ctx.lineTo(Math.round(X(0)) + 0.5, mt + ph); ctx.stroke(); ctx.setLineDash([]); }
+    ctx.save(); ctx.beginPath(); ctx.rect(ml, mt, pw, ph); ctx.clip();
+    for (const s of series) {
+      ctx.strokeStyle = s.color; ctx.lineWidth = s.dash ? 1.5 : 2; ctx.setLineDash(s.dash ? [6, 4] : []);
+      const xs = s.x || x;
+      if (s.fill) { ctx.beginPath(); ctx.moveTo(X(xs[0]), Y(0)); for (let i = 0; i < xs.length; i++) ctx.lineTo(X(xs[i]), Y(s.y[i])); ctx.lineTo(X(xs[xs.length - 1]), Y(0)); ctx.closePath(); ctx.fillStyle = s.color; ctx.globalAlpha = 0.12; ctx.fill(); ctx.globalAlpha = 1; }
+      ctx.beginPath(); for (let i = 0; i < xs.length; i++) { const px = X(xs[i]), py = Y(s.y[i]); if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py); } ctx.stroke();
+    }
+    ctx.restore(); ctx.setLineDash([]);
+    // hover: a crosshair at hx and a dot on each curve at its interpolated value
+    if (hx !== undefined && hx !== null && hx >= x0 && hx <= x1) {
+      const px = Math.round(X(hx)) + 0.5;
+      ctx.strokeStyle = muted; ctx.globalAlpha = 0.7; ctx.beginPath(); ctx.moveTo(px, mt); ctx.lineTo(px, mt + ph); ctx.stroke(); ctx.globalAlpha = 1;
+      for (const s of series) {
+        const v = interp(s.x || x, s.y, hx); if (v === null || !isFinite(v)) continue;
+        ctx.beginPath(); ctx.arc(X(hx), Math.min(mt + ph, Math.max(mt, Y(v))), 4, 0, 2 * Math.PI);
+        ctx.fillStyle = cssVar('--panel'); ctx.fill(); ctx.strokeStyle = s.color; ctx.lineWidth = 2; ctx.stroke();
+      }
+    }
+    // the axis label is typeset by MathJax in the .xlabel element below the canvas
+  }
+  // the readout under each chart: x and the value of every curve there
+  function hoverSetup(canvas, readEl, letter) {
+    function at(ev) {
+      const st = canvas._st; if (!st) return;
+      const r = canvas.getBoundingClientRect(); const px = (ev.clientX - r.left);
+      const hx = Math.min(st.x1, Math.max(st.x0, st.x0 + (px - st.ml) / st.pw * (st.x1 - st.x0)));
+      draw(canvas, st.x, st.series, st.yFixed, hx);
+      let txt = 'x = ' + fmt(hx);
+      st.series.forEach((s, i) => { const v = interp(s.x || st.x, s.y, hx); if (v !== null && isFinite(v)) txt += (i ? '<span class="lim">' : '<span>') + (i ? 'N(0,1) ' : 'limit ') + letter + ' = ' + fmt(v) + '</span>'; });
+      readEl.innerHTML = txt;
+    }
+    function off() { const st = canvas._st; if (st) draw(canvas, st.x, st.series, st.yFixed); readEl.innerHTML = ''; }
+    canvas.addEventListener('mousemove', at);
+    canvas.addEventListener('touchmove', e => { if (e.touches[0]) at(e.touches[0]); }, { passive: true });
+    canvas.addEventListener('touchstart', e => { if (e.touches[0]) at(e.touches[0]); }, { passive: true });
+    canvas.addEventListener('mouseleave', off);
+  }
+  hoverSetup($('pdf'), $('rd-pdf'), 'f');
+  hoverSetup($('cdf'), $('rd-cdf'), 'F');
+  function fmtTick(v, step) { const d = Math.max(0, -Math.floor(Math.log10(step))); if (Math.abs(v) < 1e-12) return '0'; if (Math.abs(v) >= 1e5 || Math.abs(step) < 1e-4) return v.toExponential(1); return v.toFixed(d); }
+  function Phi(x) { // standard normal cdf (W. J. Cody's erfc approximation is overkill here)
+    const t = 1 / (1 + 0.5 * Math.abs(x) / Math.SQRT2);
+    const y = t * Math.exp(-x * x / 2 - 1.26551223 + t * (1.00002368 + t * (0.37409196 + t * (0.09678418 + t * (-0.18628806 + t * (0.27886807 + t * (-1.13520398 + t * (1.48851587 + t * (-0.82215223 + t * 0.17087277)))))))));
+    return x >= 0 ? 1 - y / 2 : y / 2;
+  }
+  let lastLegend = null, lastXl = null;
+  function drawAll() {
+    const acc = cssVar('--accent'), lim = cssVar('--limit');
+    if (!last) { draw($('pdf'), null, [], false); draw($('cdf'), null, [], true); return; }
+    const sp = [{ y: last.f, color: acc, fill: true }], sc = [{ y: last.F, color: acc }];
+    if (ctl.showNorm) {
+      const xn = []; const a = last.x[0], b = last.x[last.x.length - 1]; for (let i = 0; i <= 200; i++) xn.push(a + (b - a) * i / 200);
+      sp.push({ x: xn, y: xn.map(v => Math.exp(-v * v / 2) / Math.sqrt(2 * Math.PI)), color: lim, dash: true });
+      sc.push({ x: xn, y: xn.map(Phi), color: lim, dash: true });
+    }
+    draw($('pdf'), last.x, sp, false); draw($('cdf'), last.x, sc, true);
+    const tt = tauTex(last.P.cas);
+    const lg = '<span>limit of \\(' + tt + '\\)' + (last.P.c === 0 && last.P.c0 === 0 && (last.P.cas !== 'DK' || last.P.g0 === 0) ? ' (Dickey\u2013Fuller)' : '') + '</span>' + (ctl.showNorm ? '<span class="lim">\\(N(0,1)\\)</span>' : '');
+    if (lg !== lastLegend) { $('leg-pdf').innerHTML = lg; $('leg-cdf').innerHTML = lg; typeset([$('leg-pdf'), $('leg-cdf')]); lastLegend = lg; }
+    const xl = '\\(' + tt + '\\)';
+    if (xl !== lastXl) { $('xl-pdf').innerHTML = xl; $('xl-cdf').innerHTML = xl; typeset([$('xl-pdf'), $('xl-cdf')]); lastXl = xl; }
+  }
+  window.addEventListener('resize', () => requestAnimationFrame(drawAll));
+  setCase('DU');
+})();
+</script>

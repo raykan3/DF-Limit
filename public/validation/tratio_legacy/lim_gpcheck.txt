@@ -1,0 +1,18 @@
+FK c=0 c0=-5: inversion 0.1244796678985 (step halved: -5.8e-12)  limdist 0.1244796679030  diff 4.6e-12  nbad 0  (0.2 s)
+FK c=2 c0=1: inversion 0.3238555677433 (step halved: -8.1e-11)  limdist 0.3238555677553  diff 1.2e-11  nbad 0  (0.5 s)
+FK c=-10 c0=-20: inversion 0.0826860905653 (step halved: -6.9e-12)  limdist 0.0826860905701  diff 4.8e-12  nbad 0  (0.3 s)
+FK c=-2.5 c0=-5: inversion 0.3291411334223 (step halved: -6.6e-14)  limdist 0.3291411334173  diff -5.0e-12  nbad 0  (0.2 s)
+FU c=0 c0=-5: inversion 0.4348840261233 (step halved: 7.3e-12)  limdist 0.4348840261191  diff -4.1e-12  nbad 0  (1.7 s)
+FU c=2 c0=1: inversion 0.6660311176166 (step halved: -1.1e-10)  limdist 0.6660311176189  diff 2.2e-12  nbad 0  (2.0 s)
+FU c=-10 c0=-20: inversion 0.1729387517801 (step halved: -3.8e-12)  limdist 0.1729387517824  diff 2.4e-12  nbad 0  (1.6 s)
+FU c=-2.5 c0=-5: inversion 0.6673402925387 (step halved: 7.2e-12)  limdist 0.6673402925330  diff -5.7e-12  nbad 0  (1.8 s)
+FT c=0 c0=-5: inversion 0.8207303935700 (step halved: -2.0e-12)  limdist 0.8207303935677  diff -2.4e-12  nbad 0  (1.5 s)
+FT c=2 c0=1: inversion 0.9672344206456 (step halved: -2.1e-09)  limdist 0.9672344206427  diff -2.9e-12  nbad 0  (1.7 s)
+FT c=-10 c0=-20: inversion 0.3022010905156 (step halved: 1.4e-11)  limdist 0.3022010905002  diff -1.5e-11  nbad 0  (1.9 s)
+FT c=-2.5 c0=-5: inversion 0.8780844776423 (step halved: 3.8e-12)  limdist 0.8780844776379  diff -4.4e-12  nbad 0  (1.7 s)
+FK exact c=-20: 0.999999999745981 err -5.6e-14 nbad 30
+FK exact c=-10: 0.999992255783737 err 5.6e-16 nbad 0
+FK exact c=-2.5: 0.975144395352307 err 0.0e+00 nbad 0
+FK exact c=0: 0.682689492137087 err 6.7e-16 nbad 0
+FK exact c=1: 0.424176441779580 err -1.4e-13 nbad 0
+FK exact c=2: 0.215288142137057 err 3.0e-12 nbad 0

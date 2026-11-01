@@ -1,0 +1,134 @@
+\documentclass[11pt]{article}
+\usepackage{amsfonts,amsmath,amssymb,bm,booktabs,enumitem,array}
+\usepackage[letterpaper,textwidth=6.3in,textheight=8.7in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage[authoryear,round]{natbib}
+\usepackage[breaklinks=true,colorlinks,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+
+\lstset{basicstyle=\ttfamily\small,columns=fullflexible,keepspaces=true,frame=single,framerule=0.3pt,rulecolor=\color{black!40},xleftmargin=0.5em,framexleftmargin=0.5em,breaklines=true,showstringspaces=false,aboveskip=0.6em,belowskip=0.6em}
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\E}{{\mathbb E}}
+\newcommand{\PP}{{\mathbb P}}
+\newcommand{\iu}{{\mathrm i}}
+\newcommand{\dr}[1]{{\mathrm d}#1}
+\newcommand{\Rea}{\operatorname{Re}}
+\newcommand{\phih}{\hat\phi}
+\newcommand{\tauh}{\hat\tau}
+\newcommand{\Fk}{\textsf{DK}}
+\newcommand{\Fu}{\textsf{DU}}
+\newcommand{\Ft}{\textsf{DT}}
+\newcommand{\Sk}{\textsf{SK}}
+\newcommand{\Su}{\textsf{SU}}
+\newcommand{\St}{\textsf{ST}}
+\setlist[description]{leftmargin=1.5em,itemsep=0.35em,style=nextline,font=\normalfont\ttfamily}
+\setlength{\parskip}{0.25em}
+
+\title{The Exact Limiting Distribution of the Dickey--Fuller $t$-Ratio\\[0.6ex]\large MATLAB programs: user manual}
+\author{Yong Bao\\\normalsize Purdue University \and Simon A. Broda\\\normalsize Lucerne University of Applied Sciences \and Raymond Kan\\\normalsize University of Toronto and\\\normalsize Hong Kong University of Science and Technology}
+\date{Version 1.0, November 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent This manual documents the MATLAB programs that accompany \citet*{BaoBrodaKan2026l} (``the paper'').  The programs compute the limiting distribution function, density, quantiles and moments of the least squares $t$-ratio $\tauh_0=(\phih-\phi_0)/\operatorname{se}(\phih)$ in a Gaussian first-order autoregression under the local alternatives $\phi=1+c/n$, for the regression with no deterministic terms, an intercept, or an intercept and a linear trend, for the null value $\phi_0=1+c_0/n$ ($c_0=0$: the Dickey--Fuller tests), and with a zero, a fixed or a stationary initial observation of the order of $\sqrt n$.  Two exact representations are implemented, the single integral of Theorem~2 of the paper and the double integral of Theorem~3, and they check each other.  Section~\ref{sec:start} is a quick start, Section~\ref{sec:user} describes the user-level routines, Section~\ref{sec:engines} the two engines, Section~\ref{sec:accuracy} accuracy and cost, Section~\ref{sec:validation} the validation suite and the reproduction of the paper, and Section~\ref{sec:files} lists the files.
+\end{abstract}
+
+\tableofcontents
+
+\section{Quick start}
+\label{sec:start}
+
+Add the folder \code{public} to the MATLAB path.  The model is
+\[
+y_t=\alpha+\delta t+\phi y_{t-1}+\sigma e_t,\qquad t=1,\ldots,n,\qquad e_t\sim N(0,1)\text{ i.i.d.},
+\]
+with $\phi=1+c/n$, no drift, and $y_0=\sigma\sqrt n\,\gamma_0$.  The case code names the start (\textsf{D}eterministic, that is fixed, or \textsf{S}tationary) and the regressors (intercept \textsf{K}nown to be zero; \textsf{U}nknown intercept; intercept and \textsf{T}rend):
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+Code & Regression & Start\\
+\midrule
+\code{'DK'} & $y_t$ on $y_{t-1}$ ($\hat\tau$) & $\gamma_0$ fixed (\code{opts.g0}, default $0$)\\
+\code{'DU'} & $y_t$ on $1$, $y_{t-1}$ ($\hat\tau_\mu$) & $\gamma_0$ fixed\\
+\code{'DT'} & $y_t$ on $1$, $t$, $y_{t-1}$ ($\hat\tau_\tau$) & $\gamma_0$ fixed\\
+\code{'SK'}, \code{'SU'}, \code{'ST'} & the same & stationary, $J(0)\sim N(0,-1/(2c))$, $c<0$\\
+\bottomrule
+\end{tabular}
+\end{center}
+All routines take \code{(\ldots,cas,c,opts)}: the case, the local-to-unity parameter $c$ (default $0$, the unit root) and an optional structure of options, of which \code{c0} (the local null value, default $0$), \code{g0} (the fixed start, default $0$) and \code{method} (\code{'single'}, the default, or \code{'double'}) are the ones a user needs.
+\begin{lstlisting}
+ltratio_icdf([0.01 0.05 0.10], 'DU')        % asymptotic critical values of tau_mu
+ltratio_cdf(-2.86157, 'DU', -5)              % limiting power of the 5% test at c = -5
+ltratio_cdf(-2.86157, 'SU', -5)              % the same with a stationary start
+ltratio_cdf(-2.86157, 'DU', -5, struct('g0', 1.5))   % fixed start y_0 = 1.5 sigma sqrt(n)
+ltratio_cdf(0, 'DK', 2, struct('c0', 2))     % t-ratio centered at the true value, c = 2
+ltratio_pdf(-1:0.5:1, 'DK')                  % the density of tau at five points
+ltratio_mom(4, 'DT')                         % E tau_tau^j, j = 1..4
+\end{lstlisting}
+The first call returns $-3.43035$, $-2.86157$ and $-2.56679$; the second $0.1174$.  A value of the distribution function or the density takes a fraction of a second, a quantile a few values, and a set of moments about a second.
+
+\section{The user-level routines}
+\label{sec:user}
+
+\paragraph{Common arguments.}  \code{cas} is the case code (in either letter case), \code{c} a finite real scalar (negative for a stationary start), and \code{opts} a structure.  The arguments are checked by \code{ltratio\_args}, which rejects unknown codes, a stationary start with $c\ge0$, a fixed start \code{g0} in a stationary case and an unknown \code{method}.  Fields of \code{opts} other than \code{c0}, \code{g0} and \code{method} are passed to the engine in use (Section~\ref{sec:engines}).  Vector arguments are evaluated elementwise.
+
+\begin{description}
+\item[{[F,info] = ltratio\_cdf(x,cas,c,opts)}]
+The limit of $\PP[\tauh_0\le x]$.  At \code{x = -Inf}, \code{Inf} and \code{NaN} the result is $0$, $1$ and \code{NaN}.  \code{info.method} is the representation used and \code{info.time} the elapsed time; with \code{'double'} the diagnostics of \code{tr\_limdist} are added (\code{info.status}, \code{info.err}, \ldots; a nonzero status raises the warning \code{tr\_limdist:status}).
+\item[{[f,info] = ltratio\_pdf(x,cas,c,opts)}]
+The limiting density; arguments and options as for \code{ltratio\_cdf}.  In case \Fk\ with $c_0>0$ the density is infinite at $x=-\sqrt{2c_0}$ (a logarithmic singularity, where the two zeros of the kernel's edge merge) and \code{Inf} is returned there.
+\item[{[q,info] = ltratio\_icdf(p,cas,c,opts)}]
+The limiting $p$-quantiles, $p\in(0,1)$, by Newton's method on \code{ltratio\_cdf} with \code{ltratio\_pdf} as derivative, safeguarded by bisection, started at the normal approximation from the first two moments.  \code{opts.tol} ($10^{-10}$) is the tolerance on $q$; \code{info.F} is the distribution function at $q$, \code{info.iter} the iteration count and \code{info.conv} the convergence flag (a failure raises \code{ltratio:icdf}).
+\item[{[m,info] = ltratio\_mom(p,cas,c,opts)}]
+The moments $\E(\tau^j)$, $j=1,\ldots,p$, of the limit $\tau=(U-c_0V)/\sqrt V$, as one-dimensional integrals of the joint moment generating function at real arguments (Proposition~3 of the paper), through \code{tr\_limmom}; the options \code{c0} and \code{g0} apply, \code{method} does not.  \code{info} holds the error estimate of the integral per moment and the time.
+\end{description}
+
+\paragraph{The two representations.}  With $U=\int_0^1\tilde J\dr J$ and $V=\int_0^1\tilde J^2\dr r$, $J$ the Ornstein--Uhlenbeck process $\dr J=cJ\dr r+\dr W$ started at $\gamma_0$ and $\tilde J$ its residual on the deterministic terms, the limit is $\tau=(U-c_0V)/\sqrt V$, and the joint moment generating function of $(U,V)$ is $e^{-s/2}D(s,t)^{-1/2}$ with $D$ a polynomial of degree one (\Fk) or two in $s$ (Proposition~1 of the paper), to whose logarithm a fixed start adds $\gamma_0^2Q(s,t)$ in closed form (Proposition~2).  The \emph{single integral} (\code{method = 'single'}, Theorem~2) inverts in $s$ explicitly, which leaves a scaled $\chi^2_1$ density (\Fk) or a Bessel $K_0$ density of $U+\frac12$ under the tilt $e^{tV}$, and integrates its Gaussian transforms along the line $\Rea t=\tau$; its engine is \code{dfx\_core}.  The \emph{double integral} (\code{method = 'double'}, Theorem~3) keeps the outer integral over the value $v$ of $V$ and inverts in $t$, for each $v$, along a path through a saddle point; its engine is \code{tr\_limdist}.  A fixed start $\gamma_0\ne0$ in cases \Fu\ and \Ft\ makes the tilted density noncentral and without a closed form, and only the double integral is available there; \code{ltratio\_cdf} and \code{ltratio\_pdf} then use it whatever \code{method} says.  Everywhere else both are available and agree to about $10^{-12}$ in the distribution function (\code{ltratio\_test}, Section~\ref{sec:validation}); the single integral is the default because its contour is a fixed line on which the factorization of the moment generating function is guaranteed, which gives it the wider range in $c$ with an initial observation.
+
+\section{The two engines}
+\label{sec:engines}
+
+\paragraph{The single integral: \code{dfx\_core}.}  Called through \code{dfx\_cdf(q,model,c,opts)} and the front ends \code{dfx\_pdf}, \code{dfx\_quantile}, \code{dfx\_moments}, \code{dfx\_tstar}, with the model number $1$, $2$, $3$ for \textsf{K}, \textsf{U}, \textsf{T} and \code{opts.start} equal to \code{'zero'} (default) or \code{'stationary'}; \code{ltratio\_dist} does the mapping.  The port follows the Julia implementation \code{DFExact.jl} of the single integral function by function.  The line is $\Rea t=\tau$ with $\tau=1$ for $c\le0$ and a zero start and $\min(1,t_*/2)$ otherwise, $t_*$ the convergence abscissa of the moment generating function of $V$ (\code{dfx\_tstar}; located from the cancellation-free Girsanov forms for $c>2$, so that $c$ up to $20$ and beyond is reached).  The integrand is split, by an entire partition of unity inside the inner transforms, into a smooth part, integrated by the trapezoidal rule in $w=\tau\sinh u$ with the step $0.075$ up to $w=4900$, and oscillating parts $G_j(w)e^{-\iu wv_j^2}$, one for each positive root $v_j$ of $X(v)=c_0v^2+xv+\frac12$ (one root, $1/(2|x|)$, at $c_0=0$ and $x<0$), integrated by Filon's method on geometric panels with $20$ Gauss--Legendre nodes; for $c>0$, and in the upper tail with $c_0<0$, the smooth part carries a saddle-point factor whose phase grows like $x^2$, and it is integrated on Gauss--Legendre panels whose node counts follow the phase.  The inner transforms are Gauss--Legendre integrals on complex paths on which the Gaussian kernel decays; with $c_0\ne0$ the paths between the breakpoints (the roots of $X$, and the vertex of the parabola for $c_0>0$) are straight pieces along the directions of steepest descent, joined through the real axis where a direct connection would cross a region in which the Gaussian grows (Appendix~B.1 of the paper).  Options (for checking): \code{tau} (the line), \code{hu} ($0.075$), \code{N} ($20$), \code{pfac} (subdivides the Filon panels), \code{glfac} (multiplies the node counts of the Gauss--Legendre route), \code{wmax} ($4900$), \code{gen} (\code{true}: the general kernel also at $c_0=0$), \code{uniform} (the trapezoidal rule for the whole integrand); \code{dfx\_core('nodefac',2)} doubles every node count until reset with \code{1}.  The moments of \code{dfx\_moments} use the form of Proposition~1 and lose accuracy for $c>2$; \code{ltratio\_mom} uses \code{tr\_limmom}.
+
+\paragraph{The double integral: \code{tr\_limdist}.}  \code{[F,info] = tr\_limdist(x,cas,c,opts,mode)}, \code{mode} \code{'cdf'} or \code{'pdf'}, with \code{opts.c0} (default $c$ there, not $0$: \code{ltratio\_dist} passes \code{c0} explicitly) and \code{opts.g0}.  In case \Fk\ it uses part (i) of Theorem~3, whose inner probability is an error function (with a fixed start, the probability $\PP[X^2\le2a+\gamma_0^2]$ of a noncentral normal); with a zero start in cases \Fu, \Ft\ and with a stationary start in all three cases part (ii), whose integrands are in closed form; and in cases \Fu, \Ft\ with a fixed start part (i) with the noncentral probability (\code{Pnc}), a one-dimensional integral with \code{Nl} ($96$) Gauss--Legendre nodes, so a triple integral in all.  With a zero start the integrands are the Girsanov forms (\code{iipar}), analytic beyond $t_*$, and the inner inversions run through the saddle point of the whole integrand on the better of two paths (a parabola turning into a wedge; a vertical line in the $\vartheta$-plane), with $96$ trapezoidal nodes after a sinh substitution, doubled up to three times until the nested-rule estimate is below $10^{-13}$.  With an initial observation the path is the Talbot parabola through the saddle point of $\log M_V(t)-tv$, with the sign conditions of Theorem~3 checked at every node (\code{info.nbad} counts violations) and the branch of $\log D$ continued along it; \code{Nv} ($96$) nodes, doubled up to twice where the nested estimate exceeds $10^{-9}$ of the largest column of the piece and $10^{-11}$ divided by the range of $v$ (\code{info.nunres} counts the columns still unresolved).  The initial-value terms come from \code{tr\_nsstart} (Proposition~2: $Q(s,t)$ in closed form, from Nabeya and S\o rensen's determinants in cases \Fu, \Ft\ and the Riccati solution \code{tr\_jbstart} in case \Fk); the squared means of the noncentral form are read off $Q$ at three values of $s$.  The outer integral over $v$ is a cosine-mapped Gauss--Legendre rule in $\log v$ over $[e^{-8},e^6]\,\E V$ with \code{M} ($64$; $32$ in case \Fk\ with a zero start) nodes per part of length at most \code{plen} ($2$), breakpoints at the zeros of $a(v)=\frac12+x\sqrt v+c_0v$, grading toward the step of the integrand in the far upper tail for $c>c_0$ (width below \code{stepw}, $0.1$) and bisection, up to \code{maxlev} ($12$) times, where the Legendre-coefficient estimate exceeds \code{otol} ($10^{-12}$).  \code{info.err} is the error estimate per point and \code{info.status} is $0$ when clean, otherwise $1$ (sign violations) plus $2$ (unresolved inner integrals, or \code{info.err} above \code{errtol}, $10^{-10}$); a nonzero status raises the warning \code{tr\_limdist:status}.  Further options: \code{blo}, \code{bhi} (the range in $\log v$ relative to $\log\E V$), \code{region} (checks the sign conditions on that many intermediate paths), \code{oldDK}, \code{oldII} (the earlier forms through the saddle point of $M_V$ alone, which fail for $c$ above about $2$ and $5$).
+
+\paragraph{The moment generating function.}  \code{tr\_cflim(t1,t2,cas,c,form)} evaluates the Nabeya--Tanaka determinants of Proposition~1 at complex arguments (31-term Taylor series in $z$ for $|z|<4$ from \code{nt\_series}, closed forms in $\vartheta=(-z)^{1/2}$ and $e^{-2\vartheta}$ beyond), with the branch of $\log D$ followed along two legs and the roots of $D$ in $s$ (the weights $\kappa_k$ of $U+\frac12$ under the tilt); the forms \code{'F'}, \code{'B'}, \code{'BC'} and \code{'ApB'} return the coefficients, the weights, the branch-continued logarithm along a path, and the moment generating function of $U$ and $V$ together.  \code{tr\_limmom(p,cas,c,opts)} computes the moments by Cauchy integrals on a circle in the argument of $U$ and the trapezoidal rule in $\log s$, from the Girsanov forms with a zero start and with the initial-value terms of \code{tr\_nsstart} otherwise.
+
+\section{Accuracy and cost}
+\label{sec:accuracy}
+
+Both representations are accurate to about $10^{-11}$ in the distribution function and $10^{-10}$ relative in the density over $c\in[-30,20]$, $c_0\in[-40,10]$ and the six cases, and to $10^{-11}$ with a fixed start in cases \Fu, \Ft\ for $c\le2$ (Section~7 and Appendix~B of the paper).  Doubling every node count of the single integral changes the distribution function by at most $4\times10^{-13}$; the two representations agree to $4\times10^{-12}$ at worst (Table~1 of the paper, reproduced by \code{validation/acc\_table.m}).  With a fixed start in cases \Fu, \Ft\ at $c$ above about $2.5$ the Talbot path of the double integral no longer satisfies the sign conditions everywhere, and \code{tr\_limdist} warns; the single integral does not cover that configuration.  A value of the distribution function or the density takes, in MATLAB on one thread of a laptop, $0.1$ to $0.3$ seconds by the single integral for $c_0=0$ and $0.3$ to $5$ seconds with $c_0\ne0$ (the upper end in the upper tail at $c=5$, $c_0=-5$), and $0.05$ to $0.4$ seconds by the double integral with a zero start and $0.3$ to $1.3$ seconds with an initial observation; a quantile takes a few values and a set of four moments about a second.  The Julia implementation of the single integral, \code{DFExact.jl}, takes $7$ to $17$ milliseconds per value on six threads.
+
+\section{Validation and reproduction of the paper}
+\label{sec:validation}
+
+\code{ltratio\_test} runs eighty-one checks in about two minutes and reports a failure count: the two representations against each other at the mean plus $-2.5$ to $2.5$ standard deviations in the six cases, at $c\in\{0,-5,-10\}$, $c=2$ and $5$ and $c_0\ne0$; the exact values $\PP[\hat\tau\le0]=\operatorname{erf}\{(2w)^{-1/2}\}$, $w=(e^{2c}-1)/(2c)$, for $c\in\{-10,0,2,5,20\}$, $\PP[\hat\tau_\mu\le0]=0.95756559$ from the coefficient statistic, and $\PP[U-c_0V\le0]$ at $c=10$, $c_0=5$ from an independent one-dimensional inversion; the distribution function at the asymptotic critical values of \citet{MacKinnon2010} and the quantile function; the initial observation (continuity as $\gamma_0\to0$; the stationary start as the 24-point Gauss--Hermite average of the fixed start; the noncentral probability $\PP[J(1)^2\le1+\gamma_0^2]$ in case \Fk; the rank-two structure of the initial-value term); the moments against \citet{Nabeya1999}, against \code{dfx\_moments} and against the integral of the density; the density against fifth-order differences of the distribution function; and the argument checks.  \code{ltratio\_paper} recomputes the tables of the paper and prints each value next to the published one (about ten minutes); \code{validation/acc\_table.m} produces the accuracy table and its LaTeX rows.
+
+\section{Files}
+\label{sec:files}
+
+\begin{description}
+\item[ltratio\_cdf.m, ltratio\_pdf.m, ltratio\_icdf.m, ltratio\_mom.m] the user-level routines; \code{ltratio\_dist.m} (dispatch to the engines) and \code{ltratio\_args.m} (argument checks).
+\item[dfx\_core.m, dfx\_cdf.m, dfx\_pdf.m, dfx\_quantile.m] the single integral: the engine and its front ends;
+\item[dfx\_moments.m, dfx\_tstar.m, dfx\_series.m, dfx\_test.m] its moments, convergence abscissa, series coefficients and test.
+\item[tr\_limdist.m, tr\_limmom.m] the double integral and the moments;
+\item[tr\_cflim.m, tr\_nsstart.m, tr\_jbstart.m, nt\_series.m, gen\_series.py, faddeeva.m] the moment generating function, the initial-value terms, the series coefficients and the Faddeeva function.
+\item[ltratio\_test.m, ltratio\_paper.m, validation/] validation and reproduction.
+\item[Contents.m, README.md, LICENSE, doc/] this manual.
+\end{description}
+
+\begin{thebibliography}{9}
+\bibitem[Bao et~al.(2026a)]{BaoBrodaKan2026l}
+Bao, Y., Broda, S.~A. and Kan, R. (2026a).  The exact limiting distribution of the Dickey--Fuller $t$-ratio.  Manuscript.
+\bibitem[Bao et~al.(2026b)]{BaoBrodaKan2026}
+Bao, Y., Broda, S.~A. and Kan, R. (2026b).  The exact finite-sample distribution of the Dickey--Fuller $t$-ratio.  Manuscript.
+\bibitem[MacKinnon(2010)]{MacKinnon2010}
+MacKinnon, J.~G. (2010).  Critical values for cointegration tests.  Queen's Economics Department Working Paper 1227.
+\bibitem[Nabeya(1999)]{Nabeya1999}
+Nabeya, S. (1999).  Asymptotic moments of some unit root test statistics in the null case.  \emph{Econometric Theory} 15, 139--149.
+\end{thebibliography}
+
+\end{document}

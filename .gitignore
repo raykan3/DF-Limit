@@ -1,0 +1,27 @@
+# Only the paper (LaTeX/), the programs (public/) and the web demo (demo/) are tracked
+/*
+!/.gitignore
+!/README.md
+!/LaTeX/
+!/public/
+!/demo/
+
+# LaTeX build files
+*.aux
+*.log
+*.blg
+*.out
+*.toc
+*.synctex
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+*.spl
+*.bbl
+# but the validation logs are part of the record
+!/public/validation/*.log
+!/public/validation/tratio_legacy/*.log
+
+# MATLAB/Octave scratch
+*.asv
+octave-workspace

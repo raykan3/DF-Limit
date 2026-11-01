@@ -1,0 +1,19 @@
+FK c=-20: region bad 0 of 42775; vertical bad 0
+FK c=-10: region bad 0 of 42775; vertical bad 0
+FK c=-2.5: region bad 0 of 42775; vertical bad 0
+FK c=0: region bad 0 of 42775; vertical bad 0
+FK c=1: region bad 0 of 42775; vertical bad 0
+FK c=2: region bad 0 of 42775; vertical bad 0
+FU c=-20: region bad 0 of 42775; vertical bad 0
+FU c=-10: region bad 0 of 42775; vertical bad 0
+FU c=-2.5: region bad 0 of 42775; vertical bad 0
+FU c=0: region bad 0 of 42775; vertical bad 0
+FU c=1: region bad 0 of 42775; vertical bad 0
+FU c=2: region bad 0 of 42775; vertical bad 0
+FT c=-20: region bad 0 of 42775; vertical bad 0
+FT c=-10: region bad 0 of 42775; vertical bad 0
+FT c=-2.5: region bad 0 of 42775; vertical bad 0
+FT c=0: region bad 0 of 42775; vertical bad 0
+FT c=1: region bad 0 of 42775; vertical bad 0
+FT c=2: region bad 0 of 42775; vertical bad 0
+
