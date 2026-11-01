@@ -6,7 +6,7 @@ The limiting distribution function, density, quantiles and moments of the Dickey
 
 - `LaTeX/` — the paper: `LTR_BBK.tex`, `LTR_BBK.bib`, and the compiled `LTR_BBK.pdf`.
 - `public/` — the MATLAB programs (start with `Contents.m` and the manual `doc/ltratio_manual.pdf`): the user-level routines `ltratio_cdf`, `ltratio_pdf`, `ltratio_icdf`, `ltratio_mom`, the two engines (the single integral `dfx_*`, the double integral `tr_*`), the validation suite `ltratio_test` and `ltratio_paper`, which reproduces the tables; `public/validation/` holds the script behind the accuracy table and the logs.
-- `demo/` — an interactive web page for the limits (all six cases, the local null value and the fixed start): open `demo/tr_demo.html` in a browser. It is built from `tr_demo_template.html`, the JavaScript port of the engines and `ntcoef.js` by `python make_demo.py`.
+- `demo/` — an interactive web page for the limits (all six cases, the local null value and the fixed start): open `demo/ltr_demo.html` in a browser. It is built from `ltr_demo_template.html`, `ltrlim.js` (the JavaScript port of the engines) and `ntcoef.js` by `python make_demo.py`.
 
 ```matlab
 ltratio_icdf([0.01 0.05 0.10], 'DU')        % asymptotic critical values of tau_mu

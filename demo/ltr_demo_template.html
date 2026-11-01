@@ -181,11 +181,11 @@ __CORE__
   function setTheme(mode, save) {
     if (mode === 'auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', mode);
     for (const k in thBtns) thBtns[k].setAttribute('aria-pressed', String(k === mode));
-    if (save) { try { localStorage.setItem('trlim-theme', mode); } catch (e) {} }
+    if (save) { try { localStorage.setItem('ltrlim-theme', mode); } catch (e) {} }
     requestAnimationFrame(drawAll);
   }
   for (const k in thBtns) thBtns[k].addEventListener('click', () => setTheme(k, true));
-  let saved = null; try { saved = localStorage.getItem('trlim-theme'); } catch (e) {}
+  let saved = null; try { saved = localStorage.getItem('ltrlim-theme'); } catch (e) {}
   setTheme(saved === 'light' || saved === 'dark' ? saved : 'auto', false);
   if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => requestAnimationFrame(drawAll));
 

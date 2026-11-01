@@ -1,4 +1,4 @@
-// trlim.js -- the local-to-unity limit of the least squares t-ratio in the
+// ltrlim.js -- the local-to-unity limit of the least squares t-ratio in the
 // Gaussian AR(1) (Bao, Broda and Kan, "The Exact Limiting Distribution of the
 // Dickey-Fuller t-Ratio"): its distribution function, density and moments, a
 // JavaScript port of the MATLAB programs of the LTRATIO package: DFX_CORE (the
@@ -56,12 +56,18 @@ const TRL = (function () {
     for (let k = 0; k <= N; k++) { let s = 0; for (let j = 0; j < len; j++) s += sh[j] * Math.cos(2 * Math.PI * j * k / len); a.push(s / M2); }
     return { coef: a.slice(1, N + 1).reverse(), L };
   })();
-  function wup(z) {
-    const L = FAD.L, iz = imul(z), den = [L - iz[0], -iz[1]];
-    const Z = cdiv([L + iz[0], iz[1]], den);
-    let p = [FAD.coef[0], 0];
-    for (let k = 1; k < FAD.coef.length; k++) p = cadd(cmul(p, Z), [FAD.coef[k], 0]);
-    return cadd(csc(cdiv(p, cmul(den, den)), 2), cdiv([1 / Math.sqrt(Math.PI), 0], den));
+  const FADC = FAD.coef, FADN = FAD.coef.length, ISQPI = 1 / Math.sqrt(Math.PI);
+  function wup(z) {                            // Im z >= 0; scalar arithmetic, no allocation in the loop
+    const L = FAD.L, ir = -z[1], ii = z[0];     // iz
+    const dr = L - ir, di = -ii;                 // den = L - iz
+    const d2 = dr * dr + di * di;
+    const nr = L + ir, ni = ii;                  // Z = (L + iz)/den
+    const Zr = (nr * dr + ni * di) / d2, Zi = (ni * dr - nr * di) / d2;
+    let pr = FADC[0], pi = 0;
+    for (let k = 1; k < FADN; k++) { const t = pr * Zr - pi * Zi + FADC[k]; pi = pr * Zi + pi * Zr; pr = t; }
+    // 2 p / den^2 + (1/sqrt(pi)) / den
+    const e2r = dr * dr - di * di, e2i = 2 * dr * di, e4 = e2r * e2r + e2i * e2i;
+    return [2 * (pr * e2r + pi * e2i) / e4 + ISQPI * dr / d2, 2 * (pi * e2r - pr * e2i) / e4 - ISQPI * di / d2];
   }
   function faddeeva(z) { return z[1] >= 0 ? wup(z) : csub(csc(cexp(cneg(csq(z))), 2), wup(cneg(z))); }
   function erfc_r(x) {                         // real erfc, x >= 0 (continued fraction / series)
@@ -80,33 +86,88 @@ const TRL = (function () {
     return Math.exp(-x * x) / (Math.sqrt(Math.PI) * f);
   }
   function erfr(x) { return x >= 0 ? 1 - erfc_r(x) : erfc_r(-x) - 1; }
-  function erfz(z) {
+  function erfz(z) {                           // erf(z) = 1 - exp(-z^2) w(iz), scalar arithmetic
     if (z[1] === 0) return [erfr(z[0]), 0];
-    return csub([1, 0], cmul(cexp(cneg(csq(z))), faddeeva(imul(z))));
+    let x = z[0], y = z[1], sg = 1;
+    if (x < 0) { x = -x; y = -y; sg = -1; }     // erf(-z) = -erf(z); then Im(iz) = x >= 0 for wup
+    const w = wup([-y, x]);
+    const ea = Math.exp(y * y - x * x), ph = -2 * x * y, er = ea * Math.cos(ph), ei = ea * Math.sin(ph);
+    return [sg * (1 - (er * w[0] - ei * w[1])), sg * (-(er * w[1] + ei * w[0]))];
   }
-  // exponentially scaled K0: e^z K0(z), z off the negative real axis
-  function besselk0s(z) {
-    if (cabs(z) < 1) {
-      // K0 = -(log(z/2) + gamma) I0 + sum (z^2/4)^k/(k!)^2 H_k
-      const q = csc(csq(z), 0.25); let t = [1, 0], I0 = [1, 0], S = [0, 0], H = 0;
-      for (let k = 1; k < 40; k++) { t = csc(cmul(t, q), 1 / (k * k)); H += 1 / k; I0 = cadd(I0, t); S = cadd(S, csc(t, H)); if (cabs(t) < 1e-18) break; }
-      const K0 = cadd(cneg(cmul(cadd(clog(csc(z, 0.5)), [0.5772156649015329, 0]), I0)), S);
-      return cmul(K0, cexp(z));
-    }
+  // exponentially scaled K0: e^z K0(z), z off the negative real axis.
+  // |z| < 1: the power series; |z| > 30: the asymptotic series; in between, Taylor expansions of
+  // e^z K0(z) about the centres z0 of cells of side 1/8 (|z| < 2) or 1/4, the coefficients from
+  // g = e^z K0 and g' at the centre (the integral representation, trapezoidal rule) and the
+  // recurrence of Bessel's equation for g, z g'' + (1 - 2z) g' - g = 0: 16 terms, the ratio
+  // |z - z0|/|z0| being at most 0.09.  Cells are built on demand and cached; Im z < 0 by conjugation.
+  // Cells that come within 0.5 of the negative real axis (where the distance of the integrand's
+  // singularities from the real line shrinks) fall back to the quadrature.
+  const K0CELLS = new Map(), K0NT = 16;
+  function k0quad(z) {                          // e^z K0(z) and its derivative by the trapezoidal rule
     const r = cabs(z);
+    const h = Math.min(0.42, 0.15 * Math.sqrt(r) * Math.max(0.3, Math.cos(carg(z) / 2) / 0.7071)) / 3;
+    const z2r = 2 * z[0], z2i = 2 * z[1];
+    let sr = 0, si = 0, dr = 0, di = 0;
+    for (let v = 0; v <= 6.5; v += h) {
+      const w = v === 0 ? 0.5 : 1, e = w * Math.exp(-v * v);
+      // q = 1/sqrt(v^2 + 2z), q3 = q^3
+      const ar = v * v + z2r, ai = z2i, m = Math.hypot(ar, ai), rr = Math.sqrt((m + ar) / 2);
+      let ri = Math.sqrt(Math.max((m - ar) / 2, 0)); if (ai < 0) ri = -ri;   // sqrt(a)
+      const qr = rr / m, qi = -ri / m;                                         // 1/sqrt(a)
+      sr += e * qr; si += e * qi;
+      const q2r = qr * qr - qi * qi, q2i = 2 * qr * qi;
+      dr += e * (q2r * qr - q2i * qi); di += e * (q2r * qi + q2i * qr);
+    }
+    return { g: [2 * h * sr, 2 * h * si], dg: [-2 * h * dr, -2 * h * di] };
+  }
+  function k0cell(z0) {
+    const { g, dg } = k0quad(z0);
+    const a = new Float64Array(2 * K0NT);
+    a[0] = g[0]; a[1] = g[1]; a[2] = dg[0]; a[3] = dg[1];
+    const x0 = z0[0], y0 = z0[1], m0 = x0 * x0 + y0 * y0;
+    for (let n = 0; n + 2 < K0NT; n++) {
+      // a_{n+2} = [(2n+1) a_n - (n+1)(n+1-2 z0) a_{n+1}] / (z0 (n+2)(n+1))
+      const ar = a[2 * n], ai = a[2 * n + 1], br = a[2 * n + 2], bi = a[2 * n + 3];
+      const cr = n + 1 - 2 * x0, ci = -2 * y0;                                   // n+1-2z0
+      const ur = (2 * n + 1) * ar - (n + 1) * (cr * br - ci * bi), ui = (2 * n + 1) * ai - (n + 1) * (cr * bi + ci * br);
+      const d = (n + 2) * (n + 1);
+      a[2 * n + 4] = (ur * x0 + ui * y0) / (m0 * d); a[2 * n + 5] = (ui * x0 - ur * y0) / (m0 * d);
+    }
+    return a;
+  }
+  function besselk0s(z) {
+    const r = Math.sqrt(z[0] * z[0] + z[1] * z[1]);
+    if (r < 1) {
+      // K0 = -(log(z/2) + gamma) I0 + sum (z^2/4)^k/(k!)^2 H_k, scalar arithmetic
+      const qr = (z[0] * z[0] - z[1] * z[1]) / 4, qi = z[0] * z[1] / 2;
+      let tr = 1, ti = 0, I0r = 1, I0i = 0, Sr = 0, Si = 0, H = 0;
+      for (let k = 1; k < 40; k++) {
+        const nr = (tr * qr - ti * qi) / (k * k), ni = (tr * qi + ti * qr) / (k * k); tr = nr; ti = ni; H += 1 / k;
+        I0r += tr; I0i += ti; Sr += tr * H; Si += ti * H;
+        if (Math.abs(tr) + Math.abs(ti) < 1e-18) break;
+      }
+      const lr = Math.log(r / 2) + 0.5772156649015329, li = Math.atan2(z[1], z[0]);
+      const Kr = Sr - (lr * I0r - li * I0i), Ki = Si - (lr * I0i + li * I0r);
+      const e = Math.exp(z[0]), cs = Math.cos(z[1]), sn = Math.sin(z[1]);
+      return [e * (Kr * cs - Ki * sn), e * (Kr * sn + Ki * cs)];
+    }
     if (r > 30) {
       // asymptotic series e^z K0(z) ~ (pi/(2z))^(1/2) sum_k (-1)^k ((2k-1)!!)^2/(k! 8^k z^k)
       const iz = cinv(z); let t = [1, 0], s = [1, 0];
       for (let k = 1; k < 30; k++) { t = csc(cmul(t, iz), -((2 * k - 1) * (2 * k - 1)) / (8 * k)); s = cadd(s, t); if (cabs(t) < 1e-17) break; }
       return cmul(csqrt(csc(iz, Math.PI / 2)), s);
     }
-    // e^z K0(z) = int_0^inf 2 exp(-v^2)/sqrt(v^2 + 2z) dv (u = v^2 in int e^-u/sqrt(u(u+2z)) du),
-    // an even analytic integrand: trapezoidal rule on the whole line, its singularities at
-    // distance >= |z|^(1/2) cos(arg(z)/2) from the real axis
-    const h = Math.min(0.42, 0.15 * Math.sqrt(r) * Math.max(0.3, Math.cos(carg(z) / 2) / 0.7071)), z2 = csc(z, 2);
-    let s = csc(cinv(csqrt(z2)), 0.5);
-    for (let v = h; v <= 6.5; v += h) s = cadd(s, csc(cinv(csqrt([v * v + z2[0], z2[1]])), Math.exp(-v * v)));
-    return csc(s, 2 * h);
+    const x = z[0], y = Math.abs(z[1]), hs = r < 2 ? 0.125 : 0.25;
+    if (x < 0 && y < 0.5) {                     // near the cut: the quadrature
+      const v = k0quad(z).g; return v;
+    }
+    const ix = Math.floor(x / hs), iy = Math.floor(y / hs), key = (hs === 0.25 ? 1 : 0) + 2 * (ix + 4096) + 65536 * iy;
+    let a = K0CELLS.get(key);
+    if (a === undefined) { a = k0cell([(ix + 0.5) * hs, (iy + 0.5) * hs]); K0CELLS.set(key, a); }
+    const hr = x - (ix + 0.5) * hs, hi = y - (iy + 0.5) * hs;
+    let pr = a[2 * K0NT - 2], pi = a[2 * K0NT - 1];
+    for (let n = K0NT - 2; n >= 0; n--) { const t = pr * hr - pi * hi + a[2 * n]; pi = pr * hi + pi * hr + a[2 * n + 1]; pr = t; }
+    return z[1] < 0 ? [pr, -pi] : [pr, pi];
   }
   // Gauss-Legendre nodes and weights on [0,1]
   function gl01(m) {
@@ -942,6 +1003,63 @@ const TRL = (function () {
       }
       return acc;
     }
+    // the same for an integrand that returns a pair of complex values [c1, c2] (the density and the
+    // distribution function share every node: their kernels differ only by the weight in v)
+    const P0 = () => [Z, Z], padd = (p, q) => [cadd(p[0], q[0]), cadd(p[1], q[1])], pmul = (p, c) => [cmul(p[0], c), cmul(p[1], c)], psc = (p, x) => [csc(p[0], x), csc(p[1], x)];
+    function glsumP(f, a, b, n, p) { const { y, wt } = glnodes(a, b, n, p); let acc = P0(); for (let i = 0; i < y.length; i++) acc = padd(acc, psc(f(y[i]), wt[i])); return acc; }
+    function rayintP(f, R, l, n1, n2, p, osc) {
+      osc = osc || 0;
+      let a = Math.min(R, 8 * l);
+      let acc = glsumP(f, 0, a, n1, p);
+      while (a < R && a > 0) {
+        const b = Math.min(R, 4 * a);
+        acc = padd(acc, glsumP(f, a, b, nodes(n2, osc, b - a), 1));
+        a = b;
+      }
+      return acc;
+    }
+    function levelfP(s, A, vmin, sd, t, q) {
+      const v = vmin * Math.sinh(s), dv = vmin * Math.cosh(s);
+      const rt = cmul(sd, csqrt(cadd(ONE, cdiv(csc(t, 4 * v * v / (q * q)), csq(sd)))));
+      const x = cdiv([2 * v * v, 0], cadd(sd, rt));
+      return pmul(A(x), cdiv([Math.exp(-v * v) * 2 * v * dv, 0], rt));
+    }
+    function gaussexpP(A, t, q, sd, lA, force, p) {
+      force = force || 0; p = p || 1;
+      const at = cabs(t), e = cexp([0, -carg(t) / 2]);
+      const x0 = cdiv(csc(sd, -q * q), csc(t, 2)), u0 = cdiv(csc(csq(sd), -q * q), csc(t, 4));
+      if (force === 1 || (force === 0 && cmul(sd, e)[0] < 0)) {
+        const ru = u0[0];
+        const lam_max = ru > EXPO ? 1 - Math.sqrt(1 - EXPO / ru) : 1;
+        const f1 = (lam) => pmul(A(csc(x0, lam)), cmul(cexp(csc(u0, -lam * (2 - lam))), x0));
+        const l = Math.min(lA / cabs(x0), 1 / (2 * cabs(u0) + 1));
+        let acc = rayintP(f1, lam_max, l, 48, 32, p, 2 * Math.abs(u0[1]));
+        if (ru > EXPO) return acc;
+        const f2 = (r) => pmul(A(cadd(x0, csc(e, r))), cmul(cexp([-u0[0] - at * r * r / (q * q), -u0[1]]), e));
+        return padd(acc, rayintP(f2, q * Math.sqrt(EXPO / at), lA, 48, 32, 1, 0));
+      }
+      const v0 = cabs(sd) * q / (2 * Math.sqrt(at)), vA = Math.sqrt(lA * cabs(sd));
+      const vmin = Math.max(Math.min(v0, vA, 1) / 2, 1e-4);
+      const S = Math.asinh(Math.sqrt(EXPO) / vmin);
+      const lf = (s) => levelfP(s, A, vmin, sd, t, q);
+      if (p === 1) return glsumP(lf, 0, S, 16 * Math.ceil(Math.ceil(13 * S) / 16), 1);
+      const S1 = Math.min(1, S);
+      let acc = glsumP(lf, 0, S1, 32, p);
+      if (S > 1) acc = padd(acc, glsumP(lf, 1, S, 16 * Math.ceil(Math.ceil(13 * (S - 1)) / 16), 1));
+      return acc;
+    }
+    function rayexpP(A, alpha, beta, lA, p) {
+      if (!(alpha[0] > 0)) throw new Error('dfx: Re alpha <= 0 on a ray');
+      const e = cexp([0, -carg(alpha) / 2]), aa = cabs(alpha);
+      if (ray_ok(beta, e, 1, aa)) {
+        let Rr = Math.sqrt(EXPO / aa);
+        const be = cmul(beta, e);
+        if (be[0] > 0) Rr = Math.min(Rr, EXPO / be[0]);
+        const f = (r) => pmul(A(csc(e, r)), cmul(cexp(csub([-aa * r * r, 0], csc(be, r))), e));
+        return rayintP(f, Rr, lA, 48, 32, p, Math.abs(be[1]));
+      }
+      return gaussexpP(A, alpha, 1, beta, lA, 0, p);
+    }
     const cap = (x) => x / Math.sqrt(1 + x * x);
     function levelf(s, A, vmin, sd, t, q) {
       const v = vmin * Math.sinh(s), dv = vmin * Math.cosh(s);
@@ -1118,9 +1236,16 @@ const TRL = (function () {
       return { u, l: Math.max(l, 1e-12 * L) };
     }
     function segint(tj, sd, sgn, s1, s2, W, R, a, b, chi, pa, pb, ella, ellb, ws, wl, wr, sg, ka, kb, dep) {
-      const L = b - a, Xat = R.Xat;
+      // W = [W1, W2]: the weights of the density and the distribution function; the common factor
+      // exp(Ez) phialg is evaluated once per node and the two integrals accumulated side by side
+      const L = b - a, Xat = R.Xat, W1 = W[0], W2 = W[1];
       const Ez = (z, o) => csub(csc(cmul(tj, csq(cadd([o, 0], z))), -1), cmul(sd, Xat(z, o)));
-      const Fz = (z, o) => cmul(cmul(W(cadd([o, 0], z)), cexp(Ez(z, o))), phialg(Xat(z, o), sgn, s1, s2));
+      const Fz = (z, o) => {
+        const v = cadd([o, 0], z), X = Xat(z, o);
+        const E = csub(csc(cmul(tj, csq(v)), -1), cmul(sd, X));
+        const g = cmul(cexp(E), phialg(X, sgn, s1, s2));
+        return [cmul(W1(v), g), cmul(W2(v), g)];
+      };
       const Eb = Ez(Z, b), Ea = Ez(Z, a);
       const alpha = cadd(tj, csc(sd, c0));
       let dega = 80, fa = ella / 2; if (ka === 0) { dega = 45; fa = ella; }
@@ -1131,9 +1256,9 @@ const TRL = (function () {
       const pa_ = cadd([a, 0], csc(ua, la)), pb_ = cadd([b, 0], csc(ub, lb));
       const fv = [], v = [];
       let g = pieces_nodes((s) => csub(Ez(csc(ua, s), a), Ea), la, Math.min(la / 8, fa), pa, 48 + 16 * (pa === 1 ? 1 : 0));
-      for (let i = 0; i < g.y.length; i++) { fv.push(cmul(Fz(csc(ua, g.y[i]), a), csc(ua, g.wt[i]))); v.push(cadd([a, 0], csc(ua, g.y[i]))); }
+      for (let i = 0; i < g.y.length; i++) { fv.push(pmul(Fz(csc(ua, g.y[i]), a), csc(ua, g.wt[i]))); v.push(cadd([a, 0], csc(ua, g.y[i]))); }
       g = pieces_nodes((s) => csub(Ez(csc(ub, s), b), Eb), lb, Math.min(lb / 8, fb), pb, 48);
-      for (let i = 0; i < g.y.length; i++) { fv.push(cneg(cmul(Fz(csc(ub, g.y[i]), b), csc(ub, g.wt[i])))); v.push(cadd([b, 0], csc(ub, g.y[i]))); }
+      for (let i = 0; i < g.y.length; i++) { fv.push(pmul(Fz(csc(ub, g.y[i]), b), csc(ub, -g.wt[i]))); v.push(cadd([b, 0], csc(ub, g.y[i]))); }
       if (cabs(csub(pb_, pa_)) > 0) {
         const Emax = Math.max(Ea[0], Eb[0]) + 2;
         let legs = [pa_, pb_];
@@ -1148,27 +1273,28 @@ const TRL = (function () {
             const vc = cadd(legs[k], csc(dv, pn.y[i]));
             const nb = cabs(csub(vc, [b, 0])) < cabs(csub(vc, [a, 0]));
             const fval = nb ? Fz(csub(vc, [b, 0]), b) : Fz(csub(vc, [a, 0]), a);
-            fv.push(cmul(fval, csc(dv, pn.wt[i]))); v.push(vc);
+            fv.push(pmul(fval, csc(dv, pn.wt[i]))); v.push(vc);
           }
         }
       }
-      let vs = Z, vl = Z, vr = Z;
+      let vs = P0(), vl = P0(), vr = P0();
       for (let i = 0; i < v.length; i++) {
         const cw = chi(v[i]);
-        if (ws || wl) { const t = cmul(fv[i], csub(ONE, cw)); if (ws) vs = cadd(vs, t); else vl = cadd(vl, t); }
-        if (wr) vr = cadd(vr, cmul(fv[i], cw));
+        if (ws || wl) { const t = pmul(fv[i], csub(ONE, cw)); if (ws) vs = padd(vs, t); else vl = padd(vl, t); }
+        if (wr) vr = padd(vr, pmul(fv[i], cw));
       }
       return { vs, vl, vr };
     }
     // ---- the inner transforms of the general kernel ----
-    function inner_gen(tj, R, s1, s2, M0, kind, part) {
+    function inner_gen(tj, R, s1, s2, M0, part) {
+      // returns the transforms of the density and of the distribution function together, as pairs
       const q = R.q, ne = R.ne, b = R.b;
       const sg = tj[1] >= 0 ? 1 : -1;
-      let Is = Z; const Ie = new Array(ne).fill(Z);
-      const W = kind === 1 ? (v) => csc(csq(v), 2) : (v) => cadd([q, 0], csc(v, 2 * c0));
+      let Is = P0(); const Ie = []; for (let k = 0; k < ne; k++) Ie.push(P0());
+      const W = [(v) => csc(csq(v), 2), (v) => cadd([q, 0], csc(v, 2 * c0))];
       const wants = part === 0 || part === 1;
       const want = (k) => (part === 0 || part === 2 || part === 10 + k) && !R.negl[k];
-      if (kind === 2 && wants) Is = psi_half(s1, s2, M0);
+      if (wants) Is[1] = psi_half(s1, s2, M0);
       const lX = kern === 1 ? 1 / (cabs(s1) + 2) : 1 / (cabs(csc(csub(s2, s1), 0.5)) + 2);
       const ed = [0].concat(b, [Infinity]);
       for (let jj = 0; jj < ne + 1; jj++) {
@@ -1179,7 +1305,7 @@ const TRL = (function () {
           if (jj === 0) { if (!wants) continue; } else if (!want(jj - 1)) continue;
           const alpha = cadd(tj, csc(sd, c0)), beta = cadd(csc(alpha, 2 * a), csc(sd, q));
           const cst = cexp(csub(csc(tj, -a * a), cmul(sd, R.Xat(Z, a))));
-          const A = (rho) => cmul(W(cadd([a, 0], rho)), phialg(R.Xat(rho, a), sgn, s1, s2));
+          const A = (rho) => { const v = cadd([a, 0], rho), g = phialg(R.Xat(rho, a), sgn, s1, s2); return [cmul(W[0](v), g), cmul(W[1](v), g)]; };
           let lv = lX / Math.max(Math.abs(R.dX(a)), 1e-300);
           if (c0 !== 0) lv = Math.min(lv, Math.sqrt(lX / Math.abs(c0)));
           lv = Math.min(lv, R.ell0 / 16);
@@ -1188,14 +1314,14 @@ const TRL = (function () {
             const e = cexp([0, -carg(alpha) / 2]), aa = cabs(alpha), be = cmul(beta, e);
             const Rr = (-be[0] + Math.sqrt(be[0] * be[0] + 4 * aa * EXPO)) / (2 * aa);
             const pn = pieces_nodes((r) => csub([-aa * r * r, 0], csc(be, r)), Rr, Math.min(Rr / 8, R.ell[jj - 1]), 1, 48);
-            let acc = Z;
-            for (let i = 0; i < pn.y.length; i++) { const s = pn.y[i]; acc = cadd(acc, csc(cmul(A(csc(e, s)), cexp(csub([-aa * s * s, 0], csc(be, s)))), pn.wt[i])); }
-            val = cmul(cmul(cst, acc), e);
+            let acc = P0();
+            for (let i = 0; i < pn.y.length; i++) { const s = pn.y[i]; acc = padd(acc, pmul(A(csc(e, s)), csc(cexp(csub([-aa * s * s, 0], csc(be, s))), pn.wt[i]))); }
+            val = pmul(acc, cmul(cst, e));
           } else {
             if (jj > 0) { lv = Math.min(lv, R.ell[jj - 1] / 16); p = 4; }
-            val = cmul(cst, rayexp(A, alpha, beta, lv, p));
+            val = pmul(rayexpP(A, alpha, beta, lv, p), cst);
           }
-          if (jj === 0) Is = cadd(Is, val); else Ie[jj - 1] = cadd(Ie[jj - 1], val);
+          if (jj === 0) Is = padd(Is, val); else Ie[jj - 1] = padd(Ie[jj - 1], val);
         } else {
           const L = bb - a, h = L / 2; let kap = KAPPA / h, m = a + h, dep = L / 8;
           if (jj === 0 && R.vsad > 0 && R.vsad < bb) {
@@ -1209,9 +1335,9 @@ const TRL = (function () {
           if (!(ws_ || wl_ || wr_)) continue;
           const ella = jj > 0 ? R.ell[jj - 1] : R.ell0, ka = jj > 0 ? R.kindb[jj - 1] : 1;
           const r = segint(tj, sd, sgn, s1, s2, W, R, a, bb, chi, pa, 1 + 3 * R.kindb[jj], ella, R.ell[jj], ws_, wl_, wr_, sg, ka, R.kindb[jj], dep);
-          if (ws_) Is = cadd(Is, r.vs);
-          if (wl_) Ie[jj - 1] = cadd(Ie[jj - 1], r.vl);
-          if (wr_) Ie[jj] = cadd(Ie[jj], r.vr);
+          if (ws_) Is = padd(Is, r.vs);
+          if (wl_) Ie[jj - 1] = padd(Ie[jj - 1], r.vl);
+          if (wr_) Ie[jj] = padd(Ie[jj], r.vr);
         }
       }
       return { Is, Ie };
@@ -1256,16 +1382,16 @@ const TRL = (function () {
     }
 
     // ---- the outer integral ----
-    function outer_gen(q, R, kd) {
+    function outer_gen(q, R) {
+      // returns [density, distribution function]: the weights 1 and 1/t on the shared inner transforms
       const WMAX = opts.wmax || 4900, hu = opts.hu || 0.075, N = opts.N || 20, cde = tau;
-      const weight = kd === 1 ? (t) => ONE : (t) => cinv(t);
-      const inner = (t, s1, s2, M0, part) => inner_gen(t, R, s1, s2, M0, kd, part);
+      const inner = (t, s1, s2, M0, part) => inner_gen(t, R, s1, s2, M0, part);
       const umax = Math.asinh(WMAX / cde);
       const us = []; for (let u = 0; u <= umax + 1e-12; u += hu) us.push(u);
       let ts = us.map(u => [tau, cde * Math.sinh(u)]);
       let tp = tparts(ts);
       const psi = saddle_phase_gen(q, ts, tp.s1, tp.s2, R);
-      let val = 0;
+      let val = [0, 0];
       if (Math.max(0, ...phase_steps(psi)) > 0.25) {
         const w0 = Math.min(0.5, tau / 2);
         const edges0 = [0]; for (let k = 0; k <= Math.ceil(Math.log2(WMAX / w0)); k++) edges0.push(w0 * Math.pow(2, k)); edges0[edges0.length - 1] = WMAX;
@@ -1285,19 +1411,18 @@ const TRL = (function () {
         }
         ts = [[tau, 0]].concat(wn.map(w => [tau, w])); tp = tparts(ts);
         for (let jj = 0; jj < wn.length; jj++) {
-          const t = ts[jj + 1], Is = inner(t, tp.s1[jj + 1], tp.s2[jj + 1], tp.M0[jj + 1], 1).Is;
-          val += cmul(cmul(tp.P[jj + 1], Is), weight(t))[0] * wt[jj];
+          const t = ts[jj + 1], Is = inner(t, tp.s1[jj + 1], tp.s2[jj + 1], tp.M0[jj + 1], 1).Is, PI0 = cmul(tp.P[jj + 1], Is[0]), PI1 = cmul(tp.P[jj + 1], Is[1]);
+          val[0] += PI0[0] * wt[jj]; val[1] += cdiv(PI1, t)[0] * wt[jj];
         }
-        val /= Math.PI;
+        val[0] /= Math.PI; val[1] /= Math.PI;
       } else {
-        let acc = 0;
+        let acc0 = 0, acc1 = 0;
         for (let jj = 0; jj < ts.length; jj++) {
-          const Is = inner(ts[jj], tp.s1[jj], tp.s2[jj], tp.M0[jj], 1).Is;
-          let g = cmul(cmul(tp.P[jj], Is), weight(ts[jj]))[0] * cde * Math.cosh(us[jj]);
-          if (jj === 0) g *= 0.5;
-          acc += g;
+          const Is = inner(ts[jj], tp.s1[jj], tp.s2[jj], tp.M0[jj], 1).Is, f = (jj === 0 ? 0.5 : 1) * cde * Math.cosh(us[jj]);
+          acc0 += cmul(tp.P[jj], Is[0])[0] * f;
+          acc1 += cdiv(cmul(tp.P[jj], Is[1]), ts[jj])[0] * f;
         }
-        val = acc * hu / Math.PI;
+        val = [acc0 * hu / Math.PI, acc1 * hu / Math.PI];
       }
       const u20 = rule(N).x;
       for (let k = 0; k < R.ne; k++) {
@@ -1314,29 +1439,30 @@ const TRL = (function () {
         const np = edges.length - 1, wn = [];
         for (let p = 0; p < np; p++) for (let i = 0; i < N; i++) wn.push(edges[p] + (edges[p + 1] - edges[p]) * u20[i]);
         const te = [[tau, 0]].concat(wn.map(w => [tau, w])), tpe = tparts(te);
-        const Gv = [];
+        const Gv0 = [], Gv1 = [];
         for (let jj = 0; jj < wn.length; jj++) {
-          const t = te[jj + 1], Ie = inner(t, tpe.s1[jj + 1], tpe.s2[jj + 1], tpe.M0[jj + 1], 10 + k).Ie[k];
-          Gv.push(cmul(cmul(cmul(tpe.P[jj + 1], Ie), weight(t)), cexp(csc(t, y))));
+          const t = te[jj + 1], Ie = inner(t, tpe.s1[jj + 1], tpe.s2[jj + 1], tpe.M0[jj + 1], 10 + k).Ie[k], Pe = cmul(tpe.P[jj + 1], cexp(csc(t, y)));
+          Gv0.push(cmul(Pe, Ie[0])); Gv1.push(cdiv(cmul(Pe, Ie[1]), t));
         }
-        let acc = Z;
-        for (let p = 0; p < np; p++) acc = cadd(acc, filon_panel(Gv.slice(p * N, (p + 1) * N), edges[p], edges[p + 1], y, N));
-        val += csc(acc, Math.exp(-tau * y))[0] / Math.PI;
+        let acc0 = Z, acc1 = Z;
+        for (let p = 0; p < np; p++) { acc0 = cadd(acc0, filon_panel(Gv0.slice(p * N, (p + 1) * N), edges[p], edges[p + 1], y, N)); acc1 = cadd(acc1, filon_panel(Gv1.slice(p * N, (p + 1) * N), edges[p], edges[p + 1], y, N)); }
+        val[0] += acc0[0] * Math.exp(-tau * y) / Math.PI; val[1] += acc1[0] * Math.exp(-tau * y) / Math.PI;
       }
       return val;
     }
-    function onevalue(kd, q) {
+    function onevalue(q) {                     // [density, distribution function] at q
       if (q === 0) q = 1e-12;
       const R = breakpts(q);
-      if (R.double && kern === 1 && kd === 1) return Infinity;
       const ed = [0].concat(R.b);
       R.negl = []; for (let i = 0; i < R.b.length; i++) { const mid = (ed[i] + ed[i + 1]) / 2; R.negl.push(3 * tau * mid * mid / 4 > 40); }
       R.vsad = saddle_loc(q, R);
-      return outer_gen(q, R, kd);
+      const v = outer_gen(q, R);
+      if (R.double && kern === 1) v[0] = Infinity;   // case DK: the density is infinite at x = -sqrt(2 c0)
+      return v;
     }
-    function point(x) { return { F: onevalue(2, x), f: onevalue(1, x) }; }
-    function cdf(x) { return onevalue(2, x); }
-    function pdf(x) { return onevalue(1, x); }
+    function point(x) { const v = onevalue(x); return { F: v[1], f: v[0] }; }
+    function cdf(x) { return onevalue(x)[1]; }
+    function pdf(x) { return onevalue(x)[0]; }
     return { point, cdf, pdf, tau, info: () => ({ tau, kern }), _d: { tparts, breakpts, inner_gen, tstar, Dsc, iipar: (s) => iipar(s, c, cas) } };
   }
 
