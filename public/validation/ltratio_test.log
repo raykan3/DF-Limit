@@ -1,32 +1,32 @@
 
 === 1. single integral (DFX) against double integral (TR_LIMDIST) ===
-  DK c=0 c0=0: F single vs double (6 points; 0.6/0.6 s)                     1.11e-15  (tol 1.0e-11)  pass
+  DK c=0 c0=0: F single vs double (6 points; 0.7/0.6 s)                     1.11e-15  (tol 1.0e-11)  pass
   DK c=0 c0=0: f single vs double (relative)                                3.78e-13  (tol 1.0e-10)  pass
-  DU c=0 c0=0: F single vs double (5 points; 1.0/0.6 s)                     6.50e-13  (tol 1.0e-11)  pass
+  DU c=0 c0=0: F single vs double (5 points; 0.9/0.6 s)                     6.50e-13  (tol 1.0e-11)  pass
   DU c=0 c0=0: f single vs double (relative)                                1.66e-12  (tol 1.0e-10)  pass
-  DT c=0 c0=0: F single vs double (4 points; 0.8/0.8 s)                     1.38e-12  (tol 1.0e-11)  pass
+  DT c=0 c0=0: F single vs double (4 points; 0.7/0.8 s)                     1.38e-12  (tol 1.0e-11)  pass
   DT c=0 c0=0: f single vs double (relative)                                3.09e-12  (tol 1.0e-10)  pass
-  DK c=-5 c0=0: F single vs double (3 points; 0.2/0.1 s)                    2.03e-15  (tol 1.0e-11)  pass
+  DK c=-5 c0=0: F single vs double (3 points; 0.3/0.1 s)                    2.03e-15  (tol 1.0e-11)  pass
   DK c=-5 c0=0: f single vs double (relative)                               2.61e-13  (tol 1.0e-10)  pass
   DU c=-5 c0=0: F single vs double (3 points; 0.6/0.2 s)                    2.48e-12  (tol 1.0e-11)  pass
   DU c=-5 c0=0: f single vs double (relative)                               5.32e-12  (tol 1.0e-10)  pass
-  DT c=-10 c0=0: F single vs double (3 points; 0.6/0.3 s)                   4.26e-12  (tol 1.0e-11)  pass
+  DT c=-10 c0=0: F single vs double (3 points; 0.6/0.4 s)                   4.26e-12  (tol 1.0e-11)  pass
   DT c=-10 c0=0: f single vs double (relative)                              8.61e-12  (tol 1.0e-10)  pass
-  SK c=-5 c0=0: F single vs double (3 points; 0.7/0.6 s)                    1.48e-12  (tol 1.0e-11)  pass
+  SK c=-5 c0=0: F single vs double (3 points; 0.6/0.6 s)                    1.48e-12  (tol 1.0e-11)  pass
   SK c=-5 c0=0: f single vs double (relative)                               2.62e-12  (tol 1.0e-10)  pass
-  SU c=-5 c0=0: F single vs double (3 points; 0.6/0.6 s)                    1.64e-12  (tol 1.0e-11)  pass
+  SU c=-5 c0=0: F single vs double (3 points; 0.6/0.7 s)                    1.64e-12  (tol 1.0e-11)  pass
   SU c=-5 c0=0: f single vs double (relative)                               3.15e-12  (tol 1.0e-10)  pass
-  ST c=-10 c0=0: F single vs double (3 points; 0.6/0.9 s)                   2.96e-12  (tol 1.0e-11)  pass
+  ST c=-10 c0=0: F single vs double (3 points; 0.5/1.0 s)                   2.96e-12  (tol 1.0e-11)  pass
   ST c=-10 c0=0: f single vs double (relative)                              5.80e-12  (tol 1.0e-10)  pass
-  DK c=2 c0=2: F single vs double (4 points; 0.6/0.4 s)                     3.26e-13  (tol 1.0e-11)  pass
+  DK c=2 c0=2: F single vs double (4 points; 0.7/0.4 s)                     3.26e-13  (tol 1.0e-11)  pass
   DK c=2 c0=2: f single vs double (relative)                                2.70e-13  (tol 1.0e-10)  pass
-  DU c=2 c0=1: F single vs double (3 points; 2.1/0.2 s)                     7.69e-13  (tol 1.0e-11)  pass
+  DU c=2 c0=1: F single vs double (3 points; 2.3/0.2 s)                     7.69e-13  (tol 1.0e-11)  pass
   DU c=2 c0=1: f single vs double (relative)                                1.17e-12  (tol 1.0e-10)  pass
-  DT c=-2.5 c0=-5: F single vs double (3 points; 1.5/0.6 s)                 5.25e-13  (tol 1.0e-11)  pass
+  DT c=-2.5 c0=-5: F single vs double (3 points; 1.7/0.8 s)                 5.25e-13  (tol 1.0e-11)  pass
   DT c=-2.5 c0=-5: f single vs double (relative)                            2.05e-12  (tol 1.0e-10)  pass
-  DU c=5 c0=-5: F single vs double (2 points; 5.4/0.6 s)                    1.22e-14  (tol 1.0e-11)  pass
+  DU c=5 c0=-5: F single vs double (2 points; 5.4/0.7 s)                    1.22e-14  (tol 1.0e-11)  pass
   DU c=5 c0=-5: f single vs double (relative)                               2.74e-13  (tol 1.0e-10)  pass
-  DK c=0 c0=-5: F single vs double (3 points; 1.5/0.2 s)                    5.00e-16  (tol 1.0e-11)  pass
+  DK c=0 c0=-5: F single vs double (3 points; 1.6/0.2 s)                    5.00e-16  (tol 1.0e-11)  pass
   DK c=0 c0=-5: f single vs double (relative)                               4.92e-14  (tol 1.0e-10)  pass
 
 === 2. exact values, critical values and quantiles ===
@@ -92,5 +92,4 @@
   f(-Inf), f(Inf), f(NaN) = 0, 0, NaN (double)                              0.00e+00  (tol 0.0e+00)  pass
   DK c0=2: f(-sqrt(2 c0)) = Inf                                             0.00e+00  (tol 0.0e+00)  pass
 
-0 of 81 checks failed (111 s).
-Elapsed time is 110.809481 seconds.
+0 of 81 checks failed (113 s).
