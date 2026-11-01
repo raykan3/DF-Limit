@@ -13,14 +13,16 @@ function T = ltratio_paper(which)
 %                 start                                            (tab:init)
 %      'mom'      mean and standard deviation under local alternatives,
 %                 zero and stationary start                        (tab:mom)
+%      'bubble'   limiting power of the right-tailed 5% and 1% tests
+%                 against explosive alternatives c > 0            (tab:bubble)
 %   LTRATIO_PAPER(which) does one of them (a string or a cell array of
-%   strings); the default is all four, about ten minutes.  T = LTRATIO_PAPER(...)
+%   strings); the default is all five, about ten minutes.  T = LTRATIO_PAPER(...)
 %   returns a structure with the computed arrays.  The table of the two
 %   representations against each other (tab:acc) is produced by
 %   validation/acc_table.m, which writes its rows as LaTeX.
 %
 %   See also LTRATIO_CDF, LTRATIO_ICDF, LTRATIO_MOM, LTRATIO_TEST.
-if nargin < 1 || isempty(which), which = {'quant','larsson','init','mom'}; end
+if nargin < 1 || isempty(which), which = {'quant','larsson','init','mom','bubble'}; end
 if ischar(which), which = {which}; end
 cs = {'DK','DU','DT'}; nm = {'tau','tau_mu','tau_tau'};
 T = struct;
@@ -112,6 +114,24 @@ for w = which
                 end
             end
             T.mom = Mm;
+        case 'bubble'
+            fprintf('\n=== Table bubble: limiting power of the right-tailed tests, P[tau > x] under c > 0 ===\n');
+            cc = [0.5 1 2 3 5]; lv = [5 1];
+            pub = {[0.134 0.279 0.619 0.835 0.973; 0.047 0.152 0.519 0.792 0.968], ...
+                   [0.087 0.170 0.569 0.844 0.978; 0.022 0.060 0.423 0.792 0.972], ...
+                   [0.048 0.048 0.225 0.707 0.970; 0.010 0.010 0.109 0.616 0.961]};
+            pubq = [1.2831 2.0145; -0.0785 0.6067; -0.9400 -0.3251];
+            Pb = zeros(3,2,numel(cc)); qb = zeros(3,2);
+            fprintf('%-8s %-5s %8s', '', 'level', 'crit.'); fprintf(' %7g', cc); fprintf('\n');
+            for j = 1:3
+                qb(j,:) = ltratio_icdf([0.95 0.99],cs{j});      % the upper quantiles of the null limit
+                for k = 1:2
+                    for m = 1:numel(cc), Pb(j,k,m) = 1 - ltratio_cdf(qb(j,k),cs{j},cc(m)); end
+                    fprintf('%-8s %4d%% %8.4f', nm{j}, lv(k), qb(j,k)); fprintf(' %7.3f', squeeze(Pb(j,k,:))); fprintf('   (computed)\n');
+                    fprintf('%-8s %5s %8.4f', '', '', pubq(j,k)); fprintf(' %7.3f', pub{j}(k,:)); fprintf('   (paper)\n');
+                end
+            end
+            T.bubble = Pb; T.bubbleq = qb;
         otherwise
             error('ltratio_paper: unknown table %s', w{1});
     end

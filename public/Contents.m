@@ -81,8 +81,9 @@
 %                   argument checks.  About two minutes.
 %   ltratio_paper - reproduces the tables of the paper (quantiles, Larsson's
 %                   tables, the power tables with the initial observation,
-%                   the moments), printing each computed value next to the
-%                   published one
+%                   the moments, the right-tailed tests against explosive
+%                   alternatives), printing each computed value next to
+%                   the published one
 %   validation/   - the script behind the accuracy table of the paper and
 %                   the logs of the runs
 %
