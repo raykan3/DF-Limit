@@ -222,7 +222,16 @@ DFL_CLONES static cdouble ncG_vec(cdouble Y, cdouble a, cdouble b1, cdouble b2, 
     double sr = 0, si = 0; for (int k = 0; k < Nl; k++) { sr += accr[k]; si += acci[k]; }
     return CPX(sr, si);
 }
-/* G = S e^{E}, S bounded */
+/* G = S e^{E}, S bounded.  Along the ray l = e s, e = e^{-i arg(a)/2}, the Gaussian is e^{-|a| s^2/2} (no oscillation) and
+ * r = e (2Y e^{i arg a} + s^2)^{1/2}: the same integral with the arguments (Y e^{i arg a}, |a|, b1 e, b2 e), whose cut in Y
+ * lies where a Y is negative real, as the cut of K_0((s2 - s1) X/2) of the central kernel does, so the paths of inner_gen,
+ * which avoid that cut, serve (with the real-axis rule the cut would lie at negative real Y) */
+static cdouble ncG_rot(cdouble Y, cdouble a, cdouble b1, cdouble b2, double *E, int libm)
+{
+    double ph = carg(a); cdouble e = cexp(CPX(0, -ph / 2));
+    Y = cmul(Y, cexp(CPX(0, ph))); a = CPX(cabs(a), 0); b1 = cmul(b1, e); b2 = cmul(b2, e);
+    return libm ? ncG_libm(Y, a, b1, b2, E) : ncG_vec(Y, a, b1, b2, E);
+}
 static cdouble ncG(cdouble Y, cdouble a, cdouble b1, cdouble b2, double *E)
 {
 #if defined(__GNUC__) || defined(__clang__)
@@ -230,10 +239,10 @@ static cdouble ncG(cdouble Y, cdouble a, cdouble b1, cdouble b2, double *E)
 #else
     DFL_NCG_CALLS++;
 #endif
-    return DFL_NCG_LIBM ? ncG_libm(Y, a, b1, b2, E) : ncG_vec(Y, a, b1, b2, E);
+    return ncG_rot(Y, a, b1, b2, E, DFL_NCG_LIBM);
 }
-cdouble dfl_ncG(cdouble Y, cdouble a, cdouble b1, cdouble b2, int libm) { double E; cdouble S = libm ? ncG_libm(Y, a, b1, b2, &E) : ncG_vec(Y, a, b1, b2, &E); return cmul(S, cexp(CPX(E, 0))); }   /* exported for the tests */
-cdouble dfl_ncG_S(cdouble Y, cdouble a, cdouble b1, cdouble b2, int libm, double *E) { return libm ? ncG_libm(Y, a, b1, b2, E) : ncG_vec(Y, a, b1, b2, E); }   /* G = S e^E: S, and E */
+cdouble dfl_ncG(cdouble Y, cdouble a, cdouble b1, cdouble b2, int libm) { double E; cdouble S = ncG_rot(Y, a, b1, b2, &E, libm); return cmul(S, cexp(CPX(E, 0))); }   /* exported for the tests */
+cdouble dfl_ncG_S(cdouble Y, cdouble a, cdouble b1, cdouble b2, int libm, double *E) { return ncG_rot(Y, a, b1, b2, E, libm); }   /* G = S e^E: S, and E */
 /* phialg of cases DU, DT with a fixed start as S e^{E}, S bounded */
 static cdouble phialg_scaled(const nck_t *nc, cdouble X, int sgn, cdouble s1, cdouble s2, double *E)
 {
@@ -565,6 +574,17 @@ static bool ray_saddle(const nrctx *x, double first, int p, double Rmax, cdouble
     double E0 = creal(Efull_nc(x, ZERO)), Emax = -INFINITY, rmax = 0;
     for (int k = 0; k <= 80; k++) { double r = Rmax * pow(1.25, k - 80), Er = creal(Efull_nc(x, CPX(r, 0))); if (Er > Emax) { Emax = Er; rmax = r; } }
     if (!(Emax - E0 > 2)) return false;
+    /* the maximum on the real axis refined (Newton on Re E' along the axis, within the scan's cell), so that the saddle is
+     * judged against the true height of the bump */
+    double rr = rmax;
+    for (int it = 0; it < 20; it++) {
+        double h = 1e-6 * rr, d1 = creal(dEfull_nc(x, CPX(rr, 0))), d2 = creal(csub(dEfull_nc(x, CPX(rr + h, 0)), dEfull_nc(x, CPX(rr - h, 0)))) / (2 * h);
+        if (!(d2 < 0)) break;
+        double rn = rr - d1 / d2; if (!(rn > rmax / 1.25 && rn < rmax * 1.25)) break;
+        if (fabs(rn - rr) < 1e-10 * rr) { rr = rn; break; }
+        rr = rn;
+    }
+    Emax = fmax(Emax, creal(Efull_nc(x, CPX(rr, 0)))); rmax = rr;
     cdouble rho = CPX(rmax, 0);
     for (int it = 0; it < 30; it++) {
         cdouble d1 = dEfull_nc(x, rho); double h = 1e-6 * cabs(rho);
@@ -575,7 +595,15 @@ static bool ray_saddle(const nrctx *x, double first, int p, double Rmax, cdouble
         rho = cadd(rho, step);
         if (cabs(step) < 1e-10 * cabs(rho)) break;
     }
-    if (!(isfinite(creal(rho)) && isfinite(cimag(rho)) && creal(rho) > 0 && creal(Efull_nc(x, rho)) > E0 + 1)) rho = CPX(rmax, 0);
+    /* the saddle serves only if it is the bump of the real axis slightly displaced: one far above it (Re E beyond the
+     * real-axis maximum) or far from it is not crossed by the real-axis path, and the rotated ray serves instead */
+    if (!(isfinite(creal(rho)) && isfinite(cimag(rho)) && creal(rho) > 0 && creal(Efull_nc(x, rho)) > E0 + 1
+          && creal(Efull_nc(x, rho)) <= Emax + 1 && fabs(cimag(rho)) <= 0.5 * fabs(creal(rho)))) {
+        /* a small rise: the rotated ray serves (its cancellation is at most e^{rise}); a large one: the real-axis maximum
+         * is the pivot, and the descent pieces start from it */
+        if (!(Emax - E0 > 10)) return false;
+        rho = CPX(rmax, 0);
+    }
     cdouble val = ZERO; nodes_t Nd = {NULL, NULL, 0, 0};
     cdouble E_s = Efull_nc(x, rho);
     spctx sp = {x, ZERO, rho, ZERO};                                   /* lam in [0, 1] along rho */

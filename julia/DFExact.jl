@@ -1976,6 +1976,12 @@ function lrule(al::Float64, lm::Float64, bb::Float64, ra::Float64, ai::Float64, 
     ls, ws
 end
 function ncG(Y::ComplexF64, a::ComplexF64, b1::ComplexF64, b2::ComplexF64)
+    # along the ray l = e s, e = e^{-i arg(a)/2}, the Gaussian is e^{-|a| s^2/2} (no oscillation) and r = e (2Y e^{i arg a} +
+    # s^2)^{1/2}: the same integral with the arguments (Y e^{i arg a}, |a|, b1 e, b2 e), whose cut in Y lies where a Y is
+    # negative real, as the cut of K_0((s2 - s1) X/2) of the central kernel does, so the paths of inner_gen, which avoid that
+    # cut, serve; with the real-axis rule the cut would lie at negative real Y instead
+    ph = angle(a); e = exp(-im * ph / 2)
+    Y = Y * exp(im * ph); a = complex(abs(a)); b1 = b1 * e; b2 = b2 * e
     ra = max(real(a), 1e-300); bb = abs(b1) + abs(b2)
     lm = (bb + sqrt(bb * bb + 2 * 41.4 * ra)) / ra
     al = max(sqrt(abs(2Y)), 1e-8 * lm)
@@ -2364,7 +2370,18 @@ function ray_saddle(Efull, dEfull, Ared, first::Float64, p::Int, Rmax::Float64)
     Es = [real(Efull(complex(r))) for r in rs]
     kmax = argmax(Es)
     Es[kmax] - E0 > 2 || return nothing
-    rho = complex(rs[kmax])
+    # the maximum on the real axis refined (Newton on Re E' along the axis, within the scan's cell), so that the saddle is
+    # judged against the true height of the bump
+    rr = rs[kmax]; Emax = Es[kmax]
+    for _ in 1:20
+        h = 1e-6 * rr; d1 = real(dEfull(complex(rr))); d2 = real(dEfull(complex(rr + h)) - dEfull(complex(rr - h))) / (2h)
+        d2 < 0 || break
+        rn = rr - d1 / d2; (rn > rs[kmax] / 1.25 && rn < rs[kmax] * 1.25) || break
+        abs(rn - rr) < 1e-10 * rr && (rr = rn; break)
+        rr = rn
+    end
+    Emax = max(Emax, real(Efull(complex(rr))))
+    rho = complex(rr)
     for _ in 1:30                                                     # Newton on E' = 0
         d1 = dEfull(rho); h = 1e-6 * abs(rho)
         d2 = (dEfull(rho + h) - dEfull(rho - h)) / (2h)
@@ -2374,7 +2391,14 @@ function ray_saddle(Efull, dEfull, Ared, first::Float64, p::Int, Rmax::Float64)
         rho += step
         abs(step) < 1e-10 * abs(rho) && break
     end
-    (isfinite(rho) && real(rho) > 0 && real(Efull(rho)) > E0 + 1) || (rho = complex(rs[kmax]))
+    # the saddle serves only if it is the bump of the real axis slightly displaced: a saddle far above it (Re E_s beyond
+    # the real-axis maximum) or far from it is one the real-axis path does not cross, and the rotated ray serves instead
+    if !(isfinite(rho) && real(rho) > 0 && real(Efull(rho)) > E0 + 1 && real(Efull(rho)) <= Emax + 1 && abs(imag(rho)) <= 0.5abs(real(rho)))
+        # a small rise: the rotated ray serves (its cancellation is at most e^{rise}); a large one: the real-axis maximum
+        # is the pivot, and the descent pieces start from it
+        Emax - E0 > 10 || return nothing
+        rho = complex(rr)
+    end
     val = zero(ComplexF64)
     # the piece from 0 to the saddle
     E_s = Efull(rho)

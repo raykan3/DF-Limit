@@ -33,8 +33,12 @@ for ic = 1:size(cfg,1)
             tic; F1 = cdf(x,cas,c,setfield(o,'method','single')); ta = toc;
             tic; F2 = cdf(x,cas,c,setfield(o,'method','double')); tb = toc;
             f1 = pdf(x,cas,c,setfield(o,'method','single')); f2 = pdf(x,cas,c,setfield(o,'method','double'));
+            % the double integral's status (nonzero where its error estimate is not met: the point is flagged and left out)
             s2 = 0;
-            if ~usemex   % the MATLAB programs report the double integral's status
+            if usemex
+                [~,~,st2] = ltratio_mex('double', 2, double(x), model, double(c), double(c0), double(g0), double(cas(1) == 'S')); [~,~,st3] = ltratio_mex('double', 1, double(x), model, double(c), double(c0), double(g0), double(cas(1) == 'S'));
+                s2 = max(max(st2), max(st3));
+            else
                 [~,i2] = ltratio_cdf(x,cas,c,setfield(o,'method','double')); [~,j2] = ltratio_pdf(x,cas,c,setfield(o,'method','double'));
                 if isfield(i2,'status'), s2 = max(i2.status); end; if isfield(j2,'status'), s2 = max(s2, max(j2.status)); end
             end
