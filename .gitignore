@@ -25,3 +25,17 @@
 # MATLAB/Octave scratch
 *.asv
 octave-workspace
+!/julia/
+!/c/
+!/.github/
+# built products of the Julia and C code
+*.o
+*.mex*
+*.dylib
+*.so
+*.dll
+c/dfl_test_prim
+c/dfl_test_single
+c/dfl_test_gen
+c/dfl_test_mom
+c/dfl_test_dbl

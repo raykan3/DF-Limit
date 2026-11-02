@@ -1,0 +1,16 @@
+LIBRARY libmx.dll
+EXPORTS
+mxArrayToString_800
+mxCreateDoubleMatrix_800
+mxCreateDoubleScalar_800
+mxCreateString_800
+mxFree_800
+mxGetM_800
+mxGetN_800
+mxGetNumberOfElements_800
+mxGetPr_800
+mxGetScalar_800
+mxGetString_800
+mxIsChar_800
+mxIsComplex_800
+mxIsDouble_800

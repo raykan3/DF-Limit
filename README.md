@@ -6,6 +6,8 @@ The limiting distribution function, density, quantiles and moments of the Dickey
 
 - `LaTeX/` — the paper: `LTR_BBK.tex`, `LTR_BBK.bib`, and the compiled `LTR_BBK.pdf`.
 - `public/` — the MATLAB programs (start with `Contents.m` and the manual `doc/ltratio_manual.pdf`): the user-level routines `ltratio_cdf`, `ltratio_pdf`, `ltratio_icdf`, `ltratio_mom`, the two engines (the single integral `dfx_*`, the double integral `tr_*`), the validation suite `ltratio_test` and `ltratio_paper`, which reproduces the tables; `public/validation/` holds the script behind the accuracy table and the logs.
+- `julia/` — the Julia engine `DFExact.jl`, both representations with the arguments of the MATLAB programs (see `julia/README.md`).
+- `c/` — a C port of the engine, checked against the Julia values on every push, and in `c/mex/` the MATLAB MEX file built from it with drop-in replacements of the MATLAB engines, 20 to 50 times faster than the MATLAB programs; the workflow "MATLAB MEX" builds it for Linux, macOS and Windows (see `c/mex/README.md`).
 - `demo/` — an interactive web page for the limits (all six cases, the local null value and the fixed start): open `demo/ltr_demo.html` in a browser. It is built from `ltr_demo_template.html`, `ltrlim.js` (the JavaScript port of the engines) and `ntcoef.js` by `python make_demo.py`.
 
 ```matlab
