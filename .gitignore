@@ -39,3 +39,6 @@ c/dfl_test_single
 c/dfl_test_gen
 c/dfl_test_mom
 c/dfl_test_dbl
+c/dfl_probe
+c/dfl_test_fixed
+c/dfl_test_vmath

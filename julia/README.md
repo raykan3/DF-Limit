@@ -11,13 +11,13 @@ ltratio_icdf([0.01, 0.05, 0.10], "DU")             # asymptotic critical values 
 ltratio_cdf(-2.86157, "DU", -5)                    # limiting power of the 5% test at c = -5
 ltratio_cdf(-2.86157, "SU", -5)                    # the same with a stationary start
 ltratio_cdf(0, "DK", 2; c0 = 2)                    # t-ratio centered at the true value
-ltratio_cdf(-2, "DU", -5; g0 = 1.5)                # fixed start (the double integral)
+ltratio_cdf(-2, "DU", -5; g0 = 1.5)                # fixed start
 ltratio_pdf(-2.0, "DT", -5)                        # density
 ltratio_mom(4, "DT")                               # first four moments of tau_tau
 ```
 
-`x` may be an array; `method = :auto` (the default) takes the single integral at c0 = 0 and the double integral
-otherwise, `:single` and `:double` force one.  The engine functions take the model number 1, 2, 3 for K, U, T:
+`x` may be an array; `method = :auto` (the default) takes the single integral at c0 = 0 and with a fixed start (the
+noncentral kernel) and the double integral when c0 != 0 with a zero start, `:single` and `:double` force one.  The engine functions take the model number 1, 2, 3 for K, U, T:
 `DFExact.cdf(q, model; c, c0, start = :zero | :stationary)`, `DFExact.density`, `DFExact.quantile`,
 `DFExact.moments(model; c, c0, g0, start)`, `DFExact.tstar(model, c)`, `DFExact.tr_limdist(x, model, c; ...)`.
 Install the dependencies once with `julia --project=julia -e 'using Pkg; Pkg.instantiate()'`.

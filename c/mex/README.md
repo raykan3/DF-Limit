@@ -13,14 +13,14 @@ on every push).  It needs nothing else: no runtime, no library, 2.4 MB.  Two way
 addpath ltratio-macos                                 % the unpacked zip (see below)
 ltratio('icdf', [0.01 0.05 0.10], 'DU')               % asymptotic critical values of tau_mu
 ltratio('cdf', -2.86157, 'DU', -5)                    % limiting power of the 5% test at c = -5
-ltratio('cdf', -2, 'DU', -5, struct('g0', 1.5))       % fixed start (the double integral)
+ltratio('cdf', -2, 'DU', -5, struct('g0', 1.5))       % fixed start
 ltratio('pdf', [-1 0 1], 'DK', 2, struct('c0', 2))    % t-ratio centered at the true value
 ltratio('mom', 4, 'SU', -5)                           % moments
 ltratio('threads')                                    % the number of threads (all processors; set with a second argument)
 ```
 
-`opts.method` defaults to `'auto'`: the single integral at c0 = 0 and the double integral otherwise, the faster
-representation in each case.  The MEX file itself takes numeric arguments only (see the header of
+`opts.method` defaults to `'auto'`: the single integral at c0 = 0 and with a fixed start g0 (the noncentral kernel)
+and the double integral when c0 is not 0 with a zero start, the faster representation in each case.  The MEX file itself takes numeric arguments only (see the header of
 `ltratio_mex.c`): `'single'`, `'double'`, `'dist'`, `'icdf'`, `'mom'`, `'tstar'`, `'threads'`.
 
 Seconds per value of the distribution function, MATLAB R2026b on an M4 laptop (ten cores), `timeit`:
@@ -56,7 +56,8 @@ From the repository root, on macOS (Linux: `c++ -shared`, extension `mexa64`; ad
 
 ```sh
 mkdir -p build
-for f in dfl_special dfl_mgf dfl_single dfl_gen dfl_moments dfl_double dfl_api dfl_threads tables; do cc -std=c11 -O2 -c c/$f.c -o build/$f.o; done
+for f in dfl_special dfl_mgf dfl_single dfl_moments dfl_double dfl_api dfl_threads tables; do cc -std=c11 -O2 -c c/$f.c -o build/$f.o; done
+cc -std=c11 -O3 -c c/dfl_gen.c -o build/dfl_gen.o    # -O3: the l-rule of the fixed start is written to be vectorized
 c++ -std=c++11 -O2 -c c/faddeeva/Faddeeva.cc -o build/Faddeeva.o
 c++ -std=c++11 -O2 -c c/faddeeva/faddeeva_shim.cpp -o build/faddeeva_shim.o
 cc -std=c11 -O2 -DDFLIMIT_STUB -c c/mex/ltratio_mex.c -o build/ltratio_mex.o

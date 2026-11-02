@@ -3,7 +3,7 @@
  * the MATLAB engines, so that ltratio_cdf, ltratio_pdf, ltratio_icdf, ltratio_mom and ltratio_test run unchanged on
  * top of it, and ltratio.m is a self-contained wrapper.  All arguments are double arrays (logical flags as 0/1):
  *
- *   F = ltratio_mex('single', kind, x, model, c, c0, stat, sopt)        the single integral; kind 1 density, 2 cdf
+ *   F = ltratio_mex('single', kind, x, model, c, c0, g0, stat, sopt)    the single integral; kind 1 density, 2 cdf
  *   [F, err, status, nbad, nunres, nrefine] = ltratio_mex('double', kind, x, model, c, c0, g0, stat, dopt)
  *   F = ltratio_mex('dist', kind, x, model, c, c0, g0, stat, method)    method 0 automatic, 1 single, 2 double
  *   [q, F, iter, conv] = ltratio_mex('icdf', p, model, c, c0, g0, stat, method, tol)
@@ -81,11 +81,11 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
         if (nlhs > 1) plhs[1] = e; return;
     }
     if (strcmp(op, "single") == 0) {
-        need(nrhs, 5, "ltratio_mex('single', kind, x, model, c, c0, stat, sopt)");
+        need(nrhs, 5, "ltratio_mex('single', kind, x, model, c, c0, g0, stat, sopt)");
         int n; const mxArray *xa = vecarg(prhs[2], "x", &n); plhs[0] = like(xa);
-        dfl_single_opts o = sopts(nrhs > 7 ? prhs[7] : NULL);
+        dfl_single_opts o = sopts(nrhs > 8 ? prhs[8] : NULL);
         int rc = dfl_single(intarg(prhs[1], "kind"), n, mxGetPr(xa), intarg(prhs[3], "model"), scalar(prhs[4], "c"), nrhs > 5 ? scalar(prhs[5], "c0") : 0.0,
-                            nrhs > 6 && scalar(prhs[6], "stat") != 0, &o, mxGetPr(plhs[0]), err, sizeof err);
+                            nrhs > 6 ? scalar(prhs[6], "g0") : 0.0, nrhs > 7 && scalar(prhs[7], "stat") != 0, &o, mxGetPr(plhs[0]), err, sizeof err);
         if (rc) mexErrMsgIdAndTxt("ltratio:engine", "%s", err);
         return;
     }

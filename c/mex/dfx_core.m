@@ -2,7 +2,7 @@ function varargout = dfx_core(action, varargin)
 %DFX_CORE  Engine of the DFX routines, on the C engine of the repository df_limiting (MEX file LTRATIO_MEX).
 %
 %   A drop-in replacement for the MATLAB engine of the same name: the single integral of Theorem 2 (the general kernel
-%   when c0 ~= 0), the moments and t_*, computed in C on several threads.  Not called directly; use DFX_CDF, DFX_PDF,
+%   when c0 ~= 0, and with a fixed start g0 ~= 0), the moments and t_*, computed in C on several threads.  Not called directly; use DFX_CDF, DFX_PDF,
 %   DFX_MOMENTS and DFX_TSTAR, or LTRATIO_CDF, LTRATIO_PDF, LTRATIO_ICDF and LTRATIO_MOM.
 %
 %   Actions:
@@ -10,7 +10,8 @@ function varargout = dfx_core(action, varargin)
 %     dfx_core('tstar', model, c, stat), dfx_core('moments', model, c, opts)
 %     dfx_core('nodefac', k)      multiplies every node count by k (k = 2: convergence check)
 %     dfx_core('threads', n)      the number of threads (sets it with n)
-%   opts: start ('zero' or 'stationary'), c0 (0), gen (false; the general kernel also at c0 = 0), tau, hu, N, pfac,
+%   opts: start ('zero' or 'stationary'), c0 (0), g0 (0; a fixed start, zero-start cases), gen (false; the general
+%   kernel also at c0 = 0), tau, hu, N, pfac,
 %   edge_hw, uniform (hw > 0: the trapezoidal rule in w for checking); for 'moments' start, c0, g0, pmax (4).
 %   The testing actions of the MATLAB engine (k0x, count, tune, D) are not available.
 %
@@ -26,10 +27,11 @@ switch lower(action)
         c = 0; if numel(varargin) >= 3 && ~isempty(varargin{3}), c = varargin{3}; end
         o = struct(); if numel(varargin) >= 4 && ~isempty(varargin{4}), o = varargin{4}; end
         stat = startflag(getf(o,'start','zero'));
-        c0 = getf(o,'c0',0);
+        c0 = getf(o,'c0',0); g0 = getf(o,'g0',0);
+        if g0 ~= 0 && stat, error('dfx: a fixed start g0 applies to the zero-start cases only'); end
         sopt = [getf(o,'tau',NaN) getf(o,'hu',NaN) getf(o,'N',NaN) nodefac getf(o,'pfac',NaN) getf(o,'edge_hw',NaN) getf(o,'uniform',NaN) getf(o,'gen',NaN)];
         kind = 2; if strcmpi(action,'pdf'), kind = 1; end
-        varargout{1} = ltratio_mex('single', kind, double(q), model, double(c), double(c0), stat, double(sopt));
+        varargout{1} = ltratio_mex('single', kind, double(q), model, double(c), double(c0), double(g0), stat, double(sopt));
     case 'tstar'
         stat = false; if numel(varargin) >= 3, stat = startflag(varargin{3}); end
         varargout{1} = ltratio_mex('tstar', varargin{1}, double(varargin{2}), stat);

@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-double dfl_single_value_gen(int kind, double x, int model, double c, double c0, bool stat, const dfl_single_opts *o);
+
 int main(int argc, char **argv)
 {
     FILE *f = fopen(argc > 1 ? argv[1] : "test/gen_ref.txt", "r"); if (!f) { printf("no reference file\n"); return 1; }
@@ -11,7 +11,7 @@ int main(int argc, char **argv)
     int model, st, n = 0, fails = 0; double c, c0, x, F, fd, wF = 0, wf = 0, tt = 0;
     while (fscanf(f, "%d %lf %lf %d %lf %lf %lf", &model, &c, &c0, &st, &x, &F, &fd) == 7) {
         double t0 = dfl_wtime();
-        double Fc = dfl_single_value_gen(2, x, model, c, c0, st, &o), fc = dfl_single_value_gen(1, x, model, c, c0, st, &o);
+        double Fc = dfl_single_value_gen(2, x, model, c, c0, 0.0, st, &o), fc = dfl_single_value_gen(1, x, model, c, c0, 0.0, st, &o);
         tt += dfl_wtime() - t0;
         double eF = fabs(Fc - F), ef = fabs(fc - fd) / fmax(fabs(fd), 1e-300), ea = fabs(fc - fd); n++;
         bool inf_ok = isinf(fd) && isinf(fc);
