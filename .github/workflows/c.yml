@@ -1,0 +1,51 @@
+# The C engine (c/): compiled and checked against the reference values of the Julia engine on Linux, macOS and
+# Windows; mex.yml builds the MATLAB MEX file from it.
+name: C engine
+on:
+  push:
+    branches: [main]
+    paths: ['c/**', '.github/workflows/c.yml']
+  pull_request:
+  workflow_dispatch:
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: build and test (unix)
+        if: runner.os != 'Windows'
+        run: |
+          cd c
+          CFLAGS="-std=c11 -O2 -Wall -Wno-unused-function -Wno-logical-op-parentheses"
+          for f in dfl_special dfl_mgf dfl_single dfl_gen dfl_moments dfl_double dfl_api dfl_threads tables; do cc $CFLAGS -c $f.c -o $f.o; done
+          c++ -std=c++11 -O2 -c faddeeva/Faddeeva.cc -o Faddeeva.o
+          c++ -std=c++11 -O2 -c faddeeva/faddeeva_shim.cpp -o faddeeva_shim.o
+          OBJ="dfl_special.o dfl_mgf.o dfl_single.o dfl_gen.o dfl_moments.o dfl_double.o dfl_api.o dfl_threads.o tables.o Faddeeva.o faddeeva_shim.o"
+          for t in prim single gen mom dbl; do cc $CFLAGS -c dfl_test_$t.c -o dfl_test_$t.o; c++ -o dfl_test_$t dfl_test_$t.o $OBJ -lm -lpthread; done
+          ./dfl_test_prim test/prim_ref.txt
+          ./dfl_test_single test/single_ref.txt
+          ./dfl_test_gen test/gen_ref.txt
+          ./dfl_test_mom test/mom_ref.txt
+          ./dfl_test_dbl test/dbl_ref.txt
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: runner.os == 'Windows'
+      - name: build and test (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: |
+          cd c
+          set SRC=dfl_special.c dfl_mgf.c dfl_single.c dfl_gen.c dfl_moments.c dfl_double.c dfl_api.c dfl_threads.c tables.c faddeeva\Faddeeva.cc faddeeva\faddeeva_shim.cpp
+          cl /nologo /O2 /std:c11 /Fe:dfl_test_prim.exe dfl_test_prim.c %SRC%
+          dfl_test_prim.exe test\prim_ref.txt
+          cl /nologo /O2 /std:c11 /Fe:dfl_test_single.exe dfl_test_single.c %SRC%
+          dfl_test_single.exe test\single_ref.txt
+          cl /nologo /O2 /std:c11 /Fe:dfl_test_gen.exe dfl_test_gen.c %SRC%
+          dfl_test_gen.exe test\gen_ref.txt
+          cl /nologo /O2 /std:c11 /Fe:dfl_test_mom.exe dfl_test_mom.c %SRC%
+          dfl_test_mom.exe test\mom_ref.txt
+          cl /nologo /O2 /std:c11 /Fe:dfl_test_dbl.exe dfl_test_dbl.c %SRC%
+          dfl_test_dbl.exe test\dbl_ref.txt

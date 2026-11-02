@@ -1,0 +1,93 @@
+# Builds the MEX file ltratio_mex from the C engine (c/) for Linux, macOS (Apple silicon and Intel) and Windows,
+# compiled against c/mex/mexstub.h (no MATLAB on the runners), packages it with the m-files (ltratio.m and the
+# engine replacements dfx_core.m, tr_limdist.m, tr_limmom.m) as one zip per platform, uploaded as a workflow
+# artifact; on a tag v* the zips are attached to a GitHub release.  The engine itself is checked against the Julia
+# reference values by c.yml.
+name: MATLAB MEX
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+    paths: ['c/**', '.github/workflows/mex.yml']
+  pull_request:
+    paths: ['c/**', '.github/workflows/mex.yml']
+  workflow_dispatch:
+env:
+  CSRC: dfl_special dfl_mgf dfl_single dfl_gen dfl_moments dfl_double dfl_api dfl_threads tables
+  CFLAGS: -std=c11 -O2 -Wall -Wno-unused-function -Wno-logical-op-parentheses -fPIC
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest,  name: linux-x86_64 }
+          - { os: macos-latest,   name: macos }
+          - { os: windows-latest, name: windows-x86_64 }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: build (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          mkdir -p build/ltratio
+          for f in $CSRC; do cc $CFLAGS -c c/$f.c -o build/$f.o; done
+          c++ -std=c++11 -O2 -fPIC -c c/faddeeva/Faddeeva.cc -o build/Faddeeva.o
+          c++ -std=c++11 -O2 -fPIC -c c/faddeeva/faddeeva_shim.cpp -o build/faddeeva_shim.o
+          cc $CFLAGS -DDFLIMIT_STUB -c c/mex/ltratio_mex.c -o build/ltratio_mex.o
+          c++ -shared -o build/ltratio/ltratio_mex.mexa64 build/*.o -lpthread -lm
+      - name: build (macOS, arm64 and x86_64)
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p build/ltratio
+          for arch in arm64 x86_64; do
+            mkdir -p build/$arch
+            for f in $CSRC; do cc $CFLAGS -arch $arch -c c/$f.c -o build/$arch/$f.o; done
+            c++ -std=c++11 -O2 -arch $arch -c c/faddeeva/Faddeeva.cc -o build/$arch/Faddeeva.o
+            c++ -std=c++11 -O2 -arch $arch -c c/faddeeva/faddeeva_shim.cpp -o build/$arch/faddeeva_shim.o
+            cc $CFLAGS -arch $arch -DDFLIMIT_STUB -c c/mex/ltratio_mex.c -o build/$arch/ltratio_mex.o
+          done
+          c++ -bundle -undefined dynamic_lookup -arch arm64 -o build/ltratio/ltratio_mex.mexmaca64 build/arm64/*.o
+          c++ -bundle -undefined dynamic_lookup -arch x86_64 -o build/ltratio/ltratio_mex.mexmaci64 build/x86_64/*.o
+          file build/ltratio/*
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: runner.os == 'Windows'
+      - name: build (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: |
+          mkdir build\ltratio
+          lib /nologo /def:c\mex\win\libmx.def /machine:x64 /out:build\libmx.lib
+          lib /nologo /def:c\mex\win\libmex.def /machine:x64 /out:build\libmex.lib
+          cl /nologo /LD /O2 /std:c11 /DDFLIMIT_STUB /Fo:build\ /Fe:build\ltratio\ltratio_mex.mexw64 c\mex\ltratio_mex.c c\dfl_special.c c\dfl_mgf.c c\dfl_single.c c\dfl_gen.c c\dfl_moments.c c\dfl_double.c c\dfl_api.c c\dfl_threads.c c\tables.c c\faddeeva\Faddeeva.cc c\faddeeva\faddeeva_shim.cpp build\libmx.lib build\libmex.lib
+          del build\ltratio\*.exp build\ltratio\*.lib
+      - name: package
+        shell: bash
+        run: |
+          cp c/mex/ltratio.m c/mex/dfx_core.m c/mex/tr_limdist.m c/mex/tr_limmom.m c/mex/README.md build/ltratio/
+          cd build && mv ltratio ltratio-${{ matrix.name }}
+          ls -la ltratio-${{ matrix.name }}
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            7z a -r ltratio-${{ matrix.name }}.zip ltratio-${{ matrix.name }} > /dev/null
+          else
+            zip -r -q ltratio-${{ matrix.name }}.zip ltratio-${{ matrix.name }}
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ltratio-${{ matrix.name }}
+          path: build/ltratio-${{ matrix.name }}.zip
+          retention-days: 30
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*.zip

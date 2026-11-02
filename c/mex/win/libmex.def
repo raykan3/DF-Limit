@@ -1,0 +1,5 @@
+LIBRARY libmex.dll
+EXPORTS
+mexCallMATLAB_800
+mexErrMsgIdAndTxt_800
+mexLock_800

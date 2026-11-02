@@ -1,0 +1,26 @@
+name: quick check
+on:
+  push:
+    paths: ['julia/**', '.github/workflows/ci.yml']
+  pull_request:
+  workflow_dispatch:
+jobs:
+  quickcheck:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: '1.11'
+      - uses: julia-actions/cache@v2
+      - name: instantiate
+        run: julia --project=julia -e 'using Pkg; Pkg.instantiate()'
+      - name: IntelVectorMath (x86-64 Linux and Windows)
+        if: runner.os != 'macOS'
+        run: julia --project=julia -e 'using Pkg; Pkg.add("IntelVectorMath")'
+      - name: quick check
+        run: julia -t auto --project=julia julia/quickcheck.jl
