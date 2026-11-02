@@ -3,6 +3,7 @@
 % 10 threads; timeit medians (the fixed-start rows of the table in README.md and the cost paragraph of the paper).
 %   Needs the MEX file in this folder and MATLAB; run from anywhere.
 here = fileparts(fileparts(fileparts(mfilename('fullpath')))); addpath(fullfile(here,'public')); mexdir = fullfile(here,'c','mex');
+cd(here);   % not this folder: its engine replacements would shadow the MATLAB programs from the current directory
 pts = {'DK',-5,0,1,-2; 'DK',2,0,1,1; 'DU',-5,0,1,-2.86; 'DU',-5,0,1,0.5; 'DU',2,0,1,-3; 'DT',-5,0,2,-3; 'DT',2,0,1,-2; 'DU',-5,-5,1,-2; 'DT',-2.5,-5,1,-1.1};
 fprintf('%-18s %12s %12s %12s %12s %12s   %18s %18s\n', 'case c c0 g0 x', 'MATLAB dbl', 'MEX1 single', 'MEX1 double', 'MEX10 single', 'MEX10 double', 'F single', 'F double');
 for k = 1:size(pts,1)
