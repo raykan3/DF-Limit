@@ -38,6 +38,17 @@ Seconds per value of the distribution function, MATLAB R2026b on an M4 laptop (t
 | DU 5 -5 126.85 | 1.394 / 0.364 | 0.395 / 0.194 | 0.077 / 0.043 |
 | SU -5 0 -2 | 0.088 / 0.546 | 0.016 / 0.039 | 0.0036 / 0.016 |
 | ST -10 0 -3 | 0.072 / 0.678 | 0.013 / 0.041 | 0.0029 / 0.017 |
+| DK -5 0 -2, g0 = 1 | -- / 0.081 | 0.054 / 0.010 | 0.011 / 0.0047 |
+| DK 2 0 1, g0 = 1 | -- / 0.158 | 0.0056 / 0.036 | 0.0013 / 0.021 |
+| DU -5 0 -2.86, g0 = 1 | -- / 1.724 | 0.232 / 0.742 | 0.066 / 0.254 |
+| DU -5 0 0.5, g0 = 1 | -- / 1.467 | 0.025 / 0.674 | 0.0071 / 0.254 |
+| DU 2 0 -3, g0 = 1 | -- / 1.722 | 0.269 / 0.877 | 0.075 / 0.274 |
+| DT -5 0 -3, g0 = 2 | -- / 2.028 | 0.224 / 0.775 | 0.063 / 0.257 |
+| DU -5 -5 -2, g0 = 1 | -- / 1.965 | 0.222 / 0.722 | 0.062 / 0.245 |
+| DT -2.5 -5 -1.1, g0 = 1 | -- / 1.998 | 0.284 / 0.759 | 0.079 / 0.269 |
+
+With a fixed start (the last rows) the MATLAB programs have only the double integral; the single integral uses the
+noncentral kernel, written in C to be vectorized, and `'auto'` takes it.
 
 ## Downloading a built MEX file
 
