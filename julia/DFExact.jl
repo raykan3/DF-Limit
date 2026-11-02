@@ -1949,28 +1949,84 @@ const NLNC = Ref(40)       # nodes of the l-rule of G (40 agrees with 384 to 1e-
 """G(Y; a, b1, b2): l = al sinh T, al = sqrt|2Y|, Gauss-Legendre in T up to where the Gaussian, against the growth of the
 cosh factors, is below e^{-41.4}; sqrt(2Y + l^2) formed as al sqrt(2Y/al^2 + sinh^2 T), the principal branch, continuous
 in l since Im(2Y) is constant along the rule and Re(2Y + l^2) > 0 where it vanishes."""
+const NLMAX = 256         # bounds the node counts of the l-rule
+"""the nodes and weights of the l-rule for int_0^lm e^{-a l^2/2 + bb l + i(...)} (...) dl with the edge scale al (the
+factor (2Y + l^2)^{-1/2} varies on it): l = al sinh T with Gauss-Legendre nodes in T, at least Nl, more where the peak of
+the Gaussian times the growth, at l* = bb/Re a with the width sigma = (Re a)^{-1/2}, is narrow in T (at most NLMAX).  (At
+large noncentrality, with the peak separated from the edge scale, the integral runs along the saddle line instead: ncsaddle.)"""
+function lrule(al::Float64, lm::Float64, bb::Float64, ra::Float64, ai::Float64, bi::Float64, Nl::Int)
+    lstar = bb / ra; sig = 1 / sqrt(ra)
+    if lstar - 8sig > 2al
+        l1 = lstar - 8sig; lhi = min(lm, lstar + 8sig)
+        dphi = abs(ai) * (lhi * lhi - l1 * l1) / 2 + bi * (lhi - l1)
+        nB = clamp(8 * cld(ceil(Int, 1.2dphi + 24), 8), Nl, NLMAX)
+        zl, wl = rule(Nl); zB, wB = rule(nB)
+        tm = asinh(l1 / al)
+        ls = Vector{Float64}(undef, Nl + nB); ws = Vector{Float64}(undef, Nl + nB)
+        @inbounds for k in 1:Nl; T = zl[k] * tm; ls[k] = al * sinh(T); ws[k] = al * cosh(T) * wl[k] * tm; end
+        @inbounds for k in 1:nB; ls[Nl+k] = l1 + (lhi - l1) * zB[k]; ws[Nl+k] = (lhi - l1) * wB[k]; end
+        return ls, ws
+    end
+    tm = asinh(lm / al)
+    dT = sig / sqrt(al * al + lstar * lstar)                      # the width of the peak in T
+    n = clamp(8 * cld(ceil(Int, 3tm / dT), 8), Nl, NLMAX)
+    zl, wl = rule(n)
+    ls = Vector{Float64}(undef, n); ws = Vector{Float64}(undef, n)
+    @inbounds for k in 1:n; T = zl[k] * tm; ls[k] = al * sinh(T); ws[k] = al * cosh(T) * wl[k] * tm; end
+    ls, ws
+end
 function ncG(Y::ComplexF64, a::ComplexF64, b1::ComplexF64, b2::ComplexF64)
-    Nl = NLNC[]; zl, wl = rule(Nl)
     ra = max(real(a), 1e-300); bb = abs(b1) + abs(b2)
     lm = (bb + sqrt(bb * bb + 2 * 41.4 * ra)) / ra
-    al = max(sqrt(abs(2Y)), 1e-8 * lm); tm = asinh(lm / al)
+    al = max(sqrt(abs(2Y)), 1e-8 * lm)
+    ls, ws = lrule(al, lm, abs(real(b1)) + abs(real(b2)), ra, imag(a), abs(imag(b1)) + abs(imag(b2)), NLNC[])
     Y2 = 2Y / (al * al)
-    acc = zero(ComplexF64)
-    @inbounds for k in 1:Nl
-        T = zl[k] * tm; sh = sinh(T); l = al * sh
+    # the terms as e^{E_k - Eref} with Eref the largest real exponent: G = S e^{Eref}, S bounded (the exponents reach
+    # 2 lam at large noncentrality, beyond the range of a double)
+    n = length(ls)
+    Es = Vector{ComplexF64}(undef, n); rs = Vector{ComplexF64}(undef, n); fs = Vector{ComplexF64}(undef, n)
+    Eref = -Inf
+    @inbounds for k in 1:n
+        l = ls[k]; sh = l / al
         r = al * sqrt(Y2 + sh * sh)
         z1 = b1 * l; real(z1) < 0 && (z1 = -z1)
         z2 = b2 * r; real(z2) < 0 && (z2 = -z2)
-        # cosh z = e^z (1 + e^{-2z})/2 for Re z >= 0: one exponential of the combined exponent, no overflow
-        acc += exp(-a * l * l / 2 + z1 + z2) * (1 + exp(-2z1)) * (1 + exp(-2z2)) / (4r) * (al * cosh(T) * wl[k] * tm)
+        # cosh z = e^z (1 + e^{-2z})/2 for Re z >= 0: one exponential of the combined exponent
+        Es[k] = -a * l * l / 2 + z1 + z2; rs[k] = r; fs[k] = (1 + exp(-2z1)) * (1 + exp(-2z2)) / 4
+        Eref = max(Eref, real(Es[k]))
     end
-    acc
+    S = zero(ComplexF64)
+    @inbounds for k in 1:n; S += exp(Es[k] - Eref) * fs[k] / rs[k] * ws[k]; end
+    S, Eref
+end
+"""P[R <= 1/2] under the tilt with a fixed start, cases DU, DT: 2 int_0^inf phibar(l; m2, w2) Fbar(sqrt(1 + l^2); m1, w1) dl,
+X1 ~ N(m1, w1 = 1/s2), X2 ~ N(m2, w2 = -1/s1), by the l-rule (the Gaussian in l peaks at |m2|)"""
+function ncP(s1::ComplexF64, s2::ComplexF64, m1::ComplexF64, m2::ComplexF64, Nl::Int)
+    w1 = 1 / s2; w2 = -1 / s1
+    ra = max(real(1 / w2), 1e-300); bb = abs(m2 / w2)
+    lm = (bb + sqrt(bb * bb + 2 * 41.4 * ra)) / ra
+    ls, ws = lrule(1.0, lm, abs(real(m2 / w2)), ra, imag(1 / w2), abs(imag(m2 / w2)), Nl)
+    sq1 = sqrt(2w1); c2 = 1 / (2sqrt(2pi * w2))
+    P = zero(ComplexF64)
+    @inbounds for k in eachindex(ls)
+        l = ls[k]; u = sqrt(1 + l * l)
+        f2 = (exp(-(l - m2)^2 / (2w2)) + exp(-(l + m2)^2 / (2w2))) * c2
+        F1 = (erf((u - m1) / sq1) + erf((u + m1) / sq1)) / 2
+        P += f2 * F1 * ws[k]
+    end
+    2P
 end
 phialg(K::NCK{1}, X, sgn, s1, s2) = K.pref * exp(-s1 * K.m1 * K.m1 / 2) * cosh(K.m1 * s1 * sqrt(2X)) / sqrt(pi * X)
-function phialg(K::NCK{2}, X, sgn, s1, s2)
+"""phialg of cases DU, DT as (S, E): phialg = S e^E, S bounded"""
+function phialg_scaled(K::NCK{2}, X, sgn, s1, s2)
     a = s2 - s1
     cst = K.pref * (2 / pi) * exp((s1 * K.m2 * K.m2 - s2 * K.m1 * K.m1) / 2)
-    sgn > 0 ? cst * ncG(X, a, K.m2 * s1, K.m1 * s2) : cst * ncG(-X, a, K.m1 * s2, K.m2 * s1)
+    S, E = sgn > 0 ? ncG(X, a, K.m2 * s1, K.m1 * s2) : ncG(-X, a, K.m1 * s2, K.m2 * s1)
+    cst * S, E
+end
+function phialg(K::NCK{2}, X, sgn, s1, s2)
+    S, E = phialg_scaled(K, X, sgn, s1, s2)
+    S * exp(E)
 end
 # The noncentral density is a Gaussian in sqrt(2 X~) centered at the mean (X~ = X + g0^2/2 in case DK, X or -X in cases
 # DU, DT): e^{-s_d X~} cosh(b sqrt(2 X~)) with b = m s_d, so that its mass sits at X~ = m^2/2, away from the edge, by the
@@ -1994,8 +2050,80 @@ function ncexp_dv(K::NCK, X, sgn, s1, s2, dXdv)
     tz = abs(z) < 1e-6 ? one(z) : tanh(z) / z
     b * b * tz * (sgn > 0 ? dXdv : -dXdv)
 end
-"""phialg without the noncentral growth: bounded, the factor carried by the nodes"""
-phired(V, X, sgn, s1, s2) = phialg(V, X, sgn, s1, s2) * exp(-ncexp(V, X, sgn, s1, s2))
+"""phialg without the noncentral growth, as (S, E) with phired = S e^E and S bounded (the exponent E reaches the size of
+lam at large noncentrality): the central kernels and case DK with E = 0; cases DU, DT by the l-rule of ncG, or along the
+saddle line (ncsaddle) when the Gaussian of X_2 is separated from the edge scale"""
+const USE_SADDLE = Ref(false)   # the saddle line of ncsaddle (experimental; the composite l-rule serves)
+phired_scaled(V, X, sgn, s1, s2) = (phialg(V, X, sgn, s1, s2) * exp(-ncexp(V, X, sgn, s1, s2)), 0.0)
+function phired_scaled(K::NCK{2}, X, sgn, s1, s2)
+    w2 = -1 / s1; Xt = sgn > 0 ? X : -X
+    USE_SADDLE[] && abs(K.m2) - 8sqrt(abs(w2)) > 2sqrt(abs(2Xt)) && return ncsaddle(K, X, sgn, s1, s2)
+    S, E = phialg_scaled(K, X, sgn, s1, s2)
+    S, E - ncexp(K, X, sgn, s1, s2)
+end
+phired(V, X, sgn, s1, s2) = ((S, E) = phired_scaled(V, X, sgn, s1, s2); S * exp(E))
+"""the square roots of q at the nodes of a path, continuous: the root with positive real part at the first node, then the
+root nearer the previous value (the nodes in path order)"""
+function sqrt_cont(q::AbstractVector{ComplexF64})
+    u = similar(q)
+    u0 = sqrt(q[1]); real(u0) < 0 && (u0 = -u0); u[1] = u0
+    @inbounds for k in 2:length(q); r = sqrt(q[k]); u[k] = abs(r - u[k-1]) <= abs(r + u[k-1]) ? r : -r; end
+    u
+end
+"""the nodes of a line through a saddle, s in [-S, S], in two chains from the center outward (for the branch tracking), with
+the Gauss-Legendre weights; n nodes"""
+function saddle_nodes(n::Int, S::Float64)
+    z, w = rule(n)
+    s = S .* (2 .* z .- 1); ws = 2S .* w
+    ip = findall(>=(0), s); im_ = findall(<(0), s)
+    sort!(ip; by = k -> s[k]); sort!(im_; by = k -> -s[k])
+    s, ws, ip, im_
+end
+"""phired of cases DU, DT at large noncentrality, as (S, E): the integral over X_2 along the line through the saddle of its
+Gaussian, on which that Gaussian is e^{-s^2/2} and nothing cancels (on the real axis the terms exceed the integral by e^{lam}).
+X > 0: l = m_2 + w_2^{1/2} s, u = (l^2 + 2X)^{1/2} continuous from s = 0; X < 0: u = u_s + d s with u_s = (m_2^2 - 2X~)^{1/2}
+and d = (m_2/u_s) w_2^{1/2}, l = (u^2 + 2X~)^{1/2}.  The node count from the change of the exponent along the line."""
+function ncsaddle(K::NCK{2}, X, sgn, s1, s2)
+    w1 = 1 / s2; w2 = -1 / s1; m1 = K.m1; m2 = K.m2
+    real(m2) < 0 && (m2 = -m2)
+    sq2 = sqrt(w2); Xt = sgn > 0 ? X : -X
+    pre = K.pref / (sqrt(-s1) * sqrt(s2))                            # the mass M0
+    Sl = 9.0
+    if sgn > 0
+        us0 = sqrt(m2 * m2 + 2X); real(us0) < 0 && (us0 = -us0)
+        real(m1 * us0 / w1) < 0 && (m1 = -m1)
+        cst = s2 * X - ncexp(K, X, sgn, s1, s2)
+        Eof = (s, u) -> -s * s / 2 - (u - m1)^2 / (2w1) + cst
+        # the node count from the change of the exponent along the line and the width of the Gaussian of X_1 in s
+        sc = range(-Sl, Sl; length = 33); uc = sqrt_cont([(m2 + sq2 * s)^2 + 2X for s in sc])
+        Ec = [Eof(sc[k], uc[k]) for k in eachindex(sc)]
+        dph = sum(abs(Ec[k+1] - Ec[k]) for k in 1:length(sc)-1)
+        n = clamp(8 * cld(ceil(Int, 1.2dph + 24 + 6Sl * abs(sq2) / sqrt(abs(w1))), 8), 64, 2NLMAX)
+        s, ws, ip, im_ = saddle_nodes(n, Sl)
+        u = Vector{ComplexF64}(undef, n)
+        u[ip] = sqrt_cont([(m2 + sq2 * s[k])^2 + 2X for k in ip]); u[im_] = sqrt_cont([(m2 + sq2 * s[k])^2 + 2X for k in im_])
+        E = [Eof(s[k], u[k]) for k in 1:n]; Eref = maximum(real, E)
+        acc = zero(ComplexF64)
+        @inbounds for k in 1:n; acc += ws[k] * exp(E[k] - Eref) * (1 + exp(-2m1 * u[k] / w1)) / u[k]; end
+        return pre / (2pi * sqrt(w1)) * acc, Eref
+    end
+    us = sqrt(m2 * m2 - 2Xt); real(us) < 0 && (us = -us)
+    d = m2 / us * sq2
+    real(m1 * us / w1) < 0 && (m1 = -m1)
+    cst = s1 * X - ncexp(K, X, sgn, s1, s2)
+    Eof = (u, l) -> -(u - m1)^2 / (2w1) - (l - m2)^2 / (2w2) + cst
+    sc = range(-Sl, Sl; length = 33); ucs = [us + d * s for s in sc]; lc = sqrt_cont([uu * uu + 2Xt for uu in ucs])
+    Ec = [Eof(ucs[k], lc[k]) for k in eachindex(sc)]
+    dph = sum(abs(Ec[k+1] - Ec[k]) for k in 1:length(sc)-1)
+    n = clamp(8 * cld(ceil(Int, 1.2dph + 24 + 6Sl * abs(d) / sqrt(abs(w1))), 8), 64, 2NLMAX)
+    s, ws, ip, im_ = saddle_nodes(n, Sl)
+    u = [us + d * s[k] for k in 1:n]; l = Vector{ComplexF64}(undef, n)
+    l[ip] = sqrt_cont([u[k]^2 + 2Xt for k in ip]); l[im_] = sqrt_cont([u[k]^2 + 2Xt for k in im_])
+    E = [Eof(u[k], l[k]) for k in 1:n]; Eref = maximum(real, E)
+    acc = zero(ComplexF64)
+    @inbounds for k in 1:n; acc += ws[k] * d * exp(E[k] - Eref) * (1 + exp(-2m1 * u[k] / w1)) * (1 + exp(-2m2 * l[k] / w2)) * u[k] / l[k]; end
+    pre / (2pi * sqrt(w1) * sqrt(w2)) * acc, Eref
+end
 """the kernel of the fixed start g0 at the point t: the means and pref from the Girsanov forms (case DK) or from the
 partial fractions (partial) of Q(s,t) (cases DU, DT; the determinant form of Q for c <= CGIRS, the Girsanov form beyond)"""
 function nckernel(model::Int, c::Float64, t::ComplexF64, g0::Float64, s1::ComplexF64, s2::ComplexF64)
@@ -2015,7 +2143,7 @@ function psi_half(K::NCK{1}, s1, s2, M0)
     r = sqrt(1 + K.g0 * K.g0); w = sqrt(2 / s1)
     K.pref / sqrt(s1) * (erf((r - K.m1) / w) + erf((r + K.m1) / w)) / 2
 end
-psi_half(K::NCK{2}, s1, s2, M0) = K.pref * M0 * Pkap(1 / (2s2), 1 / (2s1), 0.5, false, NLNC[]; nc = true, m1s = K.m1 * K.m1, m2s = K.m2 * K.m2)
+psi_half(K::NCK{2}, s1, s2, M0) = K.pref * M0 * ncP(s1, s2, K.m1, K.m2, NLNC[])
 function psi_half(V::Val, s1, s2, M0)
     l = 1 / (abs(s2 - s1) + 2)
     if abs(s2) >= abs(s1) / 4
@@ -2061,15 +2189,16 @@ end
 
 const NGROW = 16; const NLEV = 5; const NCON = 16   # node counts of the segment pieces (the least nodes of a growing piece,
                                                     # the grading levels of the connection, the least nodes of each of its sub-pieces)
-"""nodes and weights for int_0^L: the first piece [0, first] (shortened, by halving, until the exponent falls by at most 4 and
-its phase changes by at most 40 rad across it) with nmin nodes and the substitution p, then pieces growing by the factor 4,
+"""nodes and weights for int_0^L: the first piece [0, first] (shortened, by halving, until the exponent falls by at most 4,
+rises by at most 4 (the noncentral kernels rise away from the edge) and its phase changes by at most 40 rad across it) with
+nmin nodes and the substitution p, then pieces growing by the factor 4,
 with the node counts set by the change of the phase of the exponent across each piece (at most 0.85 rad per node, in
 sub-pieces of at most 160 nodes), until the exponent is below -EXPO."""
 function pieces_nodes(Ef, L::Float64, first::Float64, p::Int, nmin::Int)
     first = min(first, L)
     for _ in 1:60
         E = [Ef(first * i / 8) for i in 0:8]
-        ((real(E[end]) > -4 && sum(abs(imag(E[i+1]) - imag(E[i])) for i in 1:8) < 40) || first <= 1e-12 * L) && break
+        ((real(E[end]) > -4 && maximum(real(Ek) for Ek in E) - real(E[1]) < 4 && sum(abs(imag(E[i+1]) - imag(E[i])) for i in 1:8) < 40) || first <= 1e-12 * L) && break
         first /= 2
     end
     y, wt = glnodes(0.0, first, nmin, p)
@@ -2157,7 +2286,7 @@ function segint(V, tj::ComplexF64, sd::ComplexF64, sgn::Int, s1::ComplexF64, s2:
     L = b - a; c0 = R.c0
     # the integrand at the offset z from the end o (a or b), X formed from z without cancellation
     Ez = (z, o) -> (X = xat(R, z, o); -tj * (o + z) * (o + z) - sd * X + ncexp(V, X, sgn, s1, s2))
-    Fz = (z, o) -> (X = xat(R, z, o); W(o + z) * exp(Ez(z, o)) * phired(V, X, sgn, s1, s2))
+    Fz = (z, o) -> (X = xat(R, z, o); (S, E) = phired_scaled(V, X, sgn, s1, s2); W(o + z) * S * exp(Ez(z, o) + E))
     Eb = Ez(0.0, b); Ea = Ez(0.0, a)
     alpha = tj + c0 * sd
     # the descent directions, kept within 80 degrees of the segment, or 45 degrees at a pseudo-edge, whose branch points
@@ -2222,6 +2351,64 @@ function raylen(Ef, R0::Float64)
     end
     Rr
 end
+"""the ray of the noncentral kernel when the full exponent rises along the real axis by more than 2 above its value at the
+edge (the mass of the noncentral density sits at X~ = m^2/2, beyond the breakpoint): on the rotated ray the integrand then
+oscillates with a magnitude of up to e^{lam} and cancels, while the saddle of the full exponent E(rho) = -alpha rho^2 -
+beta rho + ncexp(X(rho)) lies near the real axis.  The path is the straight piece from 0 to the saddle rho_s (Newton on E'
+from the maximum of Re E on the real axis, E'' by a difference), then straight pieces in the direction of steepest descent
+at their start, renewed where the descent along a piece ends, until E has fallen by EXPO; the nodes from pieces_nodes with
+the full exponent.  Returns nothing when there is no such rise (the rotated ray serves)."""
+function ray_saddle(Efull, dEfull, Ared, first::Float64, p::Int, Rmax::Float64)
+    E0 = real(Efull(0.0 + 0im))
+    rs = [Rmax * 1.25^(k - 80) for k in 0:80]
+    Es = [real(Efull(complex(r))) for r in rs]
+    kmax = argmax(Es)
+    Es[kmax] - E0 > 2 || return nothing
+    rho = complex(rs[kmax])
+    for _ in 1:30                                                     # Newton on E' = 0
+        d1 = dEfull(rho); h = 1e-6 * abs(rho)
+        d2 = (dEfull(rho + h) - dEfull(rho - h)) / (2h)
+        abs(d2) == 0 && break
+        step = -d1 / d2
+        abs(step) > abs(rho) && (step *= abs(rho) / abs(step))
+        rho += step
+        abs(step) < 1e-10 * abs(rho) && break
+    end
+    (isfinite(rho) && real(rho) > 0 && real(Efull(rho)) > E0 + 1) || (rho = complex(rs[kmax]))
+    val = zero(ComplexF64)
+    # the piece from 0 to the saddle
+    E_s = Efull(rho)
+    s, w = pieces_nodes(lam -> Efull(lam * rho), 1.0, min(1 / 8, first / abs(rho)), p, 48)
+    for k in eachindex(s); (S, E) = Ared(s[k] * rho); val += S * exp(Efull(s[k] * rho) + E) * w[k]; end
+    val *= rho
+    # the descent from the saddle: straight pieces, each in the direction of steepest descent at its start
+    z0 = rho
+    h = 1e-6 * abs(rho); d2 = (dEfull(rho + h) - dEfull(rho - h)) / (2h)
+    d = abs(d2) > 0 ? exp(im * (pi - angle(d2)) / 2) : one(rho); real(d) < 0 && (d = -d)
+    for piece in 1:16
+        Ez0 = Efull(z0)
+        Ef = r -> Efull(z0 + r * d) - Ez0
+        # the length: where the exponent has fallen by EXPO, or where the descent along the line ends (Re Ef turns up)
+        # the length: along the line while the exponent falls; stop where it has fallen by EXPO, or at the last point before
+        # it rises (the direction is renewed there from the gradient), or at 10 Rmax
+        L = 1e-3 * abs(rho); Lend = NaN; Eprev = 0.0
+        for it in 0:200
+            Ec = real(Ef(L))
+            if Ec < -EXPO; Lend = L; break; end
+            if isnan(Ec) || Ec > Eprev; Lend = it == 0 ? L : L / 1.4; break; end
+            if L > 10Rmax; Lend = L; break; end
+            Eprev = Ec; L *= 1.4
+        end
+        isnan(Lend) && (Lend = L)
+        s, w = pieces_nodes(Ef, Lend, min(Lend / 8, first), 1, 48)
+        for k in eachindex(s); (S, E) = Ared(z0 + s[k] * d); val += S * exp(Ef(s[k]) + Ez0 + E) * w[k] * d; end
+        z0 += Lend * d
+        real(Efull(z0) - E_s) < -EXPO && break
+        g = dEfull(z0); abs(g) == 0 && break
+        d = -conj(g) / abs(g)                                           # the new direction of steepest descent
+    end
+    val
+end
 """int_0^inf A(rho) exp(-alpha rho^2 - beta rho) drho for the noncentral kernel K, A = W phialg along the ray from a, whose
 growth e^{ncexp} the quadratic exponent does not see: the straight ray rho = r e in the direction e of the Gaussian's decay,
 or, when the exponential grows along it by more than e^2 (the saddle term of the exponent, Re z < 0), the segment to the
@@ -2229,27 +2416,30 @@ saddle x0 = -beta/(2 alpha) and the descent line x0 + r e from it; the nodes fro
 first piece of length `first` with the substitution p (4 at an edge)."""
 function rayexp_nc(K::NCK, R::Breaks, a::Float64, sgn::Int, s1, s2, W, alpha::ComplexF64, beta::ComplexF64, first::Float64, p::Int)
     e = exp(-im * angle(alpha) / 2); aa = abs(alpha); be = beta * e
-    Ared = rho -> W(a + rho) * phired(K, xat(R, rho, a), sgn, s1, s2)
+    Ared = rho -> ((S, E) = phired_scaled(K, xat(R, rho, a), sgn, s1, s2); (W(a + rho) * S, E))     # (S, E): the factor S e^E
     Efull = rho -> -alpha * rho * rho - beta * rho + ncexp(K, xat(R, rho, a), sgn, s1, s2)
+    dEfull = rho -> -2alpha * rho - beta + ncexp_dv(K, xat(R, rho, a), sgn, s1, s2, dXv(R, a + rho))
     val = zero(ComplexF64)
     if max(0.0, -real(be))^2 / (4aa) <= 2
         Ef = r -> Efull(r * e)
         Rr = raylen(Ef, (-real(be) + sqrt(real(be)^2 + 4aa * EXPO)) / (2aa))
+        vs = ray_saddle(Efull, dEfull, Ared, first, p, Rr)
+        vs === nothing || return vs
         s, w = pieces_nodes(Ef, Rr, min(Rr / 8, first), p, 48)
-        for k in eachindex(s); val += Ared(s[k] * e) * exp(Ef(s[k])) * w[k]; end
+        for k in eachindex(s); (S, E) = Ared(s[k] * e); val += S * exp(Ef(s[k]) + E) * w[k]; end
         return val * e
     end
     x0 = -beta / (2alpha)
     Ef1 = lam -> Efull(lam * x0)                                   # the segment to the saddle, rho = lam x0
     s, w = pieces_nodes(Ef1, 1.0, min(1 / 8, first / abs(x0)), p, 48)
-    for k in eachindex(s); val += Ared(s[k] * x0) * exp(Ef1(s[k])) * w[k]; end
+    for k in eachindex(s); (S, E) = Ared(s[k] * x0); val += S * exp(Ef1(s[k]) + E) * w[k]; end
     val *= x0
     E0 = Efull(x0)
     Ef2 = r -> Efull(x0 + r * e) - E0                              # the descent line from the saddle
     Rr = raylen(Ef2, sqrt(EXPO / aa))
     s, w = pieces_nodes(Ef2, Rr, min(Rr / 8, first), 1, 48)
     v2 = zero(ComplexF64)
-    for k in eachindex(s); v2 += Ared(x0 + s[k] * e) * exp(Ef2(s[k]) + E0) * w[k]; end
+    for k in eachindex(s); (S, E) = Ared(x0 + s[k] * e); v2 += S * exp(Ef2(s[k]) + E0 + E) * w[k]; end
     val + v2 * e
 end
 

@@ -104,30 +104,61 @@ static void nckernel(int model, double c, cdouble t, double g0, cdouble s1, cdou
 long DFL_NCG_CALLS = 0, DFL_NCG_SEG = 0, DFL_NCG_RAY = 0;   /* counters, for profiling (DFL_NCG_SEG, DFL_NCG_RAY: the nodes of the segments and of the rays) */
 int DFL_NCG_LIBM = 0;                           /* 1: the libm version of ncG (checking) */
 /* the libm version: complex exp, cosh, sqrt at each node */
-static cdouble ncG_libm(cdouble Y, cdouble a, cdouble b1, cdouble b2)
+/* the nodes and weights of the l-rule for int_0^lm e^{-a l^2/2 + bb l + i(...)} (...) dl with the edge scale al (the
+ * factor (2Y + l^2)^{-1/2} varies on it): the Gaussian times the growth peaks at l* = bb/Re a with the width sigma =
+ * (Re a)^{-1/2}.  When the peak is separated from the edge scale (l* - 8 sigma > 2 al, large noncentrality), l = al sinh T
+ * with Nl Gauss-Legendre nodes in T on [0, l* - 8 sigma] and Gauss-Legendre in l on [l* - 8 sigma, l* + 8 sigma], with the
+ * node count from the phase change (ai = Im a, bi = |Im b_1| + |Im b_2|) across it; otherwise l = al sinh T on [0, lm] with
+ * the node count raised where the peak is narrow in T.  Returns the count, at most NLMAX. */
+#define NLMAX 256
+static int clampn(double n, int lo) { int k = (int) ceil(n / 8) * 8; return k < lo ? lo : k > NLMAX ? NLMAX : k; }
+static int lrule(double al, double lm, double bb, double ra, double ai, double bi, int Nl, double *ls, double *ws)
 {
-    int Nl = DFL_NLNC; const double *wl; const double *zl = dfl_rule(Nl, &wl);
+    double lstar = bb / ra, sig = 1 / sqrt(ra);
+    if (Nl > NLMAX / 2) Nl = NLMAX / 2;
+    if (lstar - 8 * sig > 2 * al) {
+        double l1 = lstar - 8 * sig, lhi = fmin(lm, lstar + 8 * sig);
+        double dphi = fabs(ai) * (lhi * lhi - l1 * l1) / 2 + bi * (lhi - l1);
+        int nB = clampn(1.2 * dphi + 24, Nl); if (nB > NLMAX - Nl) nB = NLMAX - Nl;
+        const double *wl; const double *zl = dfl_rule(Nl, &wl); const double *wB; const double *zB = dfl_rule(nB, &wB);
+        double tm = asinh(l1 / al);
+        for (int k = 0; k < Nl; k++) { double T = zl[k] * tm; ls[k] = al * sinh(T); ws[k] = al * cosh(T) * wl[k] * tm; }
+        for (int k = 0; k < nB; k++) { ls[Nl + k] = l1 + (lhi - l1) * zB[k]; ws[Nl + k] = (lhi - l1) * wB[k]; }
+        return Nl + nB;
+    }
+    double tm = asinh(lm / al), dT = sig / sqrt(al * al + lstar * lstar);
+    int n = clampn(3 * tm / dT, Nl);
+    const double *wl; const double *zl = dfl_rule(n, &wl);
+    for (int k = 0; k < n; k++) { double T = zl[k] * tm; ls[k] = al * sinh(T); ws[k] = al * cosh(T) * wl[k] * tm; }
+    return n;
+}
+static cdouble ncG_libm(cdouble Y, cdouble a, cdouble b1, cdouble b2, double *E)
+{
+    int Nl = DFL_NLNC;
     double ra = fmax(creal(a), 1e-300), bb = cabs(b1) + cabs(b2);
     double lm = (bb + sqrt(bb * bb + 2 * 41.4 * ra)) / ra;
-    double al = fmax(sqrt(cabs(cscale(2, Y))), 1e-8 * lm), tm = asinh(lm / al);
+    double al = fmax(sqrt(cabs(cscale(2, Y))), 1e-8 * lm);
+    double ls[NLMAX], ws[NLMAX]; int n = lrule(al, lm, fabs(creal(b1)) + fabs(creal(b2)), ra, cimag(a), fabs(cimag(b1)) + fabs(cimag(b2)), Nl, ls, ws);
     cdouble Y2 = cscale(2 / (al * al), Y), acc = ZERO;
-    for (int k = 0; k < Nl; k++) {
-        double T = zl[k] * tm, sh = sinh(T), l = al * sh;
+    cdouble Es[NLMAX], rs[NLMAX], fs[NLMAX]; double Eref = -INFINITY;
+    for (int k = 0; k < n; k++) {
+        double l = ls[k], sh = l / al;
         cdouble r = cscale(al, csqrt(cadd(Y2, CPX(sh * sh, 0))));
         cdouble z1 = cscale(l, b1), z2 = cmul(b2, r);
         if (creal(z1) < 0) z1 = cneg(z1);
         if (creal(z2) < 0) z2 = cneg(z2);
-        /* cosh z = e^{z} (1 + e^{-2z})/2 for Re z >= 0: one exponential of the combined exponent, no overflow */
-        cdouble E = cadd(cadd(cscale(-l * l / 2, a), z1), z2);
-        cdouble f1 = cscale(0.5, cadd(ONE, cexp(cscale(-2, z1)))), f2 = cscale(0.5, cadd(ONE, cexp(cscale(-2, z2))));
-        cdouble term = cdiv(cmul(cmul(cexp(E), f1), f2), r);
-        acc = cadd(acc, cscale(al * cosh(T) * wl[k] * tm, term));
+        /* cosh z = e^{z} (1 + e^{-2z})/2 for Re z >= 0: one exponential of the combined exponent */
+        Es[k] = cadd(cadd(cscale(-l * l / 2, a), z1), z2); rs[k] = r;
+        fs[k] = cscale(0.25, cmul(cadd(ONE, cexp(cscale(-2, z1))), cadd(ONE, cexp(cscale(-2, z2)))));
+        if (creal(Es[k]) > Eref) Eref = creal(Es[k]);
     }
+    /* the terms as e^{E_k - Eref}: G = S e^{Eref} with S bounded (the exponents reach 2 lam at large noncentrality) */
+    for (int k = 0; k < n; k++) acc = cadd(acc, cscale(ws[k], cdiv(cmul(cexp(csub(Es[k], CPX(Eref, 0))), fs[k]), rs[k])));
+    *E = Eref;
     return acc;
 }
 /* the vectorizable version: the same sum in real arithmetic on arrays of length Nl, exp and sincos from dfl_vmath.h, so
  * that the compiler vectorizes the loops (NEON, SSE2; AVX2+FMA on Linux x86 through target_clones) */
-#define NLMAX 128
 #if defined(__linux__) && defined(__x86_64__) && (defined(__clang__) || defined(__GNUC__))
 #define DFL_CLONES __attribute__((target_clones("avx2,fma", "default")))
 #else
@@ -148,24 +179,24 @@ static inline void coshfac_arr(int n, const double *e, const double *s, const do
 {
     for (int i = 0; i < n; i++) { re[i] = (1 + e[i] * c[i]) / 2; im[i] = e[i] * s[i] / 2; }
 }
-DFL_CLONES static cdouble ncG_vec(cdouble Y, cdouble a, cdouble b1, cdouble b2)
+DFL_CLONES static cdouble ncG_vec(cdouble Y, cdouble a, cdouble b1, cdouble b2, double *E)
 {
-    int Nl = DFL_NLNC > NLMAX ? NLMAX : DFL_NLNC; const double *wl; const double *zl = dfl_rule(Nl, &wl);
+    int Nl = DFL_NLNC;
     double ar = creal(a), ai = cimag(a), ra = fmax(ar, 1e-300), bb = cabs(b1) + cabs(b2);
     double lm = (bb + sqrt(bb * bb + 2 * 41.4 * ra)) / ra;
-    double al = fmax(sqrt(cabs(cscale(2, Y))), 1e-8 * lm), tm = asinh(lm / al);
+    double al = fmax(sqrt(cabs(cscale(2, Y))), 1e-8 * lm);
     double Y2r = 2 * creal(Y) / (al * al), Y2i = 2 * cimag(Y) / (al * al);
     double b1r = creal(b1), b1i = cimag(b1), b2r = creal(b2), b2i = cimag(b2);
-    double T[NLMAX], eT[NLMAX], sh[NLMAX], ch[NLMAX], l[NLMAX], l2[NLMAX], wk[NLMAX];
-    double pr[NLMAX], qi[NLMAX], rr[NLMAX], ri[NLMAX];                   /* r = al sqrt(Y2 + sh^2) */
-    double x1[NLMAX], y1[NLMAX], x2[NLMAX], y2[NLMAX];                   /* z1 = b1 l, z2 = b2 r, with Re >= 0 */
-    double xe[NLMAX], ye[NLMAX], ee[NLMAX], se[NLMAX], ce[NLMAX];        /* the combined exponent E = -a l^2/2 + z1 + z2 */
-    double m1[NLMAX], n1[NLMAX], e1[NLMAX], s1[NLMAX], c1[NLMAX], f1r[NLMAX], f1i[NLMAX];   /* (1 + e^{-2 z1})/2 */
-    double m2[NLMAX], n2[NLMAX], e2[NLMAX], s2[NLMAX], c2[NLMAX], f2r[NLMAX], f2i[NLMAX];   /* (1 + e^{-2 z2})/2 */
-    double accr[NLMAX], acci[NLMAX];
-    for (int k = 0; k < Nl; k++) T[k] = zl[k] * tm;
-    dfl_vexp(Nl, T, eT);
-    for (int k = 0; k < Nl; k++) { double ie = 1 / eT[k]; sh[k] = (eT[k] - ie) / 2; ch[k] = (eT[k] + ie) / 2; l[k] = al * sh[k]; l2[k] = l[k] * l[k]; wk[k] = al * ch[k] * wl[k] * tm; }
+    enum { NM = NLMAX };
+    double l[NM], wk[NM], l2[NM], sh[NM];
+    double pr[NM], qi[NM], rr[NM], ri[NM];                   /* r = al sqrt(Y2 + sh^2) */
+    double x1[NM], y1[NM], x2[NM], y2[NM];                   /* z1 = b1 l, z2 = b2 r, with Re >= 0 */
+    double xe[NM], ye[NM], ee[NM], se[NM], ce[NM];           /* the combined exponent E = -a l^2/2 + z1 + z2 */
+    double m1[NM], n1[NM], e1[NM], s1[NM], c1[NM], f1r[NM], f1i[NM];   /* (1 + e^{-2 z1})/2 */
+    double m2[NM], n2[NM], e2[NM], s2[NM], c2[NM], f2r[NM], f2i[NM];   /* (1 + e^{-2 z2})/2 */
+    double accr[NM], acci[NM];
+    Nl = lrule(al, lm, fabs(b1r) + fabs(b2r), ra, ai, fabs(b1i) + fabs(b2i), Nl, l, wk);     /* now the count of nodes */
+    for (int k = 0; k < Nl; k++) { sh[k] = l[k] / al; l2[k] = l[k] * l[k]; }
     for (int k = 0; k < Nl; k++) { pr[k] = Y2r + sh[k] * sh[k]; qi[k] = Y2i; }
     csqrt_arr(Nl, pr, qi, rr, ri);
     for (int k = 0; k < Nl; k++) {
@@ -175,6 +206,9 @@ DFL_CLONES static cdouble ncG_vec(cdouble Y, cdouble a, cdouble b1, cdouble b2)
         xe[k] = -ar * l2[k] / 2 + x1[k] + x2[k]; ye[k] = -ai * l2[k] / 2 + y1[k] + y2[k];
         m1[k] = -2 * x1[k]; n1[k] = -2 * y1[k]; m2[k] = -2 * x2[k]; n2[k] = -2 * y2[k];
     }
+    double Eref = -INFINITY; for (int k = 0; k < Nl; k++) if (xe[k] > Eref) Eref = xe[k];
+    for (int k = 0; k < Nl; k++) xe[k] -= Eref;                       /* the terms as e^{E_k - Eref}: G = S e^{Eref} */
+    *E = Eref;
     dfl_vexp(Nl, xe, ee); dfl_vsincos(Nl, ye, se, ce);
     dfl_vexp(Nl, m1, e1); dfl_vsincos(Nl, n1, s1, c1); coshfac_arr(Nl, e1, s1, c1, f1r, f1i);
     dfl_vexp(Nl, m2, e2); dfl_vsincos(Nl, n2, s2, c2); coshfac_arr(Nl, e2, s2, c2, f2r, f2i);
@@ -188,16 +222,26 @@ DFL_CLONES static cdouble ncG_vec(cdouble Y, cdouble a, cdouble b1, cdouble b2)
     double sr = 0, si = 0; for (int k = 0; k < Nl; k++) { sr += accr[k]; si += acci[k]; }
     return CPX(sr, si);
 }
-static cdouble ncG(cdouble Y, cdouble a, cdouble b1, cdouble b2)
+/* G = S e^{E}, S bounded */
+static cdouble ncG(cdouble Y, cdouble a, cdouble b1, cdouble b2, double *E)
 {
 #if defined(__GNUC__) || defined(__clang__)
     __atomic_add_fetch(&DFL_NCG_CALLS, 1, __ATOMIC_RELAXED);
 #else
     DFL_NCG_CALLS++;
 #endif
-    return DFL_NCG_LIBM ? ncG_libm(Y, a, b1, b2) : ncG_vec(Y, a, b1, b2);
+    return DFL_NCG_LIBM ? ncG_libm(Y, a, b1, b2, E) : ncG_vec(Y, a, b1, b2, E);
 }
-cdouble dfl_ncG(cdouble Y, cdouble a, cdouble b1, cdouble b2, int libm) { return libm ? ncG_libm(Y, a, b1, b2) : ncG_vec(Y, a, b1, b2); }   /* exported for the tests */
+cdouble dfl_ncG(cdouble Y, cdouble a, cdouble b1, cdouble b2, int libm) { double E; cdouble S = libm ? ncG_libm(Y, a, b1, b2, &E) : ncG_vec(Y, a, b1, b2, &E); return cmul(S, cexp(CPX(E, 0))); }   /* exported for the tests */
+cdouble dfl_ncG_S(cdouble Y, cdouble a, cdouble b1, cdouble b2, int libm, double *E) { return libm ? ncG_libm(Y, a, b1, b2, E) : ncG_vec(Y, a, b1, b2, E); }   /* G = S e^E: S, and E */
+/* phialg of cases DU, DT with a fixed start as S e^{E}, S bounded */
+static cdouble phialg_scaled(const nck_t *nc, cdouble X, int sgn, cdouble s1, cdouble s2, double *E)
+{
+    cdouble a = csub(s2, s1);
+    cdouble ex = cscale(0.5, csub(cmul(s1, cmul(nc->m2, nc->m2)), cmul(s2, cmul(nc->m1, nc->m1))));
+    cdouble cst = cmul(cscale(2 / M_PI, nc->pref), cexp(ex));
+    return sgn > 0 ? cmul(cst, ncG(X, a, cmul(nc->m2, s1), cmul(nc->m1, s2), E)) : cmul(cst, ncG(cneg(X), a, cmul(nc->m1, s2), cmul(nc->m2, s1), E));
+}
 static cdouble phialg(int kern, const nck_t *nc, cdouble X, int sgn, cdouble s1, cdouble s2)
 {
     if (nc && nc->nc) {
@@ -206,10 +250,8 @@ static cdouble phialg(int kern, const nck_t *nc, cdouble X, int sgn, cdouble s1,
             cdouble f = cmul(nc->pref, cexp(cscale(-0.5, cmul(s1, cmul(m, m)))));
             return cdiv(cmul(f, ccosh(cmul(cmul(m, s1), csqrt(cscale(2, X))))), csqrt(cscale(M_PI, X)));
         }
-        cdouble a = csub(s2, s1);
-        cdouble ex = cscale(0.5, csub(cmul(s1, cmul(nc->m2, nc->m2)), cmul(s2, cmul(nc->m1, nc->m1))));
-        cdouble cst = cmul(cscale(2 / M_PI, nc->pref), cexp(ex));
-        return sgn > 0 ? cmul(cst, ncG(X, a, cmul(nc->m2, s1), cmul(nc->m1, s2))) : cmul(cst, ncG(cneg(X), a, cmul(nc->m1, s2), cmul(nc->m2, s1)));
+        double E; cdouble S = phialg_scaled(nc, X, sgn, s1, s2, &E);
+        return cmul(S, cexp(CPX(E, 0)));
     }
     if (kern == 1) return cdiv(ONE, csqrt(cscale(M_PI, X)));
     cdouble arg = cmul(cscale(0.5, csub(s2, s1)), X);
@@ -222,6 +264,13 @@ static cdouble logcosh(cdouble z)
 {
     cdouble zs = creal(z) >= 0 ? z : cneg(z);
     return csub(cadd(zs, clog(cadd(ONE, cexp(cscale(-2, zs))))), CPX(0.6931471805599453, 0));
+}
+/* tanh z without overflow: 1 - 2/(e^{2z} + 1) for Re z >= 0, odd otherwise */
+static cdouble ctanh_safe(cdouble z)
+{
+    bool neg = creal(z) < 0; if (neg) z = cneg(z);
+    cdouble t = csub(ONE, cdiv(CPX(2, 0), cadd(cexp(cscale(2, z)), ONE)));
+    return neg ? cneg(t) : t;
 }
 static cdouble ncb(const nck_t *nc, int sgn, cdouble s1, cdouble s2)
 {
@@ -239,15 +288,37 @@ static cdouble ncexp_dv(const nck_t *nc, cdouble X, int sgn, cdouble s1, cdouble
 {
     if (!(nc && nc->nc)) return ZERO;
     cdouble b = ncb(nc, sgn, s1, s2), Xt = sgn > 0 ? X : cneg(X), z = cmul(b, csqrt(cscale(2, Xt)));
-    cdouble tz = cabs(z) < 1e-6 ? ONE : cdiv(cdiv(csinh(z), ccosh(z)), z);
+    cdouble tz = cabs(z) < 1e-6 ? ONE : cdiv(ctanh_safe(z), z);
     return cmul(cmul(b, b), cscale(sgn > 0 ? dXdv : -dXdv, tz));
 }
 static cdouble phired(int kern, const nck_t *nc, cdouble X, int sgn, cdouble s1, cdouble s2)
 {
+    if (nc && nc->nc && kern == 2) {
+        double E; cdouble S = phialg_scaled(nc, X, sgn, s1, s2, &E);
+        return cmul(S, cexp(csub(CPX(E, 0), ncexp(nc, X, sgn, s1, s2))));
+    }
     cdouble f = phialg(kern, nc, X, sgn, s1, s2);
     return (nc && nc->nc) ? cmul(f, cexp(cneg(ncexp(nc, X, sgn, s1, s2)))) : f;
 }
 /* Psi_t(1/2) with a fixed start: P[J(1)^2 <= 1 + g0^2] (case DK), P[R <= 1/2] by the l-rule of Pkap (DU, DT), times the mass */
+/* P[R <= 1/2] under the tilt with a fixed start, cases DU, DT: 2 int_0^inf phibar(l; m2, w2) Fbar(sqrt(1 + l^2); m1, w1) dl,
+ * X1 ~ N(m1, w1 = 1/s2), X2 ~ N(m2, w2 = -1/s1), by the l-rule (the Gaussian in l peaks at |m2|) */
+static cdouble ncP(cdouble s1, cdouble s2, cdouble m1, cdouble m2, int Nl)
+{
+    cdouble w1 = cdiv(ONE, s2), w2 = cneg(cdiv(ONE, s1)), iw2 = cdiv(ONE, w2), mw = cmul(m2, iw2);
+    double ra = fmax(creal(iw2), 1e-300), bb = cabs(mw);
+    double lm = (bb + sqrt(bb * bb + 2 * 41.4 * ra)) / ra;
+    double ls[NLMAX], ws[NLMAX]; int n = lrule(1.0, lm, fabs(creal(mw)), ra, cimag(iw2), fabs(cimag(mw)), Nl, ls, ws);
+    cdouble sq1 = csqrt(cscale(2, w1)), c2 = cdiv(ONE, cscale(2, csqrt(cscale(2 * M_PI, w2)))), P = ZERO;
+    for (int k = 0; k < n; k++) {
+        double l = ls[k], u = sqrt(1 + l * l);
+        cdouble lm2 = csub(CPX(l, 0), m2), lp2 = cadd(CPX(l, 0), m2);
+        cdouble f2 = cmul(cadd(cexp(cneg(cdiv(cmul(lm2, lm2), cscale(2, w2)))), cexp(cneg(cdiv(cmul(lp2, lp2), cscale(2, w2))))), c2);
+        cdouble F1 = cscale(0.5, cadd(dfl_erf(cdiv(csub(CPX(u, 0), m1), sq1)), dfl_erf(cdiv(cadd(CPX(u, 0), m1), sq1))));
+        P = cadd(P, cscale(ws[k], cmul(f2, F1)));
+    }
+    return cscale(2, P);
+}
 static cdouble psi_half_nc(const nck_t *nc, cdouble s1, cdouble s2, cdouble M0)
 {
     if (nc->kern == 1) {
@@ -255,8 +326,7 @@ static cdouble psi_half_nc(const nck_t *nc, cdouble s1, cdouble s2, cdouble M0)
         cdouble e = cscale(0.5, cadd(dfl_erf(cdiv(csub(CPX(r, 0), nc->m1), w)), dfl_erf(cdiv(cadd(CPX(r, 0), nc->m1), w))));
         return cmul(cdiv(nc->pref, csqrt(s1)), e);
     }
-    cdouble P = dfl_Pkap(cdiv(ONE, cscale(2, s2)), cdiv(ONE, cscale(2, s1)), 0.5, false, DFL_NLNC, true, cmul(nc->m1, nc->m1), cmul(nc->m2, nc->m2));
-    return cmul(cmul(nc->pref, M0), P);
+    return cmul(cmul(nc->pref, M0), ncP(s1, s2, nc->m1, nc->m2, DFL_NLNC));
 }
 
 /* ---- nodes of the pieces ---- */
@@ -285,16 +355,17 @@ static void glnodes(double a, double b, int n, int p, nodes_t *N)
 #define NGROW 16
 #define NLEV 5
 #define NCON 16
-/* nodes for int_0^L: the first piece shortened until the exponent falls by at most 4 and its phase by at most 40 rad,
- * then pieces growing by 4 with node counts from the change of the exponent, until it is below -EXPO */
+/* nodes for int_0^L: the first piece shortened until the exponent falls by at most 4, rises by at most 4 (the noncentral
+ * kernels rise away from the edge) and its phase changes by at most 40 rad, then pieces growing by 4 with node counts from
+ * the change of the exponent, until it is below -EXPO */
 static void pieces_nodes(efn_t Ef, const void *ctx, double L, double first, int p, int nmin, nodes_t *N)
 {
     N->n = 0;
     first = fmin(first, L);
     for (int it = 0; it < 60; it++) {
-        cdouble E[9]; for (int i = 0; i <= 8; i++) E[i] = Ef(first * i / 8, ctx);
+        cdouble E[9]; double mx = -INFINITY; for (int i = 0; i <= 8; i++) { E[i] = Ef(first * i / 8, ctx); mx = fmax(mx, creal(E[i])); }
         double dph = 0; for (int i = 0; i < 8; i++) dph += fabs(cimag(E[i + 1]) - cimag(E[i]));
-        if ((creal(E[8]) > -4 && dph < 40) || first <= 1e-12 * L) break;
+        if ((creal(E[8]) > -4 && mx - creal(E[0]) < 4 && dph < 40) || first <= 1e-12 * L) break;
         first /= 2;
     }
     glnodes(0, first, nmin, p, N);
@@ -360,7 +431,11 @@ typedef struct {
 static cdouble W_of(const sctx *c, cdouble v) { return c->kind == 1 ? cscale(2, cmul(v, v)) : cadd(CPX(c->q, 0), cscale(2 * c->c0, v)); }
 static cdouble Ez(const sctx *c, cdouble z, double o) { cdouble v = cadd(CPX(o, 0), z), X = xat(c->R, z, o);
     return cadd(csub(cneg(cmul(c->tj, cmul(v, v))), cmul(c->sd, X)), ncexp(c->nc, X, c->sgn, c->s1, c->s2)); }
-static cdouble Fz(const sctx *c, cdouble z, double o) { cdouble X = xat(c->R, z, o); return cmul(cmul(W_of(c, cadd(CPX(o, 0), z)), cexp(Ez(c, z, o))), phired(c->kern, c->nc, X, c->sgn, c->s1, c->s2)); }
+static cdouble Fz(const sctx *c, cdouble z, double o) { cdouble X = xat(c->R, z, o);
+    if (c->nc && c->nc->nc && c->kern == 2) {                             /* the factor as S e^E with S bounded: one exponential */
+        double E; cdouble S = phialg_scaled(c->nc, X, c->sgn, c->s1, c->s2, &E);
+        return cmul(cmul(W_of(c, cadd(CPX(o, 0), z)), S), cexp(cadd(csub(Ez(c, z, o), ncexp(c->nc, X, c->sgn, c->s1, c->s2)), CPX(E, 0)))); }
+    return cmul(cmul(W_of(c, cadd(CPX(o, 0), z)), cexp(Ez(c, z, o))), phired(c->kern, c->nc, X, c->sgn, c->s1, c->s2)); }
 typedef struct { const sctx *c; cdouble u; double o; cdouble E0; } ectx;
 static cdouble E_piece(double s, const void *v) { const ectx *e = v; return csub(Ez(e->c, cscale(s, e->u), e->o), e->E0); }
 typedef struct { const sctx *c; cdouble leg, dv; } lctx;
@@ -461,6 +536,89 @@ static double raylen(efn_t Ef, const void *ctx, double R0)
     for (int it = 0; it < 60; it++) { if (creal(Ef(Rr, ctx)) < -EXPO) break; Rr *= 1.5; }
     return Rr;
 }
+/* the full exponent's derivative along rho, and the scaled factor (S, E) at rho: Ared = S e^E */
+static cdouble ncexp_dv_c(const nck_t *nc, cdouble X, int sgn, cdouble s1, cdouble s2, cdouble dXdv)   /* complex dX/dv */
+{
+    if (!(nc && nc->nc)) return ZERO;
+    cdouble b = ncb(nc, sgn, s1, s2), Xt = sgn > 0 ? X : cneg(X), z = cmul(b, csqrt(cscale(2, Xt)));
+    cdouble tz = cabs(z) < 1e-6 ? ONE : cdiv(ctanh_safe(z), z);
+    return cmul(cmul(cmul(b, b), tz), sgn > 0 ? dXdv : cneg(dXdv));
+}
+static cdouble dEfull_nc(const nrctx *x, cdouble rho) { const sctx *c = x->c;
+    cdouble dX = cadd(CPX(c->R->q, 0), cscale(2 * c->R->c0, cadd(CPX(x->a, 0), rho)));
+    return cadd(csub(cscale(-2, cmul(x->alpha, rho)), x->beta), ncexp_dv_c(c->nc, xat(c->R, rho, x->a), c->sgn, c->s1, c->s2, dX)); }
+static cdouble Ared_sc(const nrctx *x, cdouble rho, double *E) { const sctx *c = x->c;
+    cdouble X = xat(c->R, rho, x->a), Wv = W_of(c, cadd(CPX(x->a, 0), rho));
+    if (c->kern == 1) { *E = 0; return cmul(Wv, phired(c->kern, c->nc, X, c->sgn, c->s1, c->s2)); }   /* case DK: elementary, bounded */
+    cdouble S = phialg_scaled(c->nc, X, c->sgn, c->s1, c->s2, E), ne = ncexp(c->nc, X, c->sgn, c->s1, c->s2);
+    *E -= creal(ne);                                                   /* the real part; the phase stays in S */
+    return cmul(cmul(Wv, S), cexp(CPX(0, -cimag(ne)))); }
+/* a straight piece z0 + r d, r in [0, L]: the exponent relative to z0 */
+typedef struct { const nrctx *x; cdouble z0, d, Ez0; } spctx;
+static cdouble E_sp(double r, const void *v) { const spctx *p = v; return csub(Efull_nc(p->x, cadd(p->z0, cscale(r, p->d))), p->Ez0); }
+/* the ray when the full exponent rises along the real axis by more than 2 above its value at the edge (the mass of the
+ * noncentral density beyond the breakpoint): the straight piece from 0 to the saddle of the full exponent (Newton on E'
+ * from the maximum of Re E on the real axis), then straight pieces in the direction of steepest descent at their start,
+ * renewed where the descent along a piece ends, until E has fallen by EXPO.  Returns false when there is no such rise. */
+static bool ray_saddle(const nrctx *x, double first, int p, double Rmax, cdouble *out)
+{
+    double E0 = creal(Efull_nc(x, ZERO)), Emax = -INFINITY, rmax = 0;
+    for (int k = 0; k <= 80; k++) { double r = Rmax * pow(1.25, k - 80), Er = creal(Efull_nc(x, CPX(r, 0))); if (Er > Emax) { Emax = Er; rmax = r; } }
+    if (!(Emax - E0 > 2)) return false;
+    cdouble rho = CPX(rmax, 0);
+    for (int it = 0; it < 30; it++) {
+        cdouble d1 = dEfull_nc(x, rho); double h = 1e-6 * cabs(rho);
+        cdouble d2 = cscale(1 / (2 * h), csub(dEfull_nc(x, cadd(rho, CPX(h, 0))), dEfull_nc(x, csub(rho, CPX(h, 0)))));
+        if (cabs(d2) == 0) break;
+        cdouble step = cneg(cdiv(d1, d2));
+        if (cabs(step) > cabs(rho)) step = cscale(cabs(rho) / cabs(step), step);
+        rho = cadd(rho, step);
+        if (cabs(step) < 1e-10 * cabs(rho)) break;
+    }
+    if (!(isfinite(creal(rho)) && isfinite(cimag(rho)) && creal(rho) > 0 && creal(Efull_nc(x, rho)) > E0 + 1)) rho = CPX(rmax, 0);
+    cdouble val = ZERO; nodes_t Nd = {NULL, NULL, 0, 0};
+    cdouble E_s = Efull_nc(x, rho);
+    spctx sp = {x, ZERO, rho, ZERO};                                   /* lam in [0, 1] along rho */
+    pieces_nodes(E_sp, &sp, 1.0, fmin(1.0 / 8, first / cabs(rho)), p, 48, &Nd);
+    for (int k = 0; k < Nd.n; k++) { cdouble z = cscale(Nd.y[k], rho); double E; cdouble S = Ared_sc(x, z, &E);
+        val = cadd(val, cscale(Nd.w[k], cmul(S, cexp(cadd(Efull_nc(x, z), CPX(E, 0)))))); }
+    val = cmul(val, rho);
+    if (getenv("DFL_DEBUG4") && !(creal(val) == creal(val))) printf("  NaN already on the piece to the saddle: rho %g%+gi nodes %d\n", creal(rho), cimag(rho), Nd.n);
+    cdouble z0 = rho; double h = 1e-6 * cabs(rho);
+    cdouble d2 = cscale(1 / (2 * h), csub(dEfull_nc(x, cadd(rho, CPX(h, 0))), dEfull_nc(x, csub(rho, CPX(h, 0)))));
+    cdouble d = cabs(d2) > 0 ? cexp(CPX(0, (M_PI - carg(d2)) / 2)) : ONE; if (creal(d) < 0) d = cneg(d);
+    for (int piece = 0; piece < 16; piece++) {
+        cdouble Ez0 = Efull_nc(x, z0);
+        spctx sq = {x, z0, d, Ez0};
+        /* the length: along the line while the exponent falls; stop where it has fallen by EXPO, or at the last point before
+         * it rises (the direction is renewed there from the gradient), or at 10 Rmax */
+        double L = 1e-3 * cabs(rho), Lend = NAN, Eprev = 0;
+        for (int it = 0; it < 200; it++) {
+            double Ec = creal(E_sp(L, &sq));
+            if (Ec < -EXPO) { Lend = L; break; }
+            if (!(Ec == Ec) || Ec > Eprev) { Lend = it == 0 ? L : L / 1.4; break; }
+            if (L > 10 * Rmax) { Lend = L; break; }
+            Eprev = Ec; L *= 1.4;
+        }
+        if (isnan(Lend)) Lend = L;
+        pieces_nodes(E_sp, &sq, Lend, fmin(Lend / 8, first), 1, 48, &Nd);
+        for (int k = 0; k < Nd.n; k++) { cdouble z = cadd(z0, cscale(Nd.y[k], d)); double E; cdouble S = Ared_sc(x, z, &E);
+            val = cadd(val, cscale(Nd.w[k], cmul(cmul(S, cexp(cadd(cadd(E_sp(Nd.y[k], &sq), Ez0), CPX(E, 0)))), d))); }
+        if (getenv("DFL_DEBUG4")) printf("  piece %d: z0 %g%+gi d %g%+gi Lend %g nodes %d val %g%+gi Ez0 %g%+gi\n", piece, creal(z0), cimag(z0), creal(d), cimag(d), Lend, Nd.n, creal(val), cimag(val), creal(Ez0), cimag(Ez0));
+        z0 = cadd(z0, cscale(Lend, d));
+        if (creal(csub(Efull_nc(x, z0), E_s)) < -EXPO) break;
+        cdouble g = dEfull_nc(x, z0); if (cabs(g) == 0) break;
+        d = cscale(1 / cabs(g), cneg(conj(g)));
+    }
+    free(Nd.y); free(Nd.w);
+    if (getenv("DFL_DEBUG4") && !(creal(val) == creal(val))) {
+        cdouble z = rho; double E; cdouble S = Ared_sc(x, z, &E);
+        printf("ray_saddle NaN: alpha %g%+gi beta %g%+gi rho_s %g%+gi E_s %g%+gi rmax-scan Emax %g E0 %g S(rho_s) %g%+gi E %g d %g%+gi\n",
+               creal(x->alpha), cimag(x->alpha), creal(x->beta), cimag(x->beta), creal(rho), cimag(rho), creal(E_s), cimag(E_s), Emax, E0, creal(S), cimag(S), E, creal(d), cimag(d));
+    }
+    *out = val;
+    return true;
+}
 static cdouble rayexp_nc(const sctx *c, double a, cdouble alpha, cdouble beta, double first, int p)
 {
     cdouble e = cexp(CPX(0, -carg(alpha) / 2)); double aa = cabs(alpha); cdouble be = cmul(beta, e);
@@ -469,8 +627,9 @@ static cdouble rayexp_nc(const sctx *c, double a, cdouble alpha, cdouble beta, d
     cdouble val = ZERO;
     if (fmax(0, -creal(be)) * fmax(0, -creal(be)) / (4 * aa) <= 2) {
         double Rr = raylen(Ef_nc, &x, (-creal(be) + sqrt(creal(be) * creal(be) + 4 * aa * EXPO)) / (2 * aa));
+        if (ray_saddle(&x, first, p, Rr, &val)) return val;
         pieces_nodes(Ef_nc, &x, Rr, fmin(Rr / 8, first), p, 48, &Nd);
-        for (int k = 0; k < Nd.n; k++) { cdouble rho = cscale(Nd.y[k], e); val = cadd(val, cscale(Nd.w[k], cmul(Ared_nc(&x, rho), cexp(Efull_nc(&x, rho))))); }
+        for (int k = 0; k < Nd.n; k++) { cdouble rho = cscale(Nd.y[k], e); double E; cdouble S = Ared_sc(&x, rho, &E); val = cadd(val, cscale(Nd.w[k], cmul(S, cexp(cadd(Efull_nc(&x, rho), CPX(E, 0)))))); }
 #if defined(__GNUC__) || defined(__clang__)
         __atomic_add_fetch(&DFL_NCG_RAY, Nd.n, __ATOMIC_RELAXED);
 #endif
@@ -479,13 +638,13 @@ static cdouble rayexp_nc(const sctx *c, double a, cdouble alpha, cdouble beta, d
     }
     x.x0 = cdiv(cneg(beta), cscale(2, alpha)); x.mode = 1;
     pieces_nodes(Ef_nc, &x, 1.0, fmin(1.0 / 8, first / cabs(x.x0)), p, 48, &Nd);
-    for (int k = 0; k < Nd.n; k++) { cdouble rho = cscale(Nd.y[k], x.x0); val = cadd(val, cscale(Nd.w[k], cmul(Ared_nc(&x, rho), cexp(Efull_nc(&x, rho))))); }
+    for (int k = 0; k < Nd.n; k++) { cdouble rho = cscale(Nd.y[k], x.x0); double E; cdouble S = Ared_sc(&x, rho, &E); val = cadd(val, cscale(Nd.w[k], cmul(S, cexp(cadd(Efull_nc(&x, rho), CPX(E, 0)))))); }
     val = cmul(val, x.x0);
     x.E0 = Efull_nc(&x, x.x0); x.mode = 2;
     double Rr = raylen(Ef_nc, &x, sqrt(EXPO / aa));
     pieces_nodes(Ef_nc, &x, Rr, fmin(Rr / 8, first), 1, 48, &Nd);
     cdouble v2 = ZERO;
-    for (int k = 0; k < Nd.n; k++) { cdouble rho = cadd(x.x0, cscale(Nd.y[k], e)); v2 = cadd(v2, cscale(Nd.w[k], cmul(Ared_nc(&x, rho), cexp(Efull_nc(&x, rho))))); }
+    for (int k = 0; k < Nd.n; k++) { cdouble rho = cadd(x.x0, cscale(Nd.y[k], e)); double E; cdouble S = Ared_sc(&x, rho, &E); v2 = cadd(v2, cscale(Nd.w[k], cmul(S, cexp(cadd(Efull_nc(&x, rho), CPX(E, 0)))))); }
     free(Nd.y); free(Nd.w);
     return cadd(val, cmul(v2, e));
 }
