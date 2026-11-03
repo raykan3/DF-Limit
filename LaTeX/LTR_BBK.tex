@@ -270,13 +270,13 @@ All quantities are computed without cancellation for large $c$: the entries of $
 
 The distribution of a ratio $X/\sqrt Y$ is a double inversion of the joint moment generating function of $(X,Y)$ with an explicit kernel.  Let $(X,Y)$ be a random vector with $Y>0$ almost surely and moment generating function $M(s,t)$, let $Q_0=(X-c_0Y)/\sqrt Y$ for a real constant $c_0$, and for $b\in\mathbb{C}$ and $\Rea t>0$ let
 \begin{equation}
-J_m(b,t)=\int_0^\infty v^me^{-bv-tv^2}\dr{v},
+\Xi_m(b,t)=\int_0^\infty v^me^{-bv-tv^2}\dr{v},
 \label{eq:Jm}
 \end{equation}
 so that, with the principal branch of $\sqrt t$,
 \begin{equation}
-J_0=\frac12\sqrt{\frac\pi t}\,e^{b^2/(4t)}\erfc\Big(\frac{b}{2\sqrt t}\Big),\quad
-J_1=\frac{1-bJ_0}{2t},\quad J_2=\frac{J_0-bJ_1}{2t}.
+\Xi_0=\frac12\sqrt{\frac\pi t}\,e^{b^2/(4t)}\erfc\Big(\frac{b}{2\sqrt t}\Big),\quad
+\Xi_1=\frac{1-b\Xi_0}{2t},\quad \Xi_2=\frac{\Xi_0-b\Xi_1}{2t}.
 \label{eq:Jrec}
 \end{equation}
 
@@ -289,19 +289,19 @@ Let $M$ be finite in a neighborhood of $(\sigma,\tau)$ with $\tau+c_0\sigma>0$, 
 \end{equation}
 and that for every compact $K\subset I$
 \begin{equation}
-\int_{-\infty}^{\infty}\int_{-\infty}^{\infty}|M(\sigma+\iu u,\tau+\iu w)|\,\sup_{q\in K}|J_2(q(\sigma+\iu u),\tau+c_0\sigma+\iu(w+c_0u))|\dr{u}\dr{w}<\infty.
+\int_{-\infty}^{\infty}\int_{-\infty}^{\infty}|M(\sigma+\iu u,\tau+\iu w)|\,\sup_{q\in K}|\Xi_2(q(\sigma+\iu u),\tau+c_0\sigma+\iu(w+c_0u))|\dr{u}\dr{w}<\infty.
 \label{eq:B}
 \end{equation}
 Then $Q_0$ has a continuous density on $I$, given for $q\in I$ by
 \begin{equation}
 f_{Q_0}(q)=\frac{1}{(2\pi\iu)^2}\int_{\sigma-\iu\infty}^{\sigma+\iu\infty}\int_{\tau-\iu\infty}^{\tau+\iu\infty}
-M(s,t)\,2J_2(qs,t+c_0s)\dr{t}\dr{s}.
+M(s,t)\,2\Xi_2(qs,t+c_0s)\dr{t}\dr{s}.
 \label{eq:dinv}
 \end{equation}
-If moreover $\sigma>0$ and (\ref{eq:B}) holds with $J_1(qs,t+c_0s)/s$ in place of $J_2(qs,t+c_0s)$, then for $q\in I$
+If moreover $\sigma>0$ and (\ref{eq:B}) holds with $\Xi_1(qs,t+c_0s)/s$ in place of $\Xi_2(qs,t+c_0s)$, then for $q\in I$
 \begin{equation}
 \PP(Q_0>q)=\frac{1}{(2\pi\iu)^2}\int_{\sigma-\iu\infty}^{\sigma+\iu\infty}\int_{\tau-\iu\infty}^{\tau+\iu\infty}
-M(s,t)\,\frac{2J_1(qs,t+c_0s)}{s}\dr{t}\dr{s},
+M(s,t)\,\frac{2\Xi_1(qs,t+c_0s)}{s}\dr{t}\dr{s},
 \label{eq:cinv}
 \end{equation}
 and if $\sigma<0$ the same integral equals $-\PP(Q_0\le q)$.
@@ -309,7 +309,7 @@ and if $\sigma<0$ the same integral equals $-\PP(Q_0\le q)$.
 
 The kernels arise from the change of variables $(x,y)=(pv+c_0v^2,v^2)$, under which $\{(X-c_0Y)/\sqrt Y\le q\}$ becomes $\{p\le q\}$ and the Jacobian is $2v^2$: the inner integral over $v$ of the inversion formula for the density of $(X,Y)$ is (\ref{eq:Jm}) with $b=qs$ and $t+c_0s$ in place of $t$.  The conditions are mild versions of the absolute integrability of $M$ on the contour, and they are needed: for the limits of Section~\ref{sec:model} the density of $U$ is unbounded (at $U=-\frac12$ in case \Fk, where $U=\{W(1)^2-1\}/2$), so that $|M|$ decays only like $|\Ima s|^{-1/2}$ (\Fk) or $|\Ima s|^{-1}$ (\Fu, \Ft) along the contour; in $t$, $|M|$ decays like $\exp(-\frac12\Rea\mu)$ with $\Rea\mu\sim|\Ima t|^{1/2}$, and both conditions hold, with $I=\mathbb{R}$.  The proof is in \ref{app:proofs}.  The interval $I$ need not be the whole line: where the density has an isolated singularity, the theorem is applied on the open intervals on either side of it, and the distribution function is continuous across the point as soon as the singularity is integrable; this is how Theorem~\ref{th:single} treats its one exceptional point.
 
-The double integrals (\ref{eq:dinv}) and (\ref{eq:cinv}) can be evaluated by quadrature, but not efficiently: the kernel $J_2(qs,t)$ is in its Gaussian regime where $\Ima s$ and $\Ima t$ have opposite signs and $|\Ima s|$ is up to a few times $|\Ima t|$, and there it oscillates with the phase $q^2(\Ima s)^2/(4\Ima t)$, which no grid resolves in the far field.  The polynomial structure of Lemma~\ref{lem:roots} removes the $s$-integral altogether.  The inverse two-sided Laplace transform of (\ref{eq:Mfactor}) in $s$ at the point $x$ is explicit,
+The double integrals (\ref{eq:dinv}) and (\ref{eq:cinv}) can be evaluated by quadrature, but not efficiently: the kernel $\Xi_2(qs,t)$ is in its Gaussian regime where $\Ima s$ and $\Ima t$ have opposite signs and $|\Ima s|$ is up to a few times $|\Ima t|$, and there it oscillates with the phase $q^2(\Ima s)^2/(4\Ima t)$, which no grid resolves in the far field.  The polynomial structure of Lemma~\ref{lem:roots} removes the $s$-integral altogether.  The inverse two-sided Laplace transform of (\ref{eq:Mfactor}) in $s$ at the point $x$ is explicit,
 \begin{equation}
 \frac{1}{2\pi\iu}\int_{\sigma-\iu\infty}^{\sigma+\iu\infty}M(s,t)e^{-sx}\dr{s}=P(t)\,\varphi_t(X),\qquad X=x+\tfrac12,
 \label{eq:phit}
@@ -347,7 +347,7 @@ where
 and $\Psi_t(X)=\int_{-\infty}^X\varphi_t(u)\dr{u}$.
 \end{theorem}
 
-The second form of $\Phi_x$ is an integration by parts in $v$; the boundary term at $v=0$ is the mass of $\varphi_t$ on $(-\infty,\frac12)$.  At $c_0=0$ the parabola is the line $u=xv$, and $\Phi_x(t)=\int_{-\infty}^{\infty}\varphi_t(u+\frac12)\,tW_x(u,t)\dr{u}$ with $tW_x(u,t)=\int2tve^{-tv^2}\dr{v}$ over $\{v>0:xv\ge u\}$, which is $1-e^{-tu^2/x^2}$ for $u<0$ and $0$ otherwise when $x<0$, and $e^{-t\max(u/x,0)^2}$ when $x>0$.  The convergence of the $v$-integrals at infinity needs $\Rea(t+c_0s_d)>0$, $s_d$ the root that governs the decay of $\varphi_t$ in the direction in which $X(v)$ moves ($s_1$ for $X\to+\infty$, $s_2$ for $X\to-\infty$); this holds on the whole line, because $\Rea s_1>0>\Rea s_2$ there by Lemma~\ref{lem:roots}, and $c_0$ and $s_d$ have the same sign whenever $X\to\pm\infty$ requires it.  The conditions of Theorem~\ref{th:inv} hold with the kernel $J_2(xs,t+c_0s)$ for $\sigma$ with $\tau+c_0\sigma>0$.
+The second form of $\Phi_x$ is an integration by parts in $v$; the boundary term at $v=0$ is the mass of $\varphi_t$ on $(-\infty,\frac12)$.  At $c_0=0$ the parabola is the line $u=xv$, and $\Phi_x(t)=\int_{-\infty}^{\infty}\varphi_t(u+\frac12)\,tW_x(u,t)\dr{u}$ with $tW_x(u,t)=\int2tve^{-tv^2}\dr{v}$ over $\{v>0:xv\ge u\}$, which is $1-e^{-tu^2/x^2}$ for $u<0$ and $0$ otherwise when $x<0$, and $e^{-t\max(u/x,0)^2}$ when $x>0$.  The convergence of the $v$-integrals at infinity needs $\Rea(t+c_0s_d)>0$, $s_d$ the root that governs the decay of $\varphi_t$ in the direction in which $X(v)$ moves ($s_1$ for $X\to+\infty$, $s_2$ for $X\to-\infty$); this holds on the whole line, because $\Rea s_1>0>\Rea s_2$ there by Lemma~\ref{lem:roots}, and $c_0$ and $s_d$ have the same sign whenever $X\to\pm\infty$ requires it.  The conditions of Theorem~\ref{th:inv} hold with the kernel $\Xi_2(xs,t+c_0s)$ for $\sigma$ with $\tau+c_0\sigma>0$.
 
 The transforms (\ref{eq:Phidef}) are special functions of $t$, $s_1(t)$ and $s_2(t)$.  For case \Fk\ let
 \begin{equation}
@@ -772,9 +772,9 @@ and $|f(x,y)|\le Ce^{-\sigma x-\tau y}$ with $C$ equal to $(2\pi)^{-2}$ times (\
 \[
 \PP(Q_0\le q)=\int_{-\infty}^q\int_0^\infty2v^2f(pv+c_0v^2,v^2)\dr{v}\dr{p}.
 \]
-The inner integrand is bounded by $2Cv^2e^{-\sigma pv-(\tau+c_0\sigma)v^2}$, which is integrable locally uniformly in $p$ since $\tau+c_0\sigma>0$; hence the inner integral is continuous in $p$ and is the density of $Q_0$.  Inserting the inversion formula, the absolute integrand is $2v^2|M(s,t)|e^{-\sigma qv-(\tau+c_0\sigma)v^2}$, whose integral is $2J_2(\sigma q,\tau+c_0\sigma)$ times (\ref{eq:L1}), so by Fubini the $v$-integral may be done first; it is $2J_2(qs,t+c_0s)$, which gives (\ref{eq:dinv}).  For (\ref{eq:cinv}), integrate (\ref{eq:dinv}) over $p>q$: since $\int_q^\infty\int_0^\infty v^2e^{-\sigma pv-(\tau+c_0\sigma)v^2}\dr{v}\dr{p}<\infty$ for $\sigma>0$, the order of integration may be changed, and
+The inner integrand is bounded by $2Cv^2e^{-\sigma pv-(\tau+c_0\sigma)v^2}$, which is integrable locally uniformly in $p$ since $\tau+c_0\sigma>0$; hence the inner integral is continuous in $p$ and is the density of $Q_0$.  Inserting the inversion formula, the absolute integrand is $2v^2|M(s,t)|e^{-\sigma qv-(\tau+c_0\sigma)v^2}$, whose integral is $2\Xi_2(\sigma q,\tau+c_0\sigma)$ times (\ref{eq:L1}), so by Fubini the $v$-integral may be done first; it is $2\Xi_2(qs,t+c_0s)$, which gives (\ref{eq:dinv}).  For (\ref{eq:cinv}), integrate (\ref{eq:dinv}) over $p>q$: since $\int_q^\infty\int_0^\infty v^2e^{-\sigma pv-(\tau+c_0\sigma)v^2}\dr{v}\dr{p}<\infty$ for $\sigma>0$, the order of integration may be changed, and
 \[
-\int_q^\infty2J_2(ps,t+c_0s)\dr{p}=2\int_0^\infty v^2e^{-(t+c_0s)v^2}\int_q^\infty e^{-psv}\dr{p}\dr{v}=\frac{2J_1(qs,t+c_0s)}{s}.
+\int_q^\infty2\Xi_2(ps,t+c_0s)\dr{p}=2\int_0^\infty v^2e^{-(t+c_0s)v^2}\int_q^\infty e^{-psv}\dr{p}\dr{v}=\frac{2\Xi_1(qs,t+c_0s)}{s}.
 \]
 For $\sigma<0$ integrate over $p<q$ instead, where $\int_{-\infty}^qe^{-psv}\dr{p}=-e^{-qsv}/(sv)$.
 
@@ -792,9 +792,9 @@ D(s,t)=\det(I-2t\Sigma B)\,\det(I_r-2sA_1R\Sigma_tR^*),
 a polynomial in $s$ of degree $r$ with leading coefficient $(-2)^r\det A_1\det(R\Sigma_tR^*)\det(I-2t\Sigma B)$.  For $\Rea t<t_*$ the operator $\Sigma^{-1}-2tB$ has positive definite real part, hence so has its inverse $\Sigma_t$ and the $r\times r$ matrix $R\Sigma_tR^*$, which is therefore nonsingular (a complex symmetric matrix $G$ with $v^*(\Rea G)v>0$ for $v\ne0$ has $v^*Gv\ne0$); this is the accretivity argument of \cite{BaoKan2026}.  And $\det(I-2t\Sigma B)=D(0,t)\ne0$ for $\Rea t<t_*$, since $|M_V(t)|\le M_V(\Rea t)<\infty$.  So the degree is exactly $r$ and the roots are continuous in $t$.  At real $t=\tau$, $\Sigma_\tau$ is a covariance, $A_1R\Sigma_\tau R^*$ is similar to the symmetric matrix $(R\Sigma_\tau R^*)^{1/2}A_1(R\Sigma_\tau R^*)^{1/2}$, whose inertia is that of $A_1$ by Sylvester's law, and the roots $s_j=1/(2\lambda_j)$, $\lambda_j$ its eigenvalues, are real with the signs stated; $D(\cdot,\tau)$ is positive at $s=0$, vanishes only at the roots, and the component of $\{D>0\}$ containing $0$ is the interval of convergence of $M(\cdot,\tau)$.  Finally, $|M(s,t)|\le M(\sigma,\tau)<\infty$ on the tube, so $D(s,t)\ne0$ there: no root crosses the line $\Rea s=\sigma$ as $t$ moves along the contour, and the configuration at $t=\tau$ persists.  In the stationary cases the path is $(\gamma_0,W)$ with $\gamma_0$ an independent Gaussian coordinate, and (\ref{eq:U}) is again a quadratic form of rank two, in $(J(0),J(1))$ in case \Sk; the argument is unchanged.  With a fixed start the same argument, with the mean of $\xi$ carried along, shows that the weights do not depend on the start and that the configuration of the roots is the same.  \qed
 
 \paragraph{Proof of Theorem~\ref{th:single} and Corollary~\ref{cor:closed}}
-Theorem~\ref{th:inv} is applied to $(X,Y)=(U,V)$, on the tube $\Rea s=\sigma$, $\Rea t=\tau$ of Lemma~\ref{lem:roots}, through the smoothing in its proof rather than through hypothesis (\ref{eq:B}), which fails in two of the configurations the theorem covers: at $q=0$ when $c_0=0$, where $J_2(0,t)$ does not depend on $s$ and $|M(s,t)|$ decays only like $|s|^{-r/2}$; and in case \Fk\ when $c_0\ne0$ and the parabola $X(v)$ has its vertex at a positive $v$, that is $c_0x<0$, where $2J_2(xs,t+c_0s)$, by stationary phase at $v=-x/(2c_0)$, decays only like $|s|^{-1/2}$, as does $|M|$.  Hypothesis (\ref{eq:A}) holds: $|M(s,t)|\le C|P(t)|(1+|s|)^{-r/2}$ on the tube, because the roots $s_j(t)$, which are of the order of $|t|^{1/2}$ for large $|t|$, stay off the line $\Rea s=\sigma$, and $|P(t)|\le C\exp(-\frac12|\Ima t|^{1/2})$.  So, for $\epsilon>0$, $M(s,t)e^{\epsilon^2s^2/2}$ satisfies (\ref{eq:L1}), and by the first part of the proof of Theorem~\ref{th:inv} the variable $Q_\epsilon=(U+\epsilon Z-c_0V)/\sqrt V$ has the continuous density $f_\epsilon$ given by (\ref{eq:dinv}) with $e^{\epsilon^2s^2/2}$ inserted.  In that absolutely convergent integral the $s$- and $v$-integrals may be interchanged, by Fubini's theorem, once $J_2$ is written out:
+Theorem~\ref{th:inv} is applied to $(X,Y)=(U,V)$, on the tube $\Rea s=\sigma$, $\Rea t=\tau$ of Lemma~\ref{lem:roots}, through the smoothing in its proof rather than through hypothesis (\ref{eq:B}), which fails in two of the configurations the theorem covers: at $q=0$ when $c_0=0$, where $\Xi_2(0,t)$ does not depend on $s$ and $|M(s,t)|$ decays only like $|s|^{-r/2}$; and in case \Fk\ when $c_0\ne0$ and the parabola $X(v)$ has its vertex at a positive $v$, that is $c_0x<0$, where $2\Xi_2(xs,t+c_0s)$, by stationary phase at $v=-x/(2c_0)$, decays only like $|s|^{-1/2}$, as does $|M|$.  Hypothesis (\ref{eq:A}) holds: $|M(s,t)|\le C|P(t)|(1+|s|)^{-r/2}$ on the tube, because the roots $s_j(t)$, which are of the order of $|t|^{1/2}$ for large $|t|$, stay off the line $\Rea s=\sigma$, and $|P(t)|\le C\exp(-\frac12|\Ima t|^{1/2})$.  So, for $\epsilon>0$, $M(s,t)e^{\epsilon^2s^2/2}$ satisfies (\ref{eq:L1}), and by the first part of the proof of Theorem~\ref{th:inv} the variable $Q_\epsilon=(U+\epsilon Z-c_0V)/\sqrt V$ has the continuous density $f_\epsilon$ given by (\ref{eq:dinv}) with $e^{\epsilon^2s^2/2}$ inserted.  In that absolutely convergent integral the $s$- and $v$-integrals may be interchanged, by Fubini's theorem, once $\Xi_2$ is written out:
 \begin{align*}
-&\frac{1}{2\pi\iu}\int_{\sigma-\iu\infty}^{\sigma+\iu\infty}M(s,t)e^{\epsilon^2s^2/2}\,2J_2(xs,t+c_0s)\dr{s}\\
+&\frac{1}{2\pi\iu}\int_{\sigma-\iu\infty}^{\sigma+\iu\infty}M(s,t)e^{\epsilon^2s^2/2}\,2\Xi_2(xs,t+c_0s)\dr{s}\\
 &\qquad=\int_0^\infty2v^2e^{-tv^2}\Big\{\frac{1}{2\pi\iu}\int_{\sigma-\iu\infty}^{\sigma+\iu\infty}M(s,t)e^{\epsilon^2s^2/2}e^{-s(xv+c_0v^2)}\dr{s}\Big\}\dr{v},
 \end{align*}
 and the inner integral is $P(t)\varphi_{t,\epsilon}(X(v))$ with $\varphi_{t,\epsilon}=\varphi_t*g_\epsilon$, the convolution of (\ref{eq:varphi}) with the $N(0,\epsilon^2)$ density $g_\epsilon$, since $e^{\epsilon^2s^2/2}$ is the transform of $g_\epsilon$ and (\ref{eq:phit}) that of $\varphi_t$.  Hence
@@ -803,7 +803,7 @@ f_\epsilon(x)=\frac{1}{2\pi\iu}\int_{\tau-\iu\infty}^{\tau+\iu\infty}P(t)\,\Phi^
 \]
 with $\Phi^f_{x,\epsilon}$ the first transform of (\ref{eq:Phidef}) with $\varphi_{t,\epsilon}$ in place of $\varphi_t$.  Now let $\epsilon\to0$.  Off $X=0$ the function $\varphi_t$ is continuous, so $\varphi_{t,\epsilon}(X)\to\varphi_t(X)$ for every $X\ne0$.  On the tube $|\varphi_t(X)|\le C(t)e^{-\sigma X}h(X)$, with $h(X)=X^{-1/2}\mathbf{1}\{X>0\}$ in case \Fk\ and $h(X)=1+|\log|X||$ otherwise, since $\Rea s_2<\sigma<\Rea s_1$ and $|K_0(z)|\le C(1+|\log|z||)e^{-\Rea z}$ for $\Rea z\ge0$, with $C(t)$ bounded by a power of $|t|$; and for $\epsilon\le1$ the smoothed function obeys the same bound with $h+1$ in place of $h$, because the convolution of $h$ with a positive radially decreasing kernel of unit mass is at most the Hardy--Littlewood maximal function of $h$, which for these two $h$ is a constant multiple of $h$, and the factor $e^{\sigma y}$ that the weight $e^{-\sigma X}$ leaves under the convolution is harmless when $\epsilon\le1$.  The dominating function $2v^2e^{-\tau v^2}e^{-\sigma X(v)}\{h(X(v))+1\}$ is integrable over $v>0$, as $\tau+c_0\sigma>0$ and the zeros of $X(v)$ are simple, except in case \Fk\ with $c_0>0$ at $x=-\sqrt{2c_0}$, where $X$ has a double root and $h(X(v))$ is not integrable, which is the point at which the density is infinite.  By dominated convergence $\Phi^f_{x,\epsilon}(t)\to\Phi^f_x(t)$, and then, as $|P(t)|C(t)$ is integrable along the line, $f_\epsilon(x)$ converges to the right side of (\ref{eq:single}), uniformly on compact sets of $x$ that avoid $-\sqrt{2c_0}$ in that case, and the limit is continuous there by the same domination.  The step in italics in the proof of Theorem~\ref{th:inv} then shows that the right side of (\ref{eq:single}) is the density of the limit and that its distribution function is continuous, on $(-\infty,-\sqrt{2c_0})$ and $(-\sqrt{2c_0},\infty)$ in that case, hence also at $-\sqrt{2c_0}$, where the singularity of the density is logarithmic and integrable, and on $\mathbb{R}$ otherwise.  For (\ref{eq:cinv}) the same steps with
 \[
-\frac{2J_1(xs,t+c_0s)}{s}=2\int_0^\infty ve^{-tv^2}\,\frac{e^{-s(xv+c_0v^2)}}{s}\dr{v},\qquad
+\frac{2\Xi_1(xs,t+c_0s)}{s}=2\int_0^\infty ve^{-tv^2}\,\frac{e^{-s(xv+c_0v^2)}}{s}\dr{v},\qquad
 \frac{e^{-su}}{s}=\int_u^\infty e^{-sy}\dr{y},
 \]
 give $\PP(Q_\epsilon>x)$ as the integral over $v$ of $2tve^{-tv^2}$ times $P(t)\Psi_{t,\epsilon}(X(v))$, divided by $t$, with $\Psi_{t,\epsilon}=\Psi_t*g_\epsilon$, and as $\epsilon\to0$ this converges to the first form of $\Phi_x$ in (\ref{eq:Phidef}), $\Psi_t$ being continuous and bounded by $C(t)e^{-\sigma X}$ on the tube, while $\PP(Q_\epsilon>x)\to\PP(\tau>x)$ at every $x$ because the distribution function is continuous; the $1/t$ comes from writing $2ve^{-tv^2}$ as $2tve^{-tv^2}/t$.  The second form is the integration by parts
