@@ -54,6 +54,14 @@ int dfl_dist(int kind, int n, const double *x, int model, double c, double c0, d
         if (m == 2) { xd[nd] = x[k]; id[nd] = k; nd++; }
         else out[k] = (c0 != 0 || g0 != 0 || so->gen) ? dfl_single_value_gen(kind, x[k], model, c, c0, g0, stat, so) : dfl_single_value_c0(kind, x[k], model, c, stat, so);
     }
+    /* the tails: the single integral's error is absolute (1e-14 to 1e-21, not reduced by finer rules), so with method 0
+     * the values of the single integral below 1e-3 (a density in absolute value, a distribution function in the lower
+     * tail) are recomputed by the double integral, which keeps its relative accuracy there (as the MATLAB programs do) */
+    if (method == 0) for (int k = 0; k < n; k++) {
+        if (!isfinite(x[k])) continue;
+        bool sgl = true; for (int j = 0; j < nd; j++) if (id[j] == k) { sgl = false; break; }
+        if (sgl && (kind == 1 ? fabs(out[k]) : out[k]) < 1e-3) { xd[nd] = x[k]; id[nd] = k; nd++; }
+    }
     int rc = 0;
     if (nd > 0) {
         double *Fd = malloc(nd * sizeof(double)); dfl_double_info *info = malloc(nd * sizeof(dfl_double_info));
@@ -61,6 +69,7 @@ int dfl_dist(int kind, int n, const double *x, int model, double c, double c0, d
         if (rc == 0) for (int j = 0; j < nd; j++) { out[id[j]] = Fd[j]; if (nstatus && info[j].status) (*nstatus)++; }
         free(Fd); free(info);
     }
+    if (kind == 1) for (int k = 0; k < n; k++) if (out[k] < 0) out[k] = 0;   /* a density below the error of the method */
     free(xd); free(id);
     return rc;
 }

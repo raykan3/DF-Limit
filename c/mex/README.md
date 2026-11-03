@@ -20,7 +20,10 @@ ltratio('threads')                                    % the number of threads (a
 ```
 
 `opts.method` defaults to `'auto'`: the single integral at c0 = 0 and with a fixed start g0 (the noncentral kernel)
-and the double integral when c0 is not 0 with a zero start, the faster representation in each case.  The MEX file itself takes numeric arguments only (see the header of
+and the double integral when c0 is not 0 with a zero start, the faster representation in each case; as in the MATLAB
+programs, the values of the single integral below 1e-3 (a density, or a distribution function in the lower tail) are
+then recomputed by the double integral, whose accuracy is relative where the single integral's is absolute, and a
+computed density below zero is returned as zero.  The MEX file itself takes numeric arguments only (see the header of
 `ltratio_mex.c`): `'single'`, `'double'`, `'dist'`, `'icdf'`, `'mom'`, `'tstar'`, `'threads'`.
 
 Seconds per value of the distribution function, MATLAB R2026b on an M4 laptop (ten cores), `timeit`:

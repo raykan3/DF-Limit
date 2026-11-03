@@ -126,5 +126,16 @@ Fx = ltratio_cdf([-Inf, 0.0, Inf, NaN], "DK", -5)
 check(Fx[1] == 0 && Fx[3] == 1 && isnan(Fx[4]) && abs(Fx[2] - erf(1 / sqrt(2 * (exp(-10) - 1) / (-10)))) < 1e-12, "ltratio_cdf: non-finite x, and F(0) of DK at c = -5 in closed form")
 check(try; ltratio_cdf(-2.0, "SU", 1); false; catch e; e isa ArgumentError; end, "ltratio_cdf rejects a stationary start with c > 0")
 
+# 13. the tails with c0 != 0 (Raymond Kan, November 2026): the far roots of X(v) are kept, so the single integral does not
+# fail there, and with method = :auto the values below 1e-3 come from the double integral (the single integral's error is
+# absolute); a negative computed density is returned as zero
+fe = try; ltratio_pdf([9.0, 3.0], "SU", -1.2; c0 = -1.2, method = :single); ltratio_pdf(-9.0, "SU", -1.2; c0 = 1.2, method = :single); ltratio_pdf(3.0, "SU", -1.2; c0 = -0.05, method = :single); true; catch; false; end
+check(fe, "no error at the far roots of X(v): SU c = -1.2, c0 = -1.2, 1.2, -0.05")
+fs = ltratio_pdf(3.0, "SU", -1.2; c0 = -0.05, method = :single); fd = ltratio_pdf(3.0, "SU", -1.2; c0 = -0.05, method = :double)
+check(abs(fs / fd - 1) < 1e-10, @sprintf("SU c = -1.2 c0 = -0.05, x = 3: single (far root kept) vs double, f = %.6e (%.1e relative)", fd, abs(fs / fd - 1)))
+fa = ltratio_pdf(-9.0, "SU", -1.2; c0 = 1.2); fd = ltratio_pdf(-9.0, "SU", -1.2; c0 = 1.2, method = :double)
+check(fa == fd && fa > 0, @sprintf("SU c = -1.2 c0 = 1.2, x = -9: the automatic method takes the double integral in the tail, f = %.3e", fa))
+check(all(ltratio_pdf([8.5, 9.0, 12.0], "SU", -1.2; c0 = -1.2, method = :single) .>= 0), "a negative computed density is returned as zero")
+
 isempty(fails) || error("quick check failed: " * join(fails, "; "))
 println("quick check passed")

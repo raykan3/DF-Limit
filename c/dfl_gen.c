@@ -59,7 +59,9 @@ static void breakpts(double q, double c0, double tau, double x0, breaks_t *R)
     double b[2]; int nb = 0;
     for (int k = 0; k < nrr; k++) if (r[k] > 0) b[nb++] = r[k];
     bool noroot = nb == 0;
-    int nb2 = 0; for (int k = 0; k < nb; k++) if (3 * tau * b[k] * b[k] / 4 <= 40) b[nb2++] = b[k]; nb = nb2;
+    /* a far root is dropped for c0 = 0 only: with c0 != 0 X changes sign at the root and the segment beyond it has the other
+     * form with the other exponential factor; dropping it ran the near side's form out to infinity (Raymond Kan, Nov 2026) */
+    if (c0 == 0) { int nb2 = 0; for (int k = 0; k < nb; k++) if (3 * tau * b[k] * b[k] / 4 <= 40) b[nb2++] = b[k]; nb = nb2; }
     int kindb[2] = {1, 1}; double ell[2] = {INFINITY, INFINITY};
     if (nb == 2 && b[1] - b[0] <= 1e-9 * b[1]) { b[0] = (b[0] + b[1]) / 2; nb = 1; R->dbl = true; }
     else if (nb == 2) ell[0] = ell[1] = b[1] - b[0];

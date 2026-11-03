@@ -1762,6 +1762,14 @@ function ltratio_dist(kind::Int, x, cas::AbstractString, c::Real; c0::Real = 0.0
     for k in sgl
         F[k] = kind == 2 ? cdf(xs[k], model; c = Float64(c), c0, g0, start, kw...) : density(xs[k], model; c = Float64(c), c0, g0, start, kw...)
     end
+    # the tails: the single integral's error is absolute (1e-14 to 1e-21, not reduced by finer rules), so with method = :auto
+    # the values of the single integral below 1e-3 (a density in absolute value, a distribution function in the lower tail)
+    # are recomputed by the double integral, which keeps its relative accuracy there (as the MATLAB programs do)
+    if method == :auto
+        tl = [k for k in sgl if (kind == 1 ? abs(F[k]) : F[k]) < 1e-3]
+        isempty(tl) || (F[tl] .= tr_limdist(xs[tl], model, Float64(c); c0, g0, start, pdf = kind == 1, kw...)[1])
+    end
+    kind == 1 && (F[F .< 0] .= 0.0)                                   # a density below the error of the method
     x isa Number ? F[1] : reshape(F, size(x))
 end
 
@@ -1890,7 +1898,11 @@ function breakpts(q::Float64, c0::Float64, tau::Float64; x0::Float64 = 0.5)
     # a root so far out that e^{-t v^2} is below e^-40 there on the line Re t = tau (3 tau b^2/4 > 40) is dropped:
     # the part near it is negligible and the segment up to it would be integrated at a cost that grows with b
     # (for c0 = 0 and q -> 0- the root -1/(2 q) runs off to infinity)
-    b = [x for x in b if 3tau * x * x / 4 <= 40]
+    # (for c0 = 0 only: with c0 != 0 X changes sign at the root, and the segment beyond it has the other form, phi_neg for
+    # phi_pos, with the other exponential factor, whose Gaussian decay alpha = t + c0 s_d the near side's form lacks;
+    # dropping it ran the near side's form out to infinity, "Re alpha <= 0 on a ray" or a wrong value: Raymond Kan,
+    # November 2026, e.g. SU, c = -1.2, c0 = -1.2 at x = 9.  The edge part of a far root is skipped as negligible, negl.)
+    c0 == 0 && (b = [x for x in b if 3tau * x * x / 4 <= 40])
     kindb = ones(Int, length(b)); ell = fill(Inf, length(b)); dbl = false
     if length(b) == 2 && b[2] - b[1] <= 1e-9 * b[2]              # a double root (x = -sqrt(2 c0), c0 > 0)
         b = [(b[1] + b[2]) / 2]; kindb = [1]; ell = [Inf]; dbl = true
