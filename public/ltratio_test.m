@@ -163,6 +163,26 @@ check('f(-Inf), f(Inf), f(NaN) = 0, 0, NaN (double)',abs(f(1)) + abs(f(2)) + ~is
 f = ltratio_pdf(-sqrt(4),'DK',0,struct('c0',2));
 check('DK c0=2: f(-sqrt(2 c0)) = Inf',double(~isinf(f)),0);
 
+fprintf('\n=== 7. tails with c0 ~= 0 ===\n');
+% a far root of X(v) = c0 v^2 + q v + 1/2 was dropped by BREAKPTS, which ran the near-side form
+% past it (an error, 'Re alpha <= 0 on a ray', or a wrong value); the single integral's absolute
+% error floor (1e-14 to 1e-21) is handled by the double integral below 1e-3 (LTRATIO_DIST)
+nerr = 0; f = zeros(1,4);
+try, f(1) = ltratio_pdf(9,'SU',-1.2,struct('c0',-1.2)); catch, nerr = nerr + 1; end
+try, f(2) = ltratio_pdf(-9,'SU',-1.2,struct('c0',1.2)); catch, nerr = nerr + 1; end
+try, f(3) = ltratio_pdf(3,'SU',-1.2,struct('c0',-0.05)); catch, nerr = nerr + 1; end
+try, f(4) = ltratio_pdf(3,'SU',-1.2,struct('c0',-0.05,'method','single')); catch, nerr = nerr + 1; end
+check('no error at far roots: SU c=-1.2, c0=-1.2 (x=9), c0=1.2 (x=-9), c0=-0.05 (x=3)',nerr,0);
+g = ltratio_pdf([3 -9],'SU',-1.2,struct('c0',-0.05,'method','double'));
+check('SU c=-1.2 c0=-0.05, x=3: single (far root kept) vs double (relative)',abs(f(4)-g(1))/g(1),1e-10);
+g = ltratio_pdf(-9,'SU',-1.2,struct('c0',1.2,'method','double'));
+check('SU c=-1.2 c0=1.2, x=-9 (f = 6.2e-16): default (tail by the double integral) vs double (rel)',abs(f(2)-g)/g,1e-10);
+xs = [-9 -8 -6 3 4 5]; fd = ltratio_pdf(xs,'DT',0,struct('c0',-2,'method','double')); fn = ltratio_pdf(xs,'DT',0,struct('c0',-2));
+check('DT c=0 c0=-2: default vs double in both tails, f from 4e-11 to 2.5e-6 (relative)',max(abs(fn-fd)./abs(fd)),1e-10);
+fs = ltratio_pdf([8.5 9 10 12],'SU',-1.2,struct('c0',-1.2,'method','single'));    % noise below the floor
+fs2 = ltratio_pdf([8.5 9 10 12],'SU',-1.2,struct('c0',-1.2,'method','double'));
+check('no negative density (single and double, SU c=c0=-1.2, x = 8.5 to 12)',nnz([fs fs2] < 0),0);
+
 fprintf('\n%d of %d checks failed (%.0f s).\n',nfail,ntest,toc(t00));
 if strict && nfail > 0, error('ltratio_test:fail','%d check(s) failed.',nfail); end
 

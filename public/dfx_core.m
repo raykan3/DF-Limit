@@ -927,9 +927,16 @@ end
 R.rr = rr; R.Xat = @(dv, b) xat(dv, b, rr, lead);
 b = r(r > 0); b = b(:).'; noroot = isempty(b);
 % a root so far out that e^(-t v^2) is below e^-40 there on the line Re t = tau (3 tau b^2/4 > 40)
-% is dropped: the part near it is negligible and the segment up to it would be integrated at a
-% cost that grows with b (for c0 = 0 and q -> 0- the root -1/(2 q) runs off to infinity)
-b = b(3 * tau * b.^2 / 4 <= 40);
+% is dropped for c0 = 0 only: the part near it is negligible and the segment up to it would be
+% integrated at a cost that grows with b (for q -> 0- the root -1/(2 q) runs off to infinity).
+% With c0 ~= 0 a root is kept however far out it is: X changes sign there and the segment beyond
+% it has the other form (phi_neg instead of phi_pos, or the reverse) and the other exponential
+% factor (s1 instead of s2), whose Gaussian decay alpha = t + c0 s_d the form of the near side
+% does not have.  Dropping it ran the near-side form out to infinity: Re alpha <= 0 on the ray
+% (an error), or K_0 outside its domain.  (November 2026; ltratio_pdf(9,'SU',-1.2,
+% struct('c0',-1.2)), and every x at c0 = -0.05, where the root q/|c0| is far out.)  The edge
+% parts of far roots are skipped as negligible by ONEVALUE (R.negl).
+if c0 == 0, b = b(3 * tau * b.^2 / 4 <= 40); end
 kindb = ones(size(b)); ell = inf(size(b)); R.double = false;
 if numel(b) == 2 && b(2) - b(1) <= 1e-9 * b(2)              % a double root (x = -sqrt(2 c0), c0 > 0)
     b = mean(b); kindb = 1; ell = Inf; R.double = true;

@@ -1411,11 +1411,15 @@ const TRL = (function () {
       }
       R.rr = rr; R.lead = lead;
       R.Xat = (dv, b) => { let X = [lead, 0]; for (const rk of rr) X = cmul(X, cadd(dv, csub([b, 0], rk))); return X; };   // dv complex, b real
-      // roots so far out that the Gaussian e^(-t v^2) is below e^-40 there (3 tau b^2/4 > 40)
-      // are dropped: the part near them is negligible, and the segment up to them would be
-      // integrated at a cost that grows with b (for q -> 0- the root is at -1/(2q))
+      // a root so far out that the Gaussian e^(-t v^2) is below e^-40 there (3 tau b^2/4 > 40)
+      // is dropped for c0 = 0 only: the part near it is negligible, and the segment up to it
+      // would be integrated at a cost that grows with b (for q -> 0- the root is at -1/(2q)).
+      // With c0 != 0 a root is kept however far out it is: X changes sign there and the
+      // segment beyond it has the other form, whose Gaussian decay the near side does not
+      // have; dropping it ran the near-side form out to infinity (as DFX_CORE, November 2026).
+      // The edge parts of far roots are skipped as negligible (R.negl).
       const noroot = r.filter(v => v > 0).length === 0;
-      let b = r.filter(v => v > 0 && 3 * tau * v * v / 4 <= 40), kindb = b.map(() => 1), ell = b.map(() => Infinity);
+      let b = r.filter(v => v > 0 && (c0 !== 0 || 3 * tau * v * v / 4 <= 40)), kindb = b.map(() => 1), ell = b.map(() => Infinity);
       R.double = false;
       if (b.length === 2 && b[1] - b[0] <= 1e-9 * b[1]) { b = [(b[0] + b[1]) / 2]; kindb = [1]; ell = [Infinity]; R.double = true; }
       else if (b.length === 2) { ell = [b[1] - b[0], b[1] - b[0]]; }
@@ -1735,6 +1739,7 @@ const TRL = (function () {
       R.vsad = saddle_loc(q, R);
       const v = outer_gen(q, R);
       if (R.double && kern === 1) v[0] = Infinity;   // case DK: the density is infinite at x = -sqrt(2 c0)
+      if (v[0] < 0) v[0] = 0;                        // a density below the absolute error floor of the method
       return v;
     }
     function point(x) { const v = onevalue(x); return { F: v[1], f: v[0] }; }

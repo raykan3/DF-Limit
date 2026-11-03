@@ -1,0 +1,102 @@
+
+=== 1. single integral (DFX) against double integral (TR_LIMDIST) ===
+  DK c=0 c0=0: F single vs double (6 points; 0.5/0.6 s)                     1.11e-15  (tol 1.0e-11)  pass
+  DK c=0 c0=0: f single vs double (relative)                                3.78e-13  (tol 1.0e-10)  pass
+  DU c=0 c0=0: F single vs double (5 points; 0.9/0.7 s)                     6.50e-13  (tol 1.0e-11)  pass
+  DU c=0 c0=0: f single vs double (relative)                                1.66e-12  (tol 1.0e-10)  pass
+  DT c=0 c0=0: F single vs double (4 points; 0.7/0.7 s)                     1.38e-12  (tol 1.0e-11)  pass
+  DT c=0 c0=0: f single vs double (relative)                                3.09e-12  (tol 1.0e-10)  pass
+  DK c=-5 c0=0: F single vs double (3 points; 0.2/0.1 s)                    2.03e-15  (tol 1.0e-11)  pass
+  DK c=-5 c0=0: f single vs double (relative)                               2.61e-13  (tol 1.0e-10)  pass
+  DU c=-5 c0=0: F single vs double (3 points; 0.5/0.2 s)                    2.48e-12  (tol 1.0e-11)  pass
+  DU c=-5 c0=0: f single vs double (relative)                               5.32e-12  (tol 1.0e-10)  pass
+  DT c=-10 c0=0: F single vs double (3 points; 0.5/0.3 s)                   4.26e-12  (tol 1.0e-11)  pass
+  DT c=-10 c0=0: f single vs double (relative)                              8.61e-12  (tol 1.0e-10)  pass
+  SK c=-5 c0=0: F single vs double (3 points; 0.5/0.5 s)                    1.48e-12  (tol 1.0e-11)  pass
+  SK c=-5 c0=0: f single vs double (relative)                               2.62e-12  (tol 1.0e-10)  pass
+  SU c=-5 c0=0: F single vs double (3 points; 0.6/0.6 s)                    1.64e-12  (tol 1.0e-11)  pass
+  SU c=-5 c0=0: f single vs double (relative)                               3.15e-12  (tol 1.0e-10)  pass
+  ST c=-10 c0=0: F single vs double (3 points; 0.5/0.8 s)                   2.96e-12  (tol 1.0e-11)  pass
+  ST c=-10 c0=0: f single vs double (relative)                              5.80e-12  (tol 1.0e-10)  pass
+  DK c=2 c0=2: F single vs double (4 points; 0.5/0.3 s)                     3.26e-13  (tol 1.0e-11)  pass
+  DK c=2 c0=2: f single vs double (relative)                                2.70e-13  (tol 1.0e-10)  pass
+  DU c=2 c0=1: F single vs double (3 points; 1.9/0.2 s)                     7.69e-13  (tol 1.0e-11)  pass
+  DU c=2 c0=1: f single vs double (relative)                                1.17e-12  (tol 1.0e-10)  pass
+  DT c=-2.5 c0=-5: F single vs double (3 points; 1.4/0.5 s)                 5.25e-13  (tol 1.0e-11)  pass
+  DT c=-2.5 c0=-5: f single vs double (relative)                            2.05e-12  (tol 1.0e-10)  pass
+  DU c=5 c0=-5: F single vs double (2 points; 4.5/0.5 s)                    1.22e-14  (tol 1.0e-11)  pass
+  DU c=5 c0=-5: f single vs double (relative)                               2.74e-13  (tol 1.0e-10)  pass
+  DK c=0 c0=-5: F single vs double (3 points; 1.4/0.2 s)                    5.00e-16  (tol 1.0e-11)  pass
+  DK c=0 c0=-5: f single vs double (relative)                               4.92e-14  (tol 1.0e-10)  pass
+
+=== 2. exact values, critical values and quantiles ===
+  DK c=-10: F(0) = erf((2v)^(-1/2)), single                                 1.22e-15  (tol 1.0e-12)  pass
+  DK c=-10: F(0) = erf((2v)^(-1/2)), double                                 8.88e-16  (tol 1.0e-12)  pass
+  DK c=0: F(0) = erf((2v)^(-1/2)), single                                   3.26e-13  (tol 1.0e-12)  pass
+  DK c=0: F(0) = erf((2v)^(-1/2)), double                                   2.22e-16  (tol 1.0e-12)  pass
+  DK c=2: F(0) = erf((2v)^(-1/2)), single                                   1.20e-13  (tol 1.0e-12)  pass
+  DK c=2: F(0) = erf((2v)^(-1/2)), double                                   1.11e-16  (tol 1.0e-12)  pass
+  DK c=5: F(0) = erf((2v)^(-1/2)), single                                   7.45e-15  (tol 1.0e-12)  pass
+  DK c=5: F(0) = erf((2v)^(-1/2)), double                                   4.51e-17  (tol 1.0e-12)  pass
+  DK c=20: F(0) = erf((2v)^(-1/2)), single                                  4.62e-16  (tol 1.0e-12)  pass
+  DK c=20: F(0) = erf((2v)^(-1/2)), double                                  6.43e-17  (tol 1.0e-12)  pass
+  DU c=0: F(0) = 0.95756559 (Bao and Kan, 2026, eight digits)               1.20e-10  (tol 5.0e-09)  pass
+  DU c=10 c0=5: F(0) vs a one-dimensional inversion                         3.81e-16  (tol 1.0e-11)  pass
+  DT c=10 c0=5: F(0) vs a one-dimensional inversion                         1.67e-16  (tol 1.0e-11)  pass
+  DK: F at the 5% point                                                     2.67e-10  (tol 2.0e-09)  pass
+  DK: F at MacKinnon's critical values vs 0.01, 0.05, 0.10                  2.44e-05  (tol 1.5e-04)  pass
+  DK: LTRATIO_ICDF(0.05) vs the nine-digit value                            2.34e-09  (tol 6.0e-09)  pass
+  DK: F(LTRATIO_ICDF(p)) - p, convergence                                   2.22e-16  (tol 1.0e-09)  pass
+  DU: F at the 5% point                                                     4.59e-10  (tol 2.0e-09)  pass
+  DU: F at MacKinnon's critical values vs 0.01, 0.05, 0.10                  4.60e-06  (tol 1.5e-04)  pass
+  DU: LTRATIO_ICDF(0.05) vs the nine-digit value                            3.65e-09  (tol 6.0e-09)  pass
+  DU: F(LTRATIO_ICDF(p)) - p, convergence                                   1.80e-16  (tol 1.0e-09)  pass
+  DT: F at the 5% point                                                     2.84e-10  (tol 2.0e-09)  pass
+  DT: F at MacKinnon's critical values vs 0.01, 0.05, 0.10                  6.58e-06  (tol 1.5e-04)  pass
+  DT: LTRATIO_ICDF(0.05) vs the nine-digit value                            2.17e-09  (tol 6.0e-09)  pass
+  DT: F(LTRATIO_ICDF(p)) - p, convergence                                   3.33e-16  (tol 1.0e-09)  pass
+  SU c=-5: quantiles increasing and converged                               0.00e+00  (tol 5.0e-01)  pass
+
+=== 3. the initial observation ===
+  DK c=-5: start 1e-6 vs zero start                                         3.91e-13  (tol 1.0e-09)  pass
+  DU c=-5: start 1e-6 vs zero start                                         2.48e-13  (tol 1.0e-09)  pass
+  DT c=-5: start 1e-6 vs zero start                                         1.51e-13  (tol 1.0e-09)  pass
+  SK c=-5: stationary start vs the Gauss-Hermite average of DK over J(0)    7.76e-13  (tol 2.0e-11)  pass
+  SU c=-5: stationary start vs the Gauss-Hermite average of DU over J(0)    8.02e-14  (tol 2.0e-11)  pass
+  ST c=-5: stationary start vs the Gauss-Hermite average of DT over J(0)    1.16e-13  (tol 2.0e-11)  pass
+  DK c=-5 g0=1.5: F(0) = P[J(1)^2 <= 1 + g0^2]                              7.77e-16  (tol 1.0e-11)  pass
+  DU c=-5: TR_NSSTART is a rank-two noncentral form in lam (prediction)     5.55e-17  (tol 1.0e-12)  pass
+  DT c=-5: TR_NSSTART is a rank-two noncentral form in lam (prediction)     1.04e-17  (tol 1.0e-12)  pass
+
+=== 4. moments ===
+  DK: moments 1-4 vs Nabeya (1999)                                          4.90e-09  (tol 1.0e-07)  pass
+  DU: moments 1-4 vs Nabeya (1999)                                          5.00e-09  (tol 1.0e-07)  pass
+  DT: moments 1-4 vs Nabeya (1999)                                          3.92e-09  (tol 1.0e-07)  pass
+  DU c=0: LTRATIO_MOM vs DFX_MOMENTS (relative)                             8.69e-16  (tol 1.0e-09)  pass
+  DU c=-5: LTRATIO_MOM vs DFX_MOMENTS (relative)                            2.28e-16  (tol 1.0e-09)  pass
+  SU c=-5: LTRATIO_MOM vs DFX_MOMENTS (relative)                            1.14e-11  (tol 1.0e-09)  pass
+  DT c=-10: LTRATIO_MOM vs DFX_MOMENTS (relative)                           8.18e-16  (tol 1.0e-09)  pass
+  SK c=-2.5: LTRATIO_MOM vs DFX_MOMENTS (relative)                          9.48e-12  (tol 1.0e-09)  pass
+  DU c=-5 c0=0: mean vs integral of x f(x) over [-12, 6]                    3.08e-13  (tol 1.0e-09)  pass
+  DU c=-5 c0=0: mass of the density over [-12, 6]                           6.24e-11  (tol 1.0e-09)  pass
+
+=== 5. density against the distribution function ===
+  DK c=0 c0=0: f vs fifth-order difference of F at x=-1.5                   2.49e-13  (tol 1.0e-09)  pass
+  DU c=-5 c0=0: f vs fifth-order difference of F at x=-2.2                  2.35e-13  (tol 1.0e-09)  pass
+  ST c=-10 c0=0: f vs fifth-order difference of F at x=-3                   4.09e-13  (tol 1.0e-09)  pass
+  DT c=2 c0=1: f vs fifth-order difference of F at x=-2                     9.08e-14  (tol 1.0e-09)  pass
+
+=== 6. argument validation and non-finite x ===
+  invalid arguments rejected                                                0.00e+00  (tol 0.0e+00)  pass
+  F(-Inf), F(Inf), F(NaN) = 0, 1, NaN                                       0.00e+00  (tol 0.0e+00)  pass
+  f(-Inf), f(Inf), f(NaN) = 0, 0, NaN (double)                              0.00e+00  (tol 0.0e+00)  pass
+  DK c0=2: f(-sqrt(2 c0)) = Inf                                             0.00e+00  (tol 0.0e+00)  pass
+
+=== 7. tails with c0 ~= 0 ===
+  no error at far roots: SU c=-1.2, c0=-1.2 (x=9), c0=1.2 (x=-9), c0=-0.05 (x=3)  0.00e+00  (tol 0.0e+00)  pass
+  SU c=-1.2 c0=-0.05, x=3: single (far root kept) vs double (relative)      6.32e-13  (tol 1.0e-10)  pass
+  SU c=-1.2 c0=1.2, x=-9 (f = 6.2e-16): default (tail by the double integral) vs double (rel)  0.00e+00  (tol 1.0e-10)  pass
+  DT c=0 c0=-2: default vs double in both tails, f from 4e-11 to 2.5e-6 (relative)  0.00e+00  (tol 1.0e-10)  pass
+
+0 of 85 checks failed (114 s).
+NFAIL 0
