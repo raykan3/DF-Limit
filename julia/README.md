@@ -17,7 +17,8 @@ ltratio_mom(4, "DT")                               # first four moments of tau_t
 ```
 
 `x` may be an array; `method = :auto` (the default) takes the single integral at c0 = 0 and with a fixed start (the
-noncentral kernel) and the double integral when c0 != 0 with a zero start, and recomputes the values of the single
+noncentral kernel), and when c0 != 0 with a zero start the double integral, except for c0 > 0 at x >= 0, where the
+single integral has no breakpoint and is the faster one; it recomputes the values of the single
 integral below 1e-3 by the double integral (the single integral's error is absolute, the double's relative); a computed
 density below zero is returned as zero; `:single` and `:double` force one representation.  The engine functions take the model number 1, 2, 3 for K, U, T:
 `DFExact.cdf(q, model; c, c0, start = :zero | :stationary)`, `DFExact.density`, `DFExact.quantile`,

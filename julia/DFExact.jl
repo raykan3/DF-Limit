@@ -1725,10 +1725,14 @@ end
 const CASES = ("DK", "DU", "DT", "SK", "SU", "ST")
 """the method of `method = :auto` at the point x: the single integral at c0 = 0 (its fixed node layouts make it the faster
 one by 2-20x, zero or stationary start, any c) and with a fixed start g0 != 0 (the noncentral kernel, 2-6x faster than
-the double integral and without its limit c <= 2), the double integral when c0 != 0 with a zero start (5-90x faster
-than the general kernel of the single integral), except in case DK with c0 > 0 at x >= 0, where the single integral
-has no breakpoint"""
-automethod(model::Int, c0::Float64, g0::Float64, x::Float64) = (c0 != 0 && g0 == 0 && !(model == 1 && c0 > 0 && x >= 0)) ? :double : :single
+the double integral and without its limit c <= 2); with c0 != 0 and a zero start the double integral, except for
+c0 > 0 at x >= 0, where X(v) has no positive root, the single integral has no breakpoint and takes 0.2-5 ms in C and
+about 1 ms here against 1-60 ms for the double integral.  Elsewhere with c0 != 0 the double integral is the faster
+one at every c, measured point by point over c in [-5, 5], c0 in {-5, -1, 1, 3} and x in [-4, 32] in the three cases
+(by 2-10x in C; with c0 < 0 the single integral's saddle part costs up to 1 s at x ~ 8 with c0 = -1, and here its
+general kernel is 5-90x slower).  The tails below 1e-3 are recomputed by the double integral in any case
+(ltratio_dist)."""
+automethod(model::Int, c::Float64, c0::Float64, g0::Float64, x::Float64) = (c0 != 0 && g0 == 0 && !(c0 > 0 && x >= 0)) ? :double : :single
 """
     ltratio_args(cas, c; c0, g0, method) -> (model, stat, c0, g0, method)
 
@@ -1756,7 +1760,7 @@ function ltratio_dist(kind::Int, x, cas::AbstractString, c::Real; c0::Real = 0.0
     xs = x isa Number ? [Float64(x)] : Float64.(vec(collect(x)))
     F = [isnan(xk) ? NaN : xk == Inf ? (kind == 2 ? 1.0 : 0.0) : xk == -Inf ? 0.0 : 0.0 for xk in xs]
     fin = findall(isfinite, xs)
-    dbl = [k for k in fin if method == :double || (method == :auto && automethod(model, c0, g0, xs[k]) == :double)]
+    dbl = [k for k in fin if method == :double || (method == :auto && automethod(model, Float64(c), c0, g0, xs[k]) == :double)]
     sgl = setdiff(fin, dbl)
     isempty(dbl) || (F[dbl] .= tr_limdist(xs[dbl], model, Float64(c); c0, g0, start, pdf = kind == 1, kw...)[1])
     for k in sgl
@@ -1767,7 +1771,10 @@ function ltratio_dist(kind::Int, x, cas::AbstractString, c::Real; c0::Real = 0.0
     # are recomputed by the double integral, which keeps its relative accuracy there (as the MATLAB programs do)
     if method == :auto
         tl = [k for k in sgl if (kind == 1 ? abs(F[k]) : F[k]) < 1e-3]
-        isempty(tl) || (F[tl] .= tr_limdist(xs[tl], model, Float64(c); c0, g0, start, pdf = kind == 1, kw...)[1])
+        if !isempty(tl)
+            Ft, info = tr_limdist(xs[tl], model, Float64(c); c0, g0, start, pdf = kind == 1, kw...)
+            for (j, k) in enumerate(tl); info.status[j] == 0 && (F[k] = Ft[j]); end   # (where the double integral flags the point, the single integral's value stays)
+        end
     end
     kind == 1 && (F[F .< 0] .= 0.0)                                   # a density below the error of the method
     x isa Number ? F[1] : reshape(F, size(x))
@@ -2191,12 +2198,16 @@ function glnodes(a::Float64, b::Float64, n::Int, p::Int)
 end
 
 """int_0^inf A(r) exp(-alpha r^2 - beta r) dr, Re alpha > 0: along the ray r e^{-i arg(alpha)/2}, on which the Gaussian
-decays, while the exponential grows by at most e^2 and turns by at most 60 rad along it; otherwise by the saddle or
-level-curve path of gaussexp."""
+decays, while the exponential grows by at most e^2 and turns by at most 150 rad along it; otherwise by the saddle or
+level-curve path of gaussexp.  The cap is 150 rad, not the 60 of `ray_ok`: the level-curve path, taken when the saddle
+z = beta / (2 sqrt(alpha)) has Re z >= 0, passes the branch point of its square root at the distance |z| from the
+origin, where the Gaussian is e^{-|z|^2}; at 60 rad it took over at |Im z| ~ 4, where that is 1e-7, and the inner
+transform lost seven digits on a short stretch of the line (1e-10 in the distribution function in case DK with c0 > 0
+at x >= 0); at 150 rad the level curve begins at |Im z| ~ 10, where the branch point is below 1e-40."""
 function rayexp(A, alpha::ComplexF64, beta::ComplexF64, lA::Float64, p::Int)
     real(alpha) > 0 || error("Re alpha <= 0 on a ray")
     e = exp(-im * angle(alpha) / 2); aa = abs(alpha)
-    if ray_ok(beta, e, 1.0, aa)
+    if max(0.0, -real(beta * e))^2 / (4aa) <= 2 && abs(imag(beta * e)) * sqrt(EXPO / aa) <= 150
         Rr = sqrt(EXPO / aa)
         real(beta * e) > 0 && (Rr = min(Rr, EXPO / real(beta * e)))
         f = r -> A(r * e) * exp(-aa * r * r - beta * e * r) * e

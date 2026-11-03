@@ -520,9 +520,16 @@ static cdouble rx_f(double r, const void *v) { const rxctx *x = v; cdouble arg =
 cdouble dfl_rayint(cdouble (*f)(double, const void *), const void *ctx, double R, double l, int n1, int n2, int p, double osc);
 static cdouble rayexp(cfn_t A, const void *Actx, cdouble alpha, cdouble beta, double lA, int p)
 {
-    cdouble e = cexp(CPX(0, -carg(alpha) / 2)); double aa = cabs(alpha);
-    if (dfl_ray_ok(beta, e, 1.0, aa)) {
-        double Rr = sqrt(EXPO / aa); cdouble be = cmul(beta, e);
+    cdouble e = cexp(CPX(0, -carg(alpha) / 2)); double aa = cabs(alpha); cdouble be = cmul(beta, e);
+    /* the straight ray when the exponential grows along it by at most e^2 and its phase stays below 150 radians (the
+     * level-curve path of gaussexp, taken otherwise when the saddle z = beta / (2 sqrt(alpha)) has Re z >= 0, passes the
+     * branch point of its square root at the distance |z| from the origin, where the Gaussian is e^{-|z|^2}: with the cap
+     * of 60 radians of ray_ok it took over at |Im z| ~ 4, where that is 1e-7, and the inner transform lost seven digits
+     * on a short stretch of the line, 1e-10 in the distribution function in case DK with c0 > 0 at x >= 0; at 150
+     * radians the level curve begins at |Im z| ~ 10, where the branch point is below 1e-40) */
+    double m = fmax(0, -creal(be));
+    if (m * m / (4 * aa) <= 2 && fabs(cimag(be)) * sqrt(EXPO / aa) <= 150) {
+        double Rr = sqrt(EXPO / aa);
         if (creal(be) > 0) Rr = fmin(Rr, EXPO / creal(be));
         rxctx x = {A, Actx, alpha, beta, e, aa};
         return dfl_rayint(rx_f, &x, Rr, lA, 48, 32, p, fabs(cimag(be)));
@@ -821,6 +828,8 @@ static double outer_gen(int kind, int model, double c, double q, double c0, doub
         gctx on = {kern, kind, 1, 0, R, tn + 1, s1n + 1, s2n + 1, M0n + 1, Pn + 1, wn, gn, NULL, 0, model, c, g0};
         dfl_parfor(nn, gsmooth_body, &on);
         val = 0; for (int j = 0; j < nn; j++) val += gn[j]; val /= M_PI;
+        if (getenv("DFL_DEBUG")) { int j0 = 0; for (int p = 0; p < ne - 1; p++) { double sp = 0, dp = 0; for (int k = 0; k < K; k++) { int i = p * K + k; if (!isnan(psie[i]) && !isnan(psie[i + 1])) dp += fabs(psie[i + 1] - psie[i]); }
+            for (int k = 0; k < mm[p] * nn_[p]; k++) sp += gn[j0++]; printf("    panel %d [%.4g, %.4g] phase %.3g sub %d nodes %d psi0 %.3g sum %.15g\n", p, edges0[p], edges0[p + 1], dp, mm[p], nn_[p], psie[p * K], sp / M_PI); } }
         free(edges0); free(te0); free(P0); free(s1e); free(s2e); free(M0e); free(psie); free(mm); free(nn_); free(tn); free(wn); free(Pn); free(s1n); free(s2n); free(M0n); free(gn);
     } else {
         gctx oc = {kern, kind, 1, 0, R, ts, s1, s2, M0, P, wt, g, NULL, 0, model, c, g0};

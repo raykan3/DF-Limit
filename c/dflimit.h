@@ -153,7 +153,7 @@ int dfl_double(int kind, int n, const double *x, int model, double c, double c0,
 /* ---- the user-level entry points (dfl_api.c) ---- */
 /* method 0: automatic (dfl_automethod at each x), 1: the single integral, 2: the double integral.  NULL options take the defaults.  nstatus (may be NULL) counts the points of the double integral with a
  * nonzero status.  Non-finite x: 0 at -Inf, 1 (cdf) or 0 (density) at Inf, NaN at NaN. */
-int dfl_automethod(int model, double c0, double g0, double x);
+int dfl_automethod(int model, double c, double c0, double g0, double x);
 int dfl_dist(int kind, int n, const double *x, int model, double c, double c0, double g0, bool stat, int method,
              const dfl_single_opts *so, const dfl_double_opts *dopt, double *out, int *nstatus, char *err, size_t errlen);
 /* quantiles q of the probabilities p (in (0, 1)) by safeguarded Newton to the tolerance tol (1e-10); Fq, iter, conv

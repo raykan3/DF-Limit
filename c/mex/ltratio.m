@@ -9,8 +9,9 @@ function varargout = ltratio(what,varargin)
 %
 %   The arguments are those of LTRATIO_CDF, LTRATIO_PDF, LTRATIO_ICDF and LTRATIO_MOM of the MATLAB programs: cas is
 %   'DK', 'DU', 'DT', 'SK', 'SU' or 'ST', c defaults to 0, opts is a structure with the fields c0 (0), g0 (0), method
-%   ('auto', the default: the faster representation at each x, the single integral at c0 = 0 and the double integral
-%   otherwise, and the single integral with a fixed start; 'single'; 'double') and, for 'icdf', tol (1e-10).  Nothing but
+%   ('auto', the default: the faster representation at each x, the single integral at c0 = 0, with a fixed start and
+%   with c0 > 0 at x >= 0, the double integral otherwise with c0 ~= 0 and for the values below 1e-3; 'single';
+%   'double') and, for 'icdf', tol (1e-10).  Nothing but
 %   this file and the MEX file is needed; with the MATLAB programs on the path too, DFX_CORE, TR_LIMDIST and
 %   TR_LIMMOM next to this file replace their engines, so that LTRATIO_CDF and the others run on the C engine.
 %
