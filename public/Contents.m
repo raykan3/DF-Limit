@@ -26,8 +26,10 @@
 %   ltratio_icdf  - quantiles (asymptotic critical values) of t
 %   ltratio_mom   - moments E[t^j], j = 1..p
 %   Options: c0 (the local null value, 0), g0 (fixed start, 0), method
-%   ('single', the default, or 'double': the two exact representations of
-%   the paper; a fixed start g0 ~= 0 uses 'double').
+%   ('auto', the default: the faster of the two exact representations of
+%   the paper point by point, see ltratio_method; 'single' or 'double'
+%   forces one; a fixed start g0 ~= 0 uses 'double').
+%   ltratio_method - the automatic choice of the representation
 %
 % The single integral (Theorem 2 of the paper; the inversion in the argument
 % of U is explicit and one integral along the line Re t = tau remains)

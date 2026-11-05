@@ -29,8 +29,12 @@ function [F,info] = ltratio_cdf(x,cas,c,opts)
 %      'double'  the double integral of Theorem 3: the inner inversion in the
 %                argument of V along a path through a saddle point, the outer
 %                integral over V = b (engine TR_LIMDIST).
-%   opts.method selects it.  The single integral is the faster of the two
-%   except in the upper tail with c > 0, c0 < 0 (Section 7); with a fixed
+%   opts.method selects it: 'auto' (the default) takes, point by point, the
+%   faster of the two as measured in these programs (LTRATIO_METHOD: the
+%   single integral for c0 = 0; with c0 ~= 0 the double integral except for
+%   c0 > 0 at x >= 0 in cases DK, DU, DT, SK, and the single integral except
+%   for c0 < 0 at x >= 0 in cases SU, ST), and recomputes the tails of the
+%   single integral by the double integral (LTRATIO_DIST); with a fixed
 %   nonzero start (g0 ~= 0) only the double integral is available (the
 %   inversion in the argument of U is then no longer in closed form), and
 %   it is used whatever opts.method says.  The two agree to about 1e-12

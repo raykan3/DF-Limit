@@ -2,9 +2,14 @@ function [F,info] = ltratio_dist(x,cas,c,opts,mode)
 %LTRATIO_DIST  Engine dispatch of LTRATIO_CDF and LTRATIO_PDF (mode 'cdf' or 'pdf').
 %
 %   Validates the arguments, chooses the representation (opts.method:
-%   'single', the default, or 'double'; a fixed nonzero start forces
+%   'auto', the default, 'single' or 'double'; a fixed nonzero start forces
 %   'double'), maps the case to the engine's conventions and calls DFX_CORE
-%   (single integral) or TR_LIMDIST (double integral).
+%   (single integral) or TR_LIMDIST (double integral).  With 'auto' the
+%   choice is made point by point by LTRATIO_METHOD, from the timings of the
+%   two representations in the MATLAB programs (single for c0 = 0; with
+%   c0 ~= 0 double except for c0 > 0 at x >= 0 in cases DK, DU, DT, SK, and
+%   single except for c0 < 0 at x >= 0 in cases SU, ST); info.ndouble is
+%   the number of points sent to the double integral by the rule.
 %
 %   Tails.  The single integral has an absolute accuracy, not a relative one:
 %   its terms are of order one, and the computed density or distribution
@@ -12,18 +17,19 @@ function [F,info] = ltratio_dist(x,cas,c,opts,mode)
 %   which finer rules do not reduce (2e-14 in the lower tail of cases DT
 %   and ST at c0 ~= 0; densities below the floor are noise and can be
 %   negative: -6e-21 at x = 8.5 in case SU, c = c0 = -1.2, where the density
-%   is 3e-22).  When the method is not given, the values of the single
-%   integral with a density below 1e-3 in absolute value, or a distribution
-%   function below 1e-3, are therefore recomputed by the double integral,
-%   which keeps its relative accuracy in the tails and returns an error
-%   estimate (info.ntail of them; info.err holds the estimates there and NaN
-%   elsewhere), so that the relative error stays near 1e-10 or below.  With
-%   opts.method = 'single' given explicitly, the single integral is used
-%   throughout.  Far out, below the error of either method, a computed
-%   density can be a tiny negative number; it is returned as zero.
-%   Non-finite x: F = 0 at -Inf, 1 (cdf) or 0 (pdf) at +Inf, NaN at NaN.
+%   is 3e-22).  With 'auto', the values of the single integral with a
+%   density below 1e-3 in absolute value, or a distribution function below
+%   1e-3, are therefore recomputed by the double integral, which keeps its
+%   relative accuracy in the tails and returns an error estimate (info.ntail
+%   of them; info.err holds the estimates at every point computed by the
+%   double integral and NaN elsewhere), so that the relative error stays
+%   near 1e-10 or below.  With opts.method = 'single' given explicitly, the
+%   single integral is used throughout.  Far out, below the error of either
+%   method, a computed density can be a tiny negative number; it is returned
+%   as zero.  Non-finite x: F = 0 at -Inf, 1 (cdf) or 0 (pdf) at +Inf, NaN
+%   at NaN.
 %
-%   See also LTRATIO_CDF, LTRATIO_PDF, DFX_CDF, TR_LIMDIST.
+%   See also LTRATIO_METHOD, LTRATIO_CDF, LTRATIO_PDF, DFX_CDF, TR_LIMDIST.
 t0 = tic;
 [cas,c,c0,g0,method] = ltratio_args(cas,c,opts);
 if ~(isnumeric(x) && isreal(x)), error('ltratio:args','ltratio_%s: x must be real.',mode); end
@@ -33,22 +39,7 @@ info = struct('method',method,'time',0);
 if any(fin(:))
     switch method
         case 'single'
-            model = find('KUT' == cas(2));
-            o = rmfield_safe(opts,{'method','g0'});
-            o.c0 = c0;
-            if cas(1) == 'S', o.start = 'stationary'; else, o.start = 'zero'; end
-            F(fin) = dfx_core(mode,x(fin),model,c,o);
-            explicit = isstruct(opts) && isfield(opts,'method') && ~isempty(opts.method);
-            if ~explicit
-                if strcmp(mode,'pdf'), tl = fin & abs(F) < 1e-3; else, tl = fin & F < 1e-3; end
-                info.ntail = nnz(tl);
-                if any(tl(:))
-                    o2 = rmfield_safe(opts,{'method'}); o2.c0 = c0; o2.g0 = g0;
-                    [Fv,inf2] = tr_limdist(x(tl),cas,c,o2,mode);
-                    F(tl) = Fv;
-                    info.err = NaN(size(x)); if isfield(inf2,'err'), info.err(tl) = inf2.err; end
-                end
-            end
+            F(fin) = single_values(x(fin),cas,c,c0,opts,mode);
         case 'double'
             o = rmfield_safe(opts,{'method'});
             o.c0 = c0; o.g0 = g0;
@@ -56,10 +47,34 @@ if any(fin(:))
             F(fin) = Fv;
             fn = fieldnames(inf2);
             for k = 1:numel(fn), info.(fn{k}) = inf2.(fn{k}); end
+        case 'auto'
+            dbl = fin & ltratio_method(cas,c,c0,g0,x);
+            sgl = fin & ~dbl;
+            info.ndouble = nnz(dbl); info.ntail = 0;
+            if any(sgl(:))
+                F(sgl) = single_values(x(sgl),cas,c,c0,opts,mode);
+                if strcmp(mode,'pdf'), tl = sgl & abs(F) < 1e-3; else, tl = sgl & F < 1e-3; end
+                info.ntail = nnz(tl); dbl = dbl | tl;
+            end
+            if any(dbl(:))
+                o2 = rmfield_safe(opts,{'method'}); o2.c0 = c0; o2.g0 = g0;
+                [Fv,inf2] = tr_limdist(x(dbl),cas,c,o2,mode);
+                F(dbl) = Fv;
+                info.err = NaN(size(x)); if isfield(inf2,'err'), info.err(dbl) = inf2.err; end
+                if isfield(inf2,'status'), info.status = zeros(size(x)); info.status(dbl) = inf2.status; end
+            end
     end
 end
 if strcmp(mode,'pdf'), F(F < 0) = 0; end            % a density below the error of the method
 info.time = toc(t0);
+end
+
+function F = single_values(x,cas,c,c0,opts,mode)
+model = find('KUT' == cas(2));
+o = rmfield_safe(opts,{'method','g0'});
+o.c0 = c0;
+if cas(1) == 'S', o.start = 'stationary'; else, o.start = 'zero'; end
+F = dfx_core(mode,x,model,c,o);
 end
 
 function o = rmfield_safe(o,names)
