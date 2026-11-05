@@ -1002,11 +1002,17 @@ end
 function val = rayexp(A, alpha, beta, lA, p)
 % int_0^inf A(r) exp(-alpha r^2 - beta r) dr, Re alpha > 0: along the ray r e^(-i arg(alpha)/2),
 % on which the Gaussian decays, while the exponential grows by at most e^2 and turns by at
-% most 60 rad along it; otherwise by the saddle or level-curve path of GAUSSEXP
+% most 150 rad along it; otherwise by the saddle or level-curve path of GAUSSEXP.  The cap is
+% 150 rad, not the 60 of RAY_OK: the level-curve path, taken when the saddle is absent, passes
+% the branch point of its square root at |z| with the weight e^(-|z|^2); at 60 rad it took over
+% at |Im z| ~ 4, where that is 1e-7, and the inner transform lost seven digits on a short
+% stretch of the line (1e-10 in the distribution function in case DK with c0 > 0 at x >= 0);
+% at 150 rad the level curve begins at |Im z| ~ 10, where the branch point is below 1e-40
+% (the same change as in the Julia and C engines, November 2026).
 EXPO = 60;
 if ~(real(alpha) > 0), error('dfx: Re alpha <= 0 on a ray'); end
 e = exp(-1i * angle(alpha) / 2); aa = abs(alpha);
-if ray_ok(beta, e, 1, aa)
+if max(0, -real(beta * e))^2 / (4 * aa) <= 2 && abs(imag(beta * e)) * sqrt(EXPO / aa) <= 150
     Rr = sqrt(EXPO / aa);
     if real(beta * e) > 0, Rr = min(Rr, EXPO / real(beta * e)); end
     f = @(r) A(r * e) .* exp(-aa * r .* r - beta * e * r) * e;
