@@ -1453,21 +1453,21 @@ function k0batch(q::Float64, dens::Bool, tau::Float64)
         end
     end
 end
-function density(qin::Float64, model::Int; c::Float64 = 0.0, tau = nothing, start::Symbol = :zero, c0::Float64 = 0.0, gen::Bool = false, kw...)
+function density(qin::Float64, model::Int; c::Float64 = 0.0, tau = nothing, start::Symbol = :zero, c0::Float64 = 0.0, g0::Float64 = 0.0, gen::Bool = false, kw...)
     q = qin == 0 ? 1e-12 : qin
     stat = startflag(start, c)
     tau === nothing && (tau = default_tau(model, c; stat))
-    (c0 != 0 || gen) && return value_gen(1, q, model, c, c0, tau, stat; kw...)
+    (c0 != 0 || g0 != 0 || gen) && return value_gen(1, q, model, c, c0, tau, stat; g0, kw...)
     V = Val(kernel(model, stat))
     batch = !usebatch(c, q, tau) ? nothing : (kernel(model, stat) == 1 ? (tau == 1.0 ? m1batch(q, true, tau) : nothing) : (BATCHK0[] ? k0batch(q, true, tau) : nothing))
     outer(model, c, q, tau, (t, s1, s2, M0, part) -> inner_density(V, t, q, s1, s2, M0; part = part), t -> one(t); stat, batch, kw...)
 end
 
-function cdf(qin::Float64, model::Int; c::Float64 = 0.0, tau = nothing, start::Symbol = :zero, c0::Float64 = 0.0, gen::Bool = false, kw...)
+function cdf(qin::Float64, model::Int; c::Float64 = 0.0, tau = nothing, start::Symbol = :zero, c0::Float64 = 0.0, g0::Float64 = 0.0, gen::Bool = false, kw...)
     q = qin == 0 ? 1e-12 : qin
     stat = startflag(start, c)
     tau === nothing && (tau = default_tau(model, c; stat))
-    (c0 != 0 || gen) && return value_gen(2, q, model, c, c0, tau, stat; kw...)
+    (c0 != 0 || g0 != 0 || gen) && return value_gen(2, q, model, c, c0, tau, stat; g0, kw...)
     V = Val(kernel(model, stat))
     batch = !usebatch(c, q, tau) ? nothing : (kernel(model, stat) == 1 ? (tau == 1.0 ? m1batch(q, false, tau) : nothing) : (BATCHK0[] ? k0batch(q, false, tau) : nothing))
     outer(model, c, q, tau, (t, s1, s2, M0, part) -> inner_cdf(V, t, q, s1, s2, M0; part = part), t -> 1 / t; stat, batch, kw...)
@@ -1724,15 +1724,21 @@ end
 #   "SK", "SU", "ST"  the same regressions with y_0 from the stationary distribution, J(0) ~ N(0, -1/(2c)), c < 0
 const CASES = ("DK", "DU", "DT", "SK", "SU", "ST")
 """the method of `method = :auto` at the point x: the single integral at c0 = 0 (its fixed node layouts make it the faster
-one by 2-20x, zero or stationary start, any c), the double integral when c0 != 0 (5-90x faster than the general kernel
-of the single integral), except in case DK with c0 > 0 at x >= 0, where the single integral has no breakpoint"""
-automethod(model::Int, c0::Float64, x::Float64) = (c0 != 0 && !(model == 1 && c0 > 0 && x >= 0)) ? :double : :single
+one by 2-20x, zero or stationary start, any c) and with a fixed start g0 != 0 (the noncentral kernel, 2-6x faster than
+the double integral and without its limit c <= 2); with c0 != 0 and a zero start the double integral, except for
+c0 > 0 at x >= 0, where X(v) has no positive root, the single integral has no breakpoint and takes 0.2-5 ms in C and
+about 1 ms here against 1-60 ms for the double integral.  Elsewhere with c0 != 0 the double integral is the faster
+one at every c, measured point by point over c in [-5, 5], c0 in {-5, -1, 1, 3} and x in [-4, 32] in the three cases
+(by 2-10x in C; with c0 < 0 the single integral's saddle part costs up to 1 s at x ~ 8 with c0 = -1, and here its
+general kernel is 5-90x slower).  The tails below 1e-3 are recomputed by the double integral in any case
+(ltratio_dist)."""
+automethod(model::Int, c::Float64, c0::Float64, g0::Float64, x::Float64) = (c0 != 0 && g0 == 0 && !(c0 > 0 && x >= 0)) ? :double : :single
 """
     ltratio_args(cas, c; c0, g0, method) -> (model, stat, c0, g0, method)
 
 Validation of the arguments: the case ("DK", "DU", "DT", "SK", "SU", "ST"), the local-to-unity parameter c (finite; a
-stationary start requires c < 0), the local null value c0, the fixed start g0 (fixed-start cases only; g0 != 0 forces the
-double integral) and the method (:auto, the default: the faster representation at each x; :single; :double).
+stationary start requires c < 0), the local null value c0, the fixed start g0 (fixed-start cases only) and the method
+(:auto, the default: the faster representation at each x; :single; :double).
 """
 function ltratio_args(cas::AbstractString, c::Real; c0::Real = 0.0, g0::Real = 0.0, method::Symbol = :auto)
     cas = uppercase(String(cas))
@@ -1744,7 +1750,6 @@ function ltratio_args(cas::AbstractString, c::Real; c0::Real = 0.0, g0::Real = 0
     isfinite(g0) || throw(ArgumentError("g0 must be a finite real scalar"))
     g0 != 0 && stat && throw(ArgumentError("g0 (a fixed start) applies to cases DK, DU, DT only"))
     method in (:auto, :single, :double) || throw(ArgumentError("method must be :auto, :single or :double"))
-    g0 != 0 && (method = :double)                                   # the single integral needs a central form of U + 1/2
     model = findfirst(==(cas[2]), "KUT")
     model, stat, Float64(c0), Float64(g0), method
 end
@@ -1755,12 +1760,23 @@ function ltratio_dist(kind::Int, x, cas::AbstractString, c::Real; c0::Real = 0.0
     xs = x isa Number ? [Float64(x)] : Float64.(vec(collect(x)))
     F = [isnan(xk) ? NaN : xk == Inf ? (kind == 2 ? 1.0 : 0.0) : xk == -Inf ? 0.0 : 0.0 for xk in xs]
     fin = findall(isfinite, xs)
-    dbl = [k for k in fin if method == :double || (method == :auto && automethod(model, c0, xs[k]) == :double)]
+    dbl = [k for k in fin if method == :double || (method == :auto && automethod(model, Float64(c), c0, g0, xs[k]) == :double)]
     sgl = setdiff(fin, dbl)
     isempty(dbl) || (F[dbl] .= tr_limdist(xs[dbl], model, Float64(c); c0, g0, start, pdf = kind == 1, kw...)[1])
     for k in sgl
-        F[k] = kind == 2 ? cdf(xs[k], model; c = Float64(c), c0, start, kw...) : density(xs[k], model; c = Float64(c), c0, start, kw...)
+        F[k] = kind == 2 ? cdf(xs[k], model; c = Float64(c), c0, g0, start, kw...) : density(xs[k], model; c = Float64(c), c0, g0, start, kw...)
     end
+    # the tails: the single integral's error is absolute (1e-14 to 1e-21, not reduced by finer rules), so with method = :auto
+    # the values of the single integral below 1e-3 (a density in absolute value, a distribution function in the lower tail)
+    # are recomputed by the double integral, which keeps its relative accuracy there (as the MATLAB programs do)
+    if method == :auto
+        tl = [k for k in sgl if (kind == 1 ? abs(F[k]) : F[k]) < 1e-3]
+        if !isempty(tl)
+            Ft, info = tr_limdist(xs[tl], model, Float64(c); c0, g0, start, pdf = kind == 1, kw...)
+            for (j, k) in enumerate(tl); info.status[j] == 0 && (F[k] = Ft[j]); end   # (where the double integral flags the point, the single integral's value stays)
+        end
+    end
+    kind == 1 && (F[F .< 0] .= 0.0)                                   # a density below the error of the method
     x isa Number ? F[1] : reshape(F, size(x))
 end
 
@@ -1770,8 +1786,8 @@ end
 The limit as n -> inf of P[t <= x] for the least squares t-ratio t of the hypothesis phi = 1 + c0/n under phi = 1 + c/n,
 case `cas` ("DK", "DU", "DT": fixed start g0, default 0; "SK", "SU", "ST": stationary start, c < 0).  x may be an array.
 Non-finite x: 0 at -Inf, 1 at Inf, NaN at NaN.  method: :auto (the faster of the two representations at each x, see
-`automethod`), :single (the single integral of Theorem 2) or :double (the double integral of Theorem 3, the only route
-for a fixed start in cases DU and DT).  Further keywords go to the engine (tau, hu, N, pfac, ...).
+`automethod`), :single (the single integral of Theorem 2; with a fixed start the noncentral kernel) or :double (the
+double integral of Theorem 3).  Further keywords go to the engine (tau, hu, N, pfac, ...).
 
     ltratio_cdf(-2.86, "DU")                        # P[tau_mu <= -2.86] at the unit root
     ltratio_cdf(-1.94087, "DK", -5)                 # power of the 5% test of tau at c = -5
@@ -1857,8 +1873,8 @@ end
 # paths of gaussexp apply with (alpha, beta) in place of (t/q^2, s_d).  (Raymond Kan's extension of the
 # MATLAB port, ported back.)
 
-"""The breakpoints of the v-integrals of inner_gen for the kernel along u = q v + c0 v^2: X(v) = c0 v^2 + q v + 1/2
-= c0 (v - r1)(v - r2) (or q (v - r1) for c0 = 0, cancellation-free near the roots), its positive roots b (edges,
+"""The breakpoints of the v-integrals of inner_gen for the kernel along u = q v + c0 v^2: X(v) = c0 v^2 + q v + x0
+(x0 = 1/2, or (1 + g0^2)/2 in case DK with a fixed start, where the support edge of R + g0^2/2 is at 0) = c0 (v - r1)(v - r2) (or q (v - r1) for c0 = 0, cancellation-free near the roots), its positive roots b (edges,
 kindb = 1) and, for c0 > 0, q < 0 without real roots, the vertex (kindb = 0); y = b^2 the frequencies of the parts;
 ell the scale of the singularity near each breakpoint (the distance of the nearest other root, real or complex),
 ell0 the same at v = 0; sgn the sign of X on the segments [0, b_1], ..., [b_ne, inf); negl the parts that are
@@ -1876,11 +1892,11 @@ end
     X
 end
 dXv(R::Breaks, v) = 2R.c0 * v + R.q
-function breakpts(q::Float64, c0::Float64, tau::Float64)
+function breakpts(q::Float64, c0::Float64, tau::Float64; x0::Float64 = 0.5)
     if c0 == 0
-        rr = [complex(-1 / (2q))]; lead = q; r = [-1 / (2q)]
+        rr = [complex(-x0 / q)]; lead = q; r = [-x0 / q]
     else
-        d = q * q - 2c0
+        d = q * q - 4c0 * x0
         sq = d >= 0 ? complex(sqrt(d)) : im * sqrt(-d)
         rr = [(-q - sq) / (2c0), (-q + sq) / (2c0)]; lead = c0
         r = d >= 0 ? sort(real.(rr)) : Float64[]
@@ -1889,7 +1905,11 @@ function breakpts(q::Float64, c0::Float64, tau::Float64)
     # a root so far out that e^{-t v^2} is below e^-40 there on the line Re t = tau (3 tau b^2/4 > 40) is dropped:
     # the part near it is negligible and the segment up to it would be integrated at a cost that grows with b
     # (for c0 = 0 and q -> 0- the root -1/(2 q) runs off to infinity)
-    b = [x for x in b if 3tau * x * x / 4 <= 40]
+    # (for c0 = 0 only: with c0 != 0 X changes sign at the root, and the segment beyond it has the other form, phi_neg for
+    # phi_pos, with the other exponential factor, whose Gaussian decay alpha = t + c0 s_d the near side's form lacks;
+    # dropping it ran the near side's form out to infinity, "Re alpha <= 0 on a ray" or a wrong value: Raymond Kan,
+    # November 2026, e.g. SU, c = -1.2, c0 = -1.2 at x = 9.  The edge part of a far root is skipped as negligible, negl.)
+    c0 == 0 && (b = [x for x in b if 3tau * x * x / 4 <= 40])
     kindb = ones(Int, length(b)); ell = fill(Inf, length(b)); dbl = false
     if length(b) == 2 && b[2] - b[1] <= 1e-9 * b[2]              # a double root (x = -sqrt(2 c0), c0 > 0)
         b = [(b[1] + b[2]) / 2]; kindb = [1]; ell = [Inf]; dbl = true
@@ -1897,7 +1917,7 @@ function breakpts(q::Float64, c0::Float64, tau::Float64)
         ell .= b[2] - b[1]
     end
     if c0 > 0 && q < 0 && noroot
-        b = [-q / (2c0)]; kindb = [0]; ell = [sqrt(max(0.5 - q * q / (4c0), 0.0) / c0)]
+        b = [-q / (2c0)]; kindb = [0]; ell = [sqrt(max(x0 - q * q / (4c0), 0.0) / c0)]
     end
     for k in eachindex(b)                                        # the distance of the nearest other root
         dr = [abs(b[k] - r) for r in rr]; dr = [x for x in dr if x > 1e-9 * max(b[k], 1.0)]
@@ -1920,10 +1940,235 @@ end
 """phi_t without its exponential factor e^{-s_d X}: algebraic, bounded away from X = 0."""
 phialg(::Val{1}, X, sgn, s1, s2) = 1 / sqrt(pi * X)
 phialg(::Val, X, sgn, s1, s2) = sgn > 0 ? k0x((s2 - s1) / 2 * X) / pi : k0x(-(s2 - s1) / 2 * X) / pi
+kernof(::Val{k}) where {k} = k
+
+# ---------- the fixed start g0 != 0 through the single integral: the noncentral kernels ----------
+# Under the tilt e^{tV} with a fixed start, R = U + 1/2 is a noncentral form of the same rank (Proposition 2): in case DK
+# R + g0^2/2 = J(1)^2/2 with J(1) ~ N(m, 1/s1), m = g0/F_0, and in cases DU, DT R = (X1^2 - X2^2)/2 with X1 ~ N(m1, 1/s2),
+# X2 ~ N(m2, -1/s1) (s2 the root with positive real part, s1 the other), m_k^2 = g0^2 mu_k from (partial).  The
+# transform is M_{g0}(0,t) = M_0(0,t) e^{g0^2 Q(0,t)}: pref = e^{g0^2 Q(0,t)} multiplies phi_t, and phi_t itself is the
+# density of R with the fixed start, normalized as the central one (total mass M0 = (-s1 s2)^{-1/2}, or s1^{-1/2}).
+# Case DK: phi_t(X~) = pref e^{-s1 m^2/2} e^{-s1 X~} cosh(m s1 sqrt(2 X~))/sqrt(pi X~) with X~ = X + g0^2/2 (the code's X,
+# with x0 = (1 + g0^2)/2 in the parabola), elementary; the edge is at X~ = 0.
+# Cases DU, DT: integrating out X2 (l = |X2|),
+#   phi_t(X) = pref (2/pi) e^{(s1 m2^2 - s2 m1^2)/2} e^{-s2 X} G(X; a, m2 s1, m1 s2)        (X > 0),
+#   phi_t(X) = pref (2/pi) e^{(s1 m2^2 - s2 m1^2)/2} e^{-s1 X} G(-X; a, m1 s2, m2 s1)      (X < 0),
+#   G(Y; a, b1, b2) = int_0^inf e^{-a l^2/2} cosh(b1 l) cosh(b2 sqrt(2Y + l^2)) (2Y + l^2)^{-1/2} dl,  a = s2 - s1,
+# analytic in Y on Re Y > 0 (and beyond), G(Y; a, 0, 0) = e^{aY/2} K_0(aY/2)/2, so that m = 0 gives back the K_0 form.
+# The kink at X = 0 is where it was, and the exponential factors e^{-s_d X} are those of the central kernel, so the paths
+# and partitions of inner_gen apply unchanged; the noncentral factor grows at most like e^{lam} along them, lam/2 =
+# m^2 s/2 the Poisson parameters, which are below 1 on the line for |c g0| <= 5 and below 10 for c <= 5, g0 = 1 (the
+# pieces of the paths stop where the central exponent is below -EXPO; the error is of the order e^{lam - EXPO}).
+"""the noncentral kernel at one point t of the line: m1, m2 the means (case DK: m1 = m), pref = exp(g0^2 Q(0,t)), g0"""
+struct NCK{K}
+    m1::ComplexF64; m2::ComplexF64; pref::ComplexF64; g0::Float64
+end
+kernof(::NCK{k}) where {k} = k
+const NLNC = Ref(40)       # nodes of the l-rule of G (40 agrees with 384 to 1e-14; 32 loses 3e-13)
+"""G(Y; a, b1, b2): l = al sinh T, al = sqrt|2Y|, Gauss-Legendre in T up to where the Gaussian, against the growth of the
+cosh factors, is below e^{-41.4}; sqrt(2Y + l^2) formed as al sqrt(2Y/al^2 + sinh^2 T), the principal branch, continuous
+in l since Im(2Y) is constant along the rule and Re(2Y + l^2) > 0 where it vanishes."""
+const NLMAX = 256         # bounds the node counts of the l-rule
+"""the nodes and weights of the l-rule for int_0^lm e^{-a l^2/2 + bb l + i(...)} (...) dl with the edge scale al (the
+factor (2Y + l^2)^{-1/2} varies on it): l = al sinh T with Gauss-Legendre nodes in T, at least Nl, more where the peak of
+the Gaussian times the growth, at l* = bb/Re a with the width sigma = (Re a)^{-1/2}, is narrow in T (at most NLMAX).  (At
+large noncentrality, with the peak separated from the edge scale, the integral runs along the saddle line instead: ncsaddle.)"""
+function lrule(al::Float64, lm::Float64, bb::Float64, ra::Float64, ai::Float64, bi::Float64, Nl::Int)
+    lstar = bb / ra; sig = 1 / sqrt(ra)
+    if lstar - 8sig > 2al
+        l1 = lstar - 8sig; lhi = min(lm, lstar + 8sig)
+        dphi = abs(ai) * (lhi * lhi - l1 * l1) / 2 + bi * (lhi - l1)
+        nB = clamp(8 * cld(ceil(Int, 1.2dphi + 24), 8), Nl, NLMAX)
+        zl, wl = rule(Nl); zB, wB = rule(nB)
+        tm = asinh(l1 / al)
+        ls = Vector{Float64}(undef, Nl + nB); ws = Vector{Float64}(undef, Nl + nB)
+        @inbounds for k in 1:Nl; T = zl[k] * tm; ls[k] = al * sinh(T); ws[k] = al * cosh(T) * wl[k] * tm; end
+        @inbounds for k in 1:nB; ls[Nl+k] = l1 + (lhi - l1) * zB[k]; ws[Nl+k] = (lhi - l1) * wB[k]; end
+        return ls, ws
+    end
+    tm = asinh(lm / al)
+    dT = sig / sqrt(al * al + lstar * lstar)                      # the width of the peak in T
+    n = clamp(8 * cld(ceil(Int, 3tm / dT), 8), Nl, NLMAX)
+    zl, wl = rule(n)
+    ls = Vector{Float64}(undef, n); ws = Vector{Float64}(undef, n)
+    @inbounds for k in 1:n; T = zl[k] * tm; ls[k] = al * sinh(T); ws[k] = al * cosh(T) * wl[k] * tm; end
+    ls, ws
+end
+function ncG(Y::ComplexF64, a::ComplexF64, b1::ComplexF64, b2::ComplexF64)
+    # along the ray l = e s, e = e^{-i arg(a)/2}, the Gaussian is e^{-|a| s^2/2} (no oscillation) and r = e (2Y e^{i arg a} +
+    # s^2)^{1/2}: the same integral with the arguments (Y e^{i arg a}, |a|, b1 e, b2 e), whose cut in Y lies where a Y is
+    # negative real, as the cut of K_0((s2 - s1) X/2) of the central kernel does, so the paths of inner_gen, which avoid that
+    # cut, serve; with the real-axis rule the cut would lie at negative real Y instead
+    ph = angle(a); e = exp(-im * ph / 2)
+    Y = Y * exp(im * ph); a = complex(abs(a)); b1 = b1 * e; b2 = b2 * e
+    ra = max(real(a), 1e-300); bb = abs(b1) + abs(b2)
+    lm = (bb + sqrt(bb * bb + 2 * 41.4 * ra)) / ra
+    al = max(sqrt(abs(2Y)), 1e-8 * lm)
+    ls, ws = lrule(al, lm, abs(real(b1)) + abs(real(b2)), ra, imag(a), abs(imag(b1)) + abs(imag(b2)), NLNC[])
+    Y2 = 2Y / (al * al)
+    # the terms as e^{E_k - Eref} with Eref the largest real exponent: G = S e^{Eref}, S bounded (the exponents reach
+    # 2 lam at large noncentrality, beyond the range of a double)
+    n = length(ls)
+    Es = Vector{ComplexF64}(undef, n); rs = Vector{ComplexF64}(undef, n); fs = Vector{ComplexF64}(undef, n)
+    Eref = -Inf
+    @inbounds for k in 1:n
+        l = ls[k]; sh = l / al
+        r = al * sqrt(Y2 + sh * sh)
+        z1 = b1 * l; real(z1) < 0 && (z1 = -z1)
+        z2 = b2 * r; real(z2) < 0 && (z2 = -z2)
+        # cosh z = e^z (1 + e^{-2z})/2 for Re z >= 0: one exponential of the combined exponent
+        Es[k] = -a * l * l / 2 + z1 + z2; rs[k] = r; fs[k] = (1 + exp(-2z1)) * (1 + exp(-2z2)) / 4
+        Eref = max(Eref, real(Es[k]))
+    end
+    S = zero(ComplexF64)
+    @inbounds for k in 1:n; S += exp(Es[k] - Eref) * fs[k] / rs[k] * ws[k]; end
+    S, Eref
+end
+"""P[R <= 1/2] under the tilt with a fixed start, cases DU, DT: 2 int_0^inf phibar(l; m2, w2) Fbar(sqrt(1 + l^2); m1, w1) dl,
+X1 ~ N(m1, w1 = 1/s2), X2 ~ N(m2, w2 = -1/s1), by the l-rule (the Gaussian in l peaks at |m2|)"""
+function ncP(s1::ComplexF64, s2::ComplexF64, m1::ComplexF64, m2::ComplexF64, Nl::Int)
+    w1 = 1 / s2; w2 = -1 / s1
+    ra = max(real(1 / w2), 1e-300); bb = abs(m2 / w2)
+    lm = (bb + sqrt(bb * bb + 2 * 41.4 * ra)) / ra
+    ls, ws = lrule(1.0, lm, abs(real(m2 / w2)), ra, imag(1 / w2), abs(imag(m2 / w2)), Nl)
+    sq1 = sqrt(2w1); c2 = 1 / (2sqrt(2pi * w2))
+    P = zero(ComplexF64)
+    @inbounds for k in eachindex(ls)
+        l = ls[k]; u = sqrt(1 + l * l)
+        f2 = (exp(-(l - m2)^2 / (2w2)) + exp(-(l + m2)^2 / (2w2))) * c2
+        F1 = (erf((u - m1) / sq1) + erf((u + m1) / sq1)) / 2
+        P += f2 * F1 * ws[k]
+    end
+    2P
+end
+phialg(K::NCK{1}, X, sgn, s1, s2) = K.pref * exp(-s1 * K.m1 * K.m1 / 2) * cosh(K.m1 * s1 * sqrt(2X)) / sqrt(pi * X)
+"""phialg of cases DU, DT as (S, E): phialg = S e^E, S bounded"""
+function phialg_scaled(K::NCK{2}, X, sgn, s1, s2)
+    a = s2 - s1
+    cst = K.pref * (2 / pi) * exp((s1 * K.m2 * K.m2 - s2 * K.m1 * K.m1) / 2)
+    S, E = sgn > 0 ? ncG(X, a, K.m2 * s1, K.m1 * s2) : ncG(-X, a, K.m1 * s2, K.m2 * s1)
+    cst * S, E
+end
+function phialg(K::NCK{2}, X, sgn, s1, s2)
+    S, E = phialg_scaled(K, X, sgn, s1, s2)
+    S * exp(E)
+end
+# The noncentral density is a Gaussian in sqrt(2 X~) centered at the mean (X~ = X + g0^2/2 in case DK, X or -X in cases
+# DU, DT): e^{-s_d X~} cosh(b sqrt(2 X~)) with b = m s_d, so that its mass sits at X~ = m^2/2, away from the edge, by the
+# factor e^{lam}, lam = m^2 s_d/2.  The paths of inner_gen are built from the exponent; for the noncentral kernels it is
+# E = -t v^2 - s_d X + ncexp, ncexp = log cosh(b sqrt(2 X~)), and the factor carried by the nodes is phialg e^{-ncexp},
+# which is bounded.  (For the central kernels ncexp = 0.)
+"""log cosh z without overflow: z_s + log(1 + e^{-2 z_s}) - log 2 with Re z_s >= 0"""
+@inline function logcosh(z::ComplexF64)
+    zs = real(z) >= 0 ? z : -z
+    zs + log1p(exp(-2zs)) - 0.6931471805599453
+end
+"""the coefficient b of the noncentral exponent on the side sgn (kern 1: one side)"""
+ncb(K::NCK{1}, sgn, s1, s2) = K.m1 * s1
+ncb(K::NCK{2}, sgn, s1, s2) = sgn > 0 ? K.m1 * s2 : K.m2 * s1
+ncexp(::Val, X, sgn, s1, s2) = zero(ComplexF64)
+ncexp(K::NCK, X, sgn, s1, s2) = logcosh(ncb(K, sgn, s1, s2) * sqrt(2 * (sgn > 0 ? X : -X)))
+"""d ncexp / dv = b^2 (tanh z / z) (+-dX/dv), z = b sqrt(2 X~): finite at the edge"""
+ncexp_dv(::Val, X, sgn, s1, s2, dXdv) = zero(ComplexF64)
+function ncexp_dv(K::NCK, X, sgn, s1, s2, dXdv)
+    b = ncb(K, sgn, s1, s2); Xt = sgn > 0 ? X : -X; z = b * sqrt(2Xt)
+    tz = abs(z) < 1e-6 ? one(z) : tanh(z) / z
+    b * b * tz * (sgn > 0 ? dXdv : -dXdv)
+end
+"""phialg without the noncentral growth, as (S, E) with phired = S e^E and S bounded (the exponent E reaches the size of
+lam at large noncentrality): the central kernels and case DK with E = 0; cases DU, DT by the l-rule of ncG, or along the
+saddle line (ncsaddle) when the Gaussian of X_2 is separated from the edge scale"""
+const USE_SADDLE = Ref(false)   # the saddle line of ncsaddle (experimental; the composite l-rule serves)
+phired_scaled(V, X, sgn, s1, s2) = (phialg(V, X, sgn, s1, s2) * exp(-ncexp(V, X, sgn, s1, s2)), 0.0)
+function phired_scaled(K::NCK{2}, X, sgn, s1, s2)
+    w2 = -1 / s1; Xt = sgn > 0 ? X : -X
+    USE_SADDLE[] && abs(K.m2) - 8sqrt(abs(w2)) > 2sqrt(abs(2Xt)) && return ncsaddle(K, X, sgn, s1, s2)
+    S, E = phialg_scaled(K, X, sgn, s1, s2)
+    S, E - ncexp(K, X, sgn, s1, s2)
+end
+phired(V, X, sgn, s1, s2) = ((S, E) = phired_scaled(V, X, sgn, s1, s2); S * exp(E))
+"""the square roots of q at the nodes of a path, continuous: the root with positive real part at the first node, then the
+root nearer the previous value (the nodes in path order)"""
+function sqrt_cont(q::AbstractVector{ComplexF64})
+    u = similar(q)
+    u0 = sqrt(q[1]); real(u0) < 0 && (u0 = -u0); u[1] = u0
+    @inbounds for k in 2:length(q); r = sqrt(q[k]); u[k] = abs(r - u[k-1]) <= abs(r + u[k-1]) ? r : -r; end
+    u
+end
+"""the nodes of a line through a saddle, s in [-S, S], in two chains from the center outward (for the branch tracking), with
+the Gauss-Legendre weights; n nodes"""
+function saddle_nodes(n::Int, S::Float64)
+    z, w = rule(n)
+    s = S .* (2 .* z .- 1); ws = 2S .* w
+    ip = findall(>=(0), s); im_ = findall(<(0), s)
+    sort!(ip; by = k -> s[k]); sort!(im_; by = k -> -s[k])
+    s, ws, ip, im_
+end
+"""phired of cases DU, DT at large noncentrality, as (S, E): the integral over X_2 along the line through the saddle of its
+Gaussian, on which that Gaussian is e^{-s^2/2} and nothing cancels (on the real axis the terms exceed the integral by e^{lam}).
+X > 0: l = m_2 + w_2^{1/2} s, u = (l^2 + 2X)^{1/2} continuous from s = 0; X < 0: u = u_s + d s with u_s = (m_2^2 - 2X~)^{1/2}
+and d = (m_2/u_s) w_2^{1/2}, l = (u^2 + 2X~)^{1/2}.  The node count from the change of the exponent along the line."""
+function ncsaddle(K::NCK{2}, X, sgn, s1, s2)
+    w1 = 1 / s2; w2 = -1 / s1; m1 = K.m1; m2 = K.m2
+    real(m2) < 0 && (m2 = -m2)
+    sq2 = sqrt(w2); Xt = sgn > 0 ? X : -X
+    pre = K.pref / (sqrt(-s1) * sqrt(s2))                            # the mass M0
+    Sl = 9.0
+    if sgn > 0
+        us0 = sqrt(m2 * m2 + 2X); real(us0) < 0 && (us0 = -us0)
+        real(m1 * us0 / w1) < 0 && (m1 = -m1)
+        cst = s2 * X - ncexp(K, X, sgn, s1, s2)
+        Eof = (s, u) -> -s * s / 2 - (u - m1)^2 / (2w1) + cst
+        # the node count from the change of the exponent along the line and the width of the Gaussian of X_1 in s
+        sc = range(-Sl, Sl; length = 33); uc = sqrt_cont([(m2 + sq2 * s)^2 + 2X for s in sc])
+        Ec = [Eof(sc[k], uc[k]) for k in eachindex(sc)]
+        dph = sum(abs(Ec[k+1] - Ec[k]) for k in 1:length(sc)-1)
+        n = clamp(8 * cld(ceil(Int, 1.2dph + 24 + 6Sl * abs(sq2) / sqrt(abs(w1))), 8), 64, 2NLMAX)
+        s, ws, ip, im_ = saddle_nodes(n, Sl)
+        u = Vector{ComplexF64}(undef, n)
+        u[ip] = sqrt_cont([(m2 + sq2 * s[k])^2 + 2X for k in ip]); u[im_] = sqrt_cont([(m2 + sq2 * s[k])^2 + 2X for k in im_])
+        E = [Eof(s[k], u[k]) for k in 1:n]; Eref = maximum(real, E)
+        acc = zero(ComplexF64)
+        @inbounds for k in 1:n; acc += ws[k] * exp(E[k] - Eref) * (1 + exp(-2m1 * u[k] / w1)) / u[k]; end
+        return pre / (2pi * sqrt(w1)) * acc, Eref
+    end
+    us = sqrt(m2 * m2 - 2Xt); real(us) < 0 && (us = -us)
+    d = m2 / us * sq2
+    real(m1 * us / w1) < 0 && (m1 = -m1)
+    cst = s1 * X - ncexp(K, X, sgn, s1, s2)
+    Eof = (u, l) -> -(u - m1)^2 / (2w1) - (l - m2)^2 / (2w2) + cst
+    sc = range(-Sl, Sl; length = 33); ucs = [us + d * s for s in sc]; lc = sqrt_cont([uu * uu + 2Xt for uu in ucs])
+    Ec = [Eof(ucs[k], lc[k]) for k in eachindex(sc)]
+    dph = sum(abs(Ec[k+1] - Ec[k]) for k in 1:length(sc)-1)
+    n = clamp(8 * cld(ceil(Int, 1.2dph + 24 + 6Sl * abs(d) / sqrt(abs(w1))), 8), 64, 2NLMAX)
+    s, ws, ip, im_ = saddle_nodes(n, Sl)
+    u = [us + d * s[k] for k in 1:n]; l = Vector{ComplexF64}(undef, n)
+    l[ip] = sqrt_cont([u[k]^2 + 2Xt for k in ip]); l[im_] = sqrt_cont([u[k]^2 + 2Xt for k in im_])
+    E = [Eof(u[k], l[k]) for k in 1:n]; Eref = maximum(real, E)
+    acc = zero(ComplexF64)
+    @inbounds for k in 1:n; acc += ws[k] * d * exp(E[k] - Eref) * (1 + exp(-2m1 * u[k] / w1)) * (1 + exp(-2m2 * l[k] / w2)) * u[k] / l[k]; end
+    pre / (2pi * sqrt(w1) * sqrt(w2)) * acc, Eref
+end
+"""the kernel of the fixed start g0 at the point t: the means and pref from the Girsanov forms (case DK) or from the
+partial fractions (partial) of Q(s,t) (cases DU, DT; the determinant form of Q for c <= CGIRS, the Girsanov form beyond)"""
+function nckernel(model::Int, c::Float64, t::ComplexF64, g0::Float64, s1::ComplexF64, s2::ComplexF64)
+    if model == 1
+        G = girsanov(1, c, t)
+        return NCK{1}(g0 * exp(-G.lsh) / G.eta, zero(ComplexF64), exp(g0 * g0 * t / G.eta), g0)
+    end
+    Q0, m1s, m2s = qpieces(model, c, t, g0, 1 / s2, -1 / s1, c > CGIRS ? qstart : qstart_d)
+    NCK{2}(sqrt(m1s), sqrt(m2s), exp(Q0), g0)
+end
 
 """Psi_t(1/2) = int_{-inf}^{1/2} phi_t(X) dX: closed form in case DK, otherwise the total mass minus a short
-integral over X > 1/2 (or the integral over X < 1/2 when |s2| is small)."""
+integral over X > 1/2 (or the integral over X < 1/2 when |s2| is small); with a fixed start, the noncentral probability
+P[J(1)^2 <= 1 + g0^2] (case DK) or P[R <= 1/2] by the l-rule of Pkap (cases DU, DT), times the mass."""
 psi_half(::Val{1}, s1, s2, M0) = erf(sqrt(s1 / 2)) / sqrt(s1)
+function psi_half(K::NCK{1}, s1, s2, M0)
+    r = sqrt(1 + K.g0 * K.g0); w = sqrt(2 / s1)
+    K.pref / sqrt(s1) * (erf((r - K.m1) / w) + erf((r + K.m1) / w)) / 2
+end
+psi_half(K::NCK{2}, s1, s2, M0) = K.pref * M0 * ncP(s1, s2, K.m1, K.m2, NLNC[])
 function psi_half(V::Val, s1, s2, M0)
     l = 1 / (abs(s2 - s1) + 2)
     if abs(s2) >= abs(s1) / 4
@@ -1953,12 +2198,16 @@ function glnodes(a::Float64, b::Float64, n::Int, p::Int)
 end
 
 """int_0^inf A(r) exp(-alpha r^2 - beta r) dr, Re alpha > 0: along the ray r e^{-i arg(alpha)/2}, on which the Gaussian
-decays, while the exponential grows by at most e^2 and turns by at most 60 rad along it; otherwise by the saddle or
-level-curve path of gaussexp."""
+decays, while the exponential grows by at most e^2 and turns by at most 150 rad along it; otherwise by the saddle or
+level-curve path of gaussexp.  The cap is 150 rad, not the 60 of `ray_ok`: the level-curve path, taken when the saddle
+z = beta / (2 sqrt(alpha)) has Re z >= 0, passes the branch point of its square root at the distance |z| from the
+origin, where the Gaussian is e^{-|z|^2}; at 60 rad it took over at |Im z| ~ 4, where that is 1e-7, and the inner
+transform lost seven digits on a short stretch of the line (1e-10 in the distribution function in case DK with c0 > 0
+at x >= 0); at 150 rad the level curve begins at |Im z| ~ 10, where the branch point is below 1e-40."""
 function rayexp(A, alpha::ComplexF64, beta::ComplexF64, lA::Float64, p::Int)
     real(alpha) > 0 || error("Re alpha <= 0 on a ray")
     e = exp(-im * angle(alpha) / 2); aa = abs(alpha)
-    if ray_ok(beta, e, 1.0, aa)
+    if max(0.0, -real(beta * e))^2 / (4aa) <= 2 && abs(imag(beta * e)) * sqrt(EXPO / aa) <= 150
         Rr = sqrt(EXPO / aa)
         real(beta * e) > 0 && (Rr = min(Rr, EXPO / real(beta * e)))
         f = r -> A(r * e) * exp(-aa * r * r - beta * e * r) * e
@@ -1969,15 +2218,16 @@ end
 
 const NGROW = 16; const NLEV = 5; const NCON = 16   # node counts of the segment pieces (the least nodes of a growing piece,
                                                     # the grading levels of the connection, the least nodes of each of its sub-pieces)
-"""nodes and weights for int_0^L: the first piece [0, first] (shortened, by halving, until the exponent falls by at most 4 and
-its phase changes by at most 40 rad across it) with nmin nodes and the substitution p, then pieces growing by the factor 4,
+"""nodes and weights for int_0^L: the first piece [0, first] (shortened, by halving, until the exponent falls by at most 4,
+rises by at most 4 (the noncentral kernels rise away from the edge) and its phase changes by at most 40 rad across it) with
+nmin nodes and the substitution p, then pieces growing by the factor 4,
 with the node counts set by the change of the phase of the exponent across each piece (at most 0.85 rad per node, in
 sub-pieces of at most 160 nodes), until the exponent is below -EXPO."""
 function pieces_nodes(Ef, L::Float64, first::Float64, p::Int, nmin::Int)
     first = min(first, L)
     for _ in 1:60
         E = [Ef(first * i / 8) for i in 0:8]
-        ((real(E[end]) > -4 && sum(abs(imag(E[i+1]) - imag(E[i])) for i in 1:8) < 40) || first <= 1e-12 * L) && break
+        ((real(E[end]) > -4 && maximum(real(Ek) for Ek in E) - real(E[1]) < 4 && sum(abs(imag(E[i+1]) - imag(E[i])) for i in 1:8) < 40) || first <= 1e-12 * L) && break
         first /= 2
     end
     y, wt = glnodes(0.0, first, nmin, p)
@@ -2060,12 +2310,12 @@ point into the other half plane than the Gaussian's; the connection then crosses
 small.  The nodes come from pieces_nodes (geometric pieces, node counts from the phase of the exponent, stopping where the
 exponent is below -60) and, for the connection, phase_nodes; the integrand and the partition are evaluated once at all
 of them."""
-function segint(V::Val, tj::ComplexF64, sd::ComplexF64, sgn::Int, s1::ComplexF64, s2::ComplexF64, W, R::Breaks, a::Float64, b::Float64,
+function segint(V, tj::ComplexF64, sd::ComplexF64, sgn::Int, s1::ComplexF64, s2::ComplexF64, W, R::Breaks, a::Float64, b::Float64,
                 chi, pa::Int, pb::Int, ella::Float64, ellb::Float64, ws::Bool, wl::Bool, wr::Bool, sg::Float64, ka::Int, kb::Int, dep::Float64)
     L = b - a; c0 = R.c0
     # the integrand at the offset z from the end o (a or b), X formed from z without cancellation
-    Ez = (z, o) -> -tj * (o + z) * (o + z) - sd * xat(R, z, o)
-    Fz = (z, o) -> W(o + z) * exp(Ez(z, o)) * phialg(V, xat(R, z, o), sgn, s1, s2)
+    Ez = (z, o) -> (X = xat(R, z, o); -tj * (o + z) * (o + z) - sd * X + ncexp(V, X, sgn, s1, s2))
+    Fz = (z, o) -> (X = xat(R, z, o); (S, E) = phired_scaled(V, X, sgn, s1, s2); W(o + z) * S * exp(Ez(z, o) + E))
     Eb = Ez(0.0, b); Ea = Ez(0.0, a)
     alpha = tj + c0 * sd
     # the descent directions, kept within 80 degrees of the segment, or 45 degrees at a pseudo-edge, whose branch points
@@ -2074,15 +2324,20 @@ function segint(V::Val, tj::ComplexF64, sd::ComplexF64, sgn::Int, s1::ComplexF64
     # >= 0.7 ell from the path)
     dega = 80.0; fa = ella / 2; ka == 0 && (dega = 45.0; fa = ella)
     degb = 80.0; fb = ellb / 2; kb == 0 && (degb = 45.0; fb = ellb)
-    la, ua = descent(-2tj * a - sd * dXv(R, a), alpha, 1, L, dep, sg, dega)
-    lb, ub = descent(-2tj * b - sd * dXv(R, b), alpha, -1, L, dep, sg, degb)
+    la, ua = descent(-2tj * a - sd * dXv(R, a) + ncexp_dv(V, xat(R, 0.0, a), sgn, s1, s2, dXv(R, a)), alpha, 1, L, dep, sg, dega)
+    lb, ub = descent(-2tj * b - sd * dXv(R, b) + ncexp_dv(V, xat(R, 0.0, b), sgn, s1, s2, dXv(R, b)), alpha, -1, L, dep, sg, degb)
     pa_ = a + la * ua; pb_ = b + lb * ub
     # the three pieces: the integrand at the nodes (from the offsets along the two descent pieces, so that X is exact
     # near the ends) and the partition
+    # the integrand is evaluated only where the wanted parts of the partition (chi near b, 1 - chi near a) exceed 1e-15:
+    # the edge part skips the nodes near a, the smooth part those near b
+    needa = ws || wl; needb = wr
+    keep(vc) = (ch = chi(vc); (needa && abs(1 - ch) > 1e-15) || (needb && abs(ch) > 1e-15))
+    fv = ComplexF64[]; v = ComplexF64[]
     s, w = pieces_nodes(s -> Ez(s * ua, a) - Ea, la, min(la / 8, fa), pa, 48 + 16 * (pa == 1))
-    fv = [Fz(s[k] * ua, a) * (w[k] * ua) for k in eachindex(s)]; v = [a + s[k] * ua for k in eachindex(s)]
+    for k in eachindex(s); vc = a + s[k] * ua; keep(vc) && (push!(fv, Fz(s[k] * ua, a) * (w[k] * ua)); push!(v, vc)); end
     s, w = pieces_nodes(s -> Ez(s * ub, b) - Eb, lb, min(lb / 8, fb), pb, 48)
-    append!(fv, [-Fz(s[k] * ub, b) * (w[k] * ub) for k in eachindex(s)]); append!(v, [b + s[k] * ub for k in eachindex(s)])   # from b toward the segment: reversed
+    for k in eachindex(s); vc = b + s[k] * ub; keep(vc) && (push!(fv, -Fz(s[k] * ub, b) * (w[k] * ub)); push!(v, vc)); end   # from b toward the segment: reversed
     # the connection: the straight line, unless the exponent rises along it above the ends (the Gaussian grows in the half
     # plane a descent piece has entered under the exponential factor, as with Re alpha ~ 0 and a steep -beta v); then the
     # polyline through the real axis, pa_ -> Re pa_ -> Re pb_ -> pb_, on which the exponent is that of the integrand itself
@@ -2098,6 +2353,7 @@ function segint(V::Val, tj::ComplexF64, sd::ComplexF64, sgn::Int, s1::ComplexF64
             s, w = phase_nodes(s -> Ez(legs[k] + s * dv - a, a), Ea, Eb)
             for i in eachindex(s)
                 vc = legs[k] + s[i] * dv
+                keep(vc) || continue
                 push!(fv, (abs(vc - b) < abs(vc - a) ? Fz(vc - b, b) : Fz(vc - a, a)) * (w[i] * dv)); push!(v, vc)
             end
         end
@@ -2114,6 +2370,126 @@ function segint(V::Val, tj::ComplexF64, sd::ComplexF64, sgn::Int, s1::ComplexF64
     vs, vl, vr
 end
 
+"""the length of a straight piece from the start along which Ef (real part, 0 at the start) has fallen below -EXPO:
+from R0 (the quadratic estimate), grown by 1.5 while Ef is above -EXPO"""
+function raylen(Ef, R0::Float64)
+    Rr = R0
+    for _ in 1:60
+        real(Ef(Rr)) < -EXPO && break
+        Rr *= 1.5
+    end
+    Rr
+end
+"""the ray of the noncentral kernel when the full exponent rises along the real axis by more than 2 above its value at the
+edge (the mass of the noncentral density sits at X~ = m^2/2, beyond the breakpoint): on the rotated ray the integrand then
+oscillates with a magnitude of up to e^{lam} and cancels, while the saddle of the full exponent E(rho) = -alpha rho^2 -
+beta rho + ncexp(X(rho)) lies near the real axis.  The path is the straight piece from 0 to the saddle rho_s (Newton on E'
+from the maximum of Re E on the real axis, E'' by a difference), then straight pieces in the direction of steepest descent
+at their start, renewed where the descent along a piece ends, until E has fallen by EXPO; the nodes from pieces_nodes with
+the full exponent.  Returns nothing when there is no such rise (the rotated ray serves)."""
+function ray_saddle(Efull, dEfull, Ared, first::Float64, p::Int, Rmax::Float64)
+    E0 = real(Efull(0.0 + 0im))
+    rs = [Rmax * 1.25^(k - 80) for k in 0:80]
+    Es = [real(Efull(complex(r))) for r in rs]
+    kmax = argmax(Es)
+    Es[kmax] - E0 > 2 || return nothing
+    # the maximum on the real axis refined (Newton on Re E' along the axis, within the scan's cell), so that the saddle is
+    # judged against the true height of the bump
+    rr = rs[kmax]; Emax = Es[kmax]
+    for _ in 1:20
+        h = 1e-6 * rr; d1 = real(dEfull(complex(rr))); d2 = real(dEfull(complex(rr + h)) - dEfull(complex(rr - h))) / (2h)
+        d2 < 0 || break
+        rn = rr - d1 / d2; (rn > rs[kmax] / 1.25 && rn < rs[kmax] * 1.25) || break
+        abs(rn - rr) < 1e-10 * rr && (rr = rn; break)
+        rr = rn
+    end
+    Emax = max(Emax, real(Efull(complex(rr))))
+    rho = complex(rr)
+    for _ in 1:30                                                     # Newton on E' = 0
+        d1 = dEfull(rho); h = 1e-6 * abs(rho)
+        d2 = (dEfull(rho + h) - dEfull(rho - h)) / (2h)
+        abs(d2) == 0 && break
+        step = -d1 / d2
+        abs(step) > abs(rho) && (step *= abs(rho) / abs(step))
+        rho += step
+        abs(step) < 1e-10 * abs(rho) && break
+    end
+    # the saddle serves only if it is the bump of the real axis slightly displaced: a saddle far above it (Re E_s beyond
+    # the real-axis maximum) or far from it is one the real-axis path does not cross, and the rotated ray serves instead
+    if !(isfinite(rho) && real(rho) > 0 && real(Efull(rho)) > E0 + 1 && real(Efull(rho)) <= Emax + 1 && abs(imag(rho)) <= 0.5abs(real(rho)))
+        # a small rise: the rotated ray serves (its cancellation is at most e^{rise}); a large one: the real-axis maximum
+        # is the pivot, and the descent pieces start from it
+        Emax - E0 > 10 || return nothing
+        rho = complex(rr)
+    end
+    val = zero(ComplexF64)
+    # the piece from 0 to the saddle
+    E_s = Efull(rho)
+    s, w = pieces_nodes(lam -> Efull(lam * rho), 1.0, min(1 / 8, first / abs(rho)), p, 48)
+    for k in eachindex(s); (S, E) = Ared(s[k] * rho); val += S * exp(Efull(s[k] * rho) + E) * w[k]; end
+    val *= rho
+    # the descent from the saddle: straight pieces, each in the direction of steepest descent at its start
+    z0 = rho
+    h = 1e-6 * abs(rho); d2 = (dEfull(rho + h) - dEfull(rho - h)) / (2h)
+    d = abs(d2) > 0 ? exp(im * (pi - angle(d2)) / 2) : one(rho); real(d) < 0 && (d = -d)
+    for piece in 1:16
+        Ez0 = Efull(z0)
+        Ef = r -> Efull(z0 + r * d) - Ez0
+        # the length: where the exponent has fallen by EXPO, or where the descent along the line ends (Re Ef turns up)
+        # the length: along the line while the exponent falls; stop where it has fallen by EXPO, or at the last point before
+        # it rises (the direction is renewed there from the gradient), or at 10 Rmax
+        L = 1e-3 * abs(rho); Lend = NaN; Eprev = 0.0
+        for it in 0:200
+            Ec = real(Ef(L))
+            if Ec < -EXPO; Lend = L; break; end
+            if isnan(Ec) || Ec > Eprev; Lend = it == 0 ? L : L / 1.4; break; end
+            if L > 10Rmax; Lend = L; break; end
+            Eprev = Ec; L *= 1.4
+        end
+        isnan(Lend) && (Lend = L)
+        s, w = pieces_nodes(Ef, Lend, min(Lend / 8, first), 1, 48)
+        for k in eachindex(s); (S, E) = Ared(z0 + s[k] * d); val += S * exp(Ef(s[k]) + Ez0 + E) * w[k] * d; end
+        z0 += Lend * d
+        real(Efull(z0) - E_s) < -EXPO && break
+        g = dEfull(z0); abs(g) == 0 && break
+        d = -conj(g) / abs(g)                                           # the new direction of steepest descent
+    end
+    val
+end
+"""int_0^inf A(rho) exp(-alpha rho^2 - beta rho) drho for the noncentral kernel K, A = W phialg along the ray from a, whose
+growth e^{ncexp} the quadratic exponent does not see: the straight ray rho = r e in the direction e of the Gaussian's decay,
+or, when the exponential grows along it by more than e^2 (the saddle term of the exponent, Re z < 0), the segment to the
+saddle x0 = -beta/(2 alpha) and the descent line x0 + r e from it; the nodes from pieces_nodes with the full exponent, the
+first piece of length `first` with the substitution p (4 at an edge)."""
+function rayexp_nc(K::NCK, R::Breaks, a::Float64, sgn::Int, s1, s2, W, alpha::ComplexF64, beta::ComplexF64, first::Float64, p::Int)
+    e = exp(-im * angle(alpha) / 2); aa = abs(alpha); be = beta * e
+    Ared = rho -> ((S, E) = phired_scaled(K, xat(R, rho, a), sgn, s1, s2); (W(a + rho) * S, E))     # (S, E): the factor S e^E
+    Efull = rho -> -alpha * rho * rho - beta * rho + ncexp(K, xat(R, rho, a), sgn, s1, s2)
+    dEfull = rho -> -2alpha * rho - beta + ncexp_dv(K, xat(R, rho, a), sgn, s1, s2, dXv(R, a + rho))
+    val = zero(ComplexF64)
+    if max(0.0, -real(be))^2 / (4aa) <= 2
+        Ef = r -> Efull(r * e)
+        Rr = raylen(Ef, (-real(be) + sqrt(real(be)^2 + 4aa * EXPO)) / (2aa))
+        vs = ray_saddle(Efull, dEfull, Ared, first, p, Rr)
+        vs === nothing || return vs
+        s, w = pieces_nodes(Ef, Rr, min(Rr / 8, first), p, 48)
+        for k in eachindex(s); (S, E) = Ared(s[k] * e); val += S * exp(Ef(s[k]) + E) * w[k]; end
+        return val * e
+    end
+    x0 = -beta / (2alpha)
+    Ef1 = lam -> Efull(lam * x0)                                   # the segment to the saddle, rho = lam x0
+    s, w = pieces_nodes(Ef1, 1.0, min(1 / 8, first / abs(x0)), p, 48)
+    for k in eachindex(s); (S, E) = Ared(s[k] * x0); val += S * exp(Ef1(s[k]) + E) * w[k]; end
+    val *= x0
+    E0 = Efull(x0)
+    Ef2 = r -> Efull(x0 + r * e) - E0                              # the descent line from the saddle
+    Rr = raylen(Ef2, sqrt(EXPO / aa))
+    s, w = pieces_nodes(Ef2, Rr, min(Rr / 8, first), 1, 48)
+    v2 = zero(ComplexF64)
+    for k in eachindex(s); (S, E) = Ared(x0 + s[k] * e); v2 += S * exp(Ef2(s[k]) + E0 + E) * w[k]; end
+    val + v2 * e
+end
+
 """
     inner_gen(V, t, R, s1, s2, M0, kind, part) -> (Is, Ie)
 
@@ -2122,8 +2498,8 @@ cdf, the bump of e^{-t v^2} at v = 0, and the ray from 0 when there is no breakp
 R.b[k], carrying exp(-t b_k^2), from the segment(s) adjacent to it and, for the last one, the ray beyond.  part: 0 all,
 1 the smooth part only, 2 all edge parts, 10 + k the edge part k only.
 """
-function inner_gen(V::Val{model}, tj::ComplexF64, R::Breaks, s1::ComplexF64, s2::ComplexF64, M0::ComplexF64, kind::Int, part::Int) where {model}
-    kern = model == 1 ? 1 : 2
+function inner_gen(V, tj::ComplexF64, R::Breaks, s1::ComplexF64, s2::ComplexF64, M0::ComplexF64, kind::Int, part::Int)
+    kern = kernof(V)
     q = R.q; c0 = R.c0; ne = R.ne; b = R.b
     sg = imag(tj) >= 0 ? 1.0 : -1.0
     Is = zero(ComplexF64); Ie = zeros(ComplexF64, ne)
@@ -2143,6 +2519,16 @@ function inner_gen(V::Val{model}, tj::ComplexF64, R::Breaks, s1::ComplexF64, s2:
             alpha = tj + c0 * sd; beta = 2alpha * a + sd * q
             cst = exp(-tj * a * a - sd * xat(R, 0.0, a))
             A = rho -> W(a + rho) * phialg(V, xat(R, rho, a), sgn, s1, s2)
+            if V isa NCK
+                lv = lX / max(abs(dXv(R, a)), 1e-300)
+                c0 != 0 && (lv = min(lv, sqrt(lX / abs(c0))))
+                lv = min(lv, R.ell0 / 16)
+                first = lv; p = 1
+                if j > 1 && R.kindb[j-1] == 0; first = R.ell[j-1]; elseif j > 1; lv = min(lv, R.ell[j-1] / 16); first = lv; p = 4; end
+                val = exp(-tj * a * a - sd * xat(R, 0.0, a)) * rayexp_nc(V, R, a, sgn, s1, s2, W, tj + c0 * sd, 2(tj + c0 * sd) * a + sd * q, first, p)
+                j == 1 ? (Is += val) : (Ie[j-1] += val)
+                continue
+            end
             lv = lX / max(abs(dXv(R, a)), 1e-300)
             c0 != 0 && (lv = min(lv, sqrt(lX / abs(c0))))
             lv = min(lv, R.ell0 / 16)                            # (rayint's first piece is 8 lv)
@@ -2321,14 +2707,18 @@ function outer_gen(model::Int, c::Float64, q::Float64, c0::Float64, R::Breaks, t
     parts ? (val, ev) : val + ev
 end
 
-"""The value of the density (kind 1) or the distribution function (kind 2) at q through the general kernel (c0 != 0, or
-gen = true for checking at c0 = 0).  In case DK with c0 > 0 the density is infinite at x = -sqrt(2 c0)."""
-function value_gen(kind::Int, q::Float64, model::Int, c::Float64, c0::Float64, tau::Float64, stat::Bool; hw::Float64 = 0.0, kw...)
+"""The value of the density (kind 1) or the distribution function (kind 2) at q through the general kernel (c0 != 0, a fixed
+start g0 != 0, or gen = true for checking at c0 = 0).  In case DK with c0 > 0 the density is infinite at
+x = -sqrt(2 c0 (1 + g0^2)).  With a fixed start the kernel is the noncentral one (nckernel) at each point of the line."""
+function value_gen(kind::Int, q::Float64, model::Int, c::Float64, c0::Float64, tau::Float64, stat::Bool; g0::Float64 = 0.0, hw::Float64 = 0.0, kw...)
     kern = kernel(model, stat); V = Val(kern)
-    R = breakpts(q, c0, tau)
+    stat && g0 != 0 && error("a fixed start g0 applies to the zero-start cases only")
+    x0 = (g0 != 0 && model == 1) ? (1 + g0 * g0) / 2 : 0.5
+    R = breakpts(q, c0, tau; x0)
     R.dbl && kern == 1 && kind == 1 && return Inf
     R.vsad = saddle_loc(model, c, q, c0, tau, stat, kern, R)
-    inner = (t, s1, s2, M0, part) -> inner_gen(V, t, R, s1, s2, M0, kind, part)
+    inner = g0 == 0 ? ((t, s1, s2, M0, part) -> inner_gen(V, t, R, s1, s2, M0, kind, part)) :
+                      ((t, s1, s2, M0, part) -> (K = nckernel(model, c, t, g0, s1, s2); inner_gen(K, t, R, s1, s2, K.pref * M0, kind, part)))
     weight = kind == 1 ? (t -> one(t)) : (t -> 1 / t)
     if hw > 0                                                      # the trapezoidal rule in w for the whole integrand, for checking
         w = collect(0.0:hw:WMAX); t = tau .+ im .* w
@@ -3081,11 +3471,11 @@ end
 
 """the pieces of the initial-value term of cases DU, DT: Q0 = gg^2 Q(0, s), and the squared tilted means m1^2, m2^2 of
 (X1, X2) from Q(lam) - Q0 = (lam/2) [m1^2/(1 - lam s1) - m2^2/(1 + lam s2)] at lam = 1/(4 s1) and -1/(4 s2)"""
-function qpieces(model::Int, c::Float64, S::ComplexF64, gg::Float64, s1::ComplexF64, s2::ComplexF64)
+function qpieces(model::Int, c::Float64, S::ComplexF64, gg::Float64, s1::ComplexF64, s2::ComplexF64, qf = qstart_d)
     la = 0.25 / s1; lb = -0.25 / s2
-    Q0 = gg^2 * qstart_d(model, c, complex(0.0), S)
-    Qa = gg^2 * qstart_d(model, c, la, S) - Q0
-    Qb = gg^2 * qstart_d(model, c, lb, S) - Q0
+    Q0 = gg^2 * qf(model, c, complex(0.0), S)
+    Qa = gg^2 * qf(model, c, la, S) - Q0
+    Qb = gg^2 * qf(model, c, lb, S) - Q0
     A11 = la / 2 / (1 - la * s1); A12 = -la / 2 / (1 + la * s2)
     A21 = lb / 2 / (1 - lb * s1); A22 = -lb / 2 / (1 + lb * s2)
     dt = A11 * A22 - A12 * A21

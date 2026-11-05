@@ -9,15 +9,16 @@ function varargout = ltratio(what,varargin)
 %
 %   The arguments are those of LTRATIO_CDF, LTRATIO_PDF, LTRATIO_ICDF and LTRATIO_MOM of the MATLAB programs: cas is
 %   'DK', 'DU', 'DT', 'SK', 'SU' or 'ST', c defaults to 0, opts is a structure with the fields c0 (0), g0 (0), method
-%   ('auto', the default: the faster representation at each x, the single integral at c0 = 0 and the double integral
-%   otherwise; 'single'; 'double'; a fixed start g0 ~= 0 uses 'double') and, for 'icdf', tol (1e-10).  Nothing but
+%   ('auto', the default: the faster representation at each x, the single integral at c0 = 0, with a fixed start and
+%   with c0 > 0 at x >= 0, the double integral otherwise with c0 ~= 0 and for the values below 1e-3; 'single';
+%   'double') and, for 'icdf', tol (1e-10).  Nothing but
 %   this file and the MEX file is needed; with the MATLAB programs on the path too, DFX_CORE, TR_LIMDIST and
 %   TR_LIMMOM next to this file replace their engines, so that LTRATIO_CDF and the others run on the C engine.
 %
 %   Examples
 %      ltratio('icdf', [0.01 0.05 0.10], 'DU')              % asymptotic critical values of tau_mu
 %      ltratio('cdf', -2.86157, 'DU', -5)                   % limiting power of the 5% test at c = -5
-%      ltratio('cdf', -2, 'DU', -5, struct('g0', 1.5))      % fixed start (the double integral)
+%      ltratio('cdf', -2, 'DU', -5, struct('g0', 1.5))      % fixed start
 %      ltratio('pdf', [-1 0 1], 'DK', 2, struct('c0', 2))   % t-ratio centered at the true value
 %      ltratio('mom', 4, 'SU', -5)                          % moments
 if strcmpi(what,'threads'), varargout{1} = ltratio_mex('threads', varargin{:}); return, end

@@ -13,14 +13,18 @@ on every push).  It needs nothing else: no runtime, no library, 2.4 MB.  Two way
 addpath ltratio-macos                                 % the unpacked zip (see below)
 ltratio('icdf', [0.01 0.05 0.10], 'DU')               % asymptotic critical values of tau_mu
 ltratio('cdf', -2.86157, 'DU', -5)                    % limiting power of the 5% test at c = -5
-ltratio('cdf', -2, 'DU', -5, struct('g0', 1.5))       % fixed start (the double integral)
+ltratio('cdf', -2, 'DU', -5, struct('g0', 1.5))       % fixed start
 ltratio('pdf', [-1 0 1], 'DK', 2, struct('c0', 2))    % t-ratio centered at the true value
 ltratio('mom', 4, 'SU', -5)                           % moments
 ltratio('threads')                                    % the number of threads (all processors; set with a second argument)
 ```
 
-`opts.method` defaults to `'auto'`: the single integral at c0 = 0 and the double integral otherwise, the faster
-representation in each case.  The MEX file itself takes numeric arguments only (see the header of
+`opts.method` defaults to `'auto'`: the single integral at c0 = 0 and with a fixed start g0 (the noncentral kernel),
+and when c0 is not 0 with a zero start the double integral, except for c0 > 0 at x >= 0, where the single integral has
+no breakpoint and is the faster one by 5-50x (the faster representation at each point, measured over c in [-5, 5] and
+the three cases); as in the MATLAB programs, the values of the single integral below 1e-3 (a density, or a distribution function in the lower tail) are
+then recomputed by the double integral, whose accuracy is relative where the single integral's is absolute, and a
+computed density below zero is returned as zero.  The MEX file itself takes numeric arguments only (see the header of
 `ltratio_mex.c`): `'single'`, `'double'`, `'dist'`, `'icdf'`, `'mom'`, `'tstar'`, `'threads'`.
 
 Seconds per value of the distribution function, MATLAB R2026b on an M4 laptop (ten cores), `timeit`:
@@ -38,6 +42,19 @@ Seconds per value of the distribution function, MATLAB R2026b on an M4 laptop (t
 | DU 5 -5 126.85 | 1.394 / 0.364 | 0.395 / 0.194 | 0.077 / 0.043 |
 | SU -5 0 -2 | 0.088 / 0.546 | 0.016 / 0.039 | 0.0036 / 0.016 |
 | ST -10 0 -3 | 0.072 / 0.678 | 0.013 / 0.041 | 0.0029 / 0.017 |
+| DK -5 0 -2, g0 = 1 | -- / 0.081 | 0.054 / 0.010 | 0.011 / 0.0046 |
+| DK 2 0 1, g0 = 1 | -- / 0.158 | 0.0062 / 0.036 | 0.0013 / 0.021 |
+| DU -5 0 -2.86, g0 = 1 | -- / 1.724 | 0.327 / 0.740 | 0.078 / 0.247 |
+| DU -5 0 0.5, g0 = 1 | -- / 1.467 | 0.032 / 0.675 | 0.0080 / 0.256 |
+| DU 2 0 -3, g0 = 1 | -- / 1.722 | 0.334 / 0.874 | 0.082 / 0.269 |
+| DT -5 0 -3, g0 = 2 | -- / 2.028 | 0.301 / 0.773 | 0.073 / 0.258 |
+| DT 2 0 -2, g0 = 1 | -- / 2.430 | 0.366 / 0.812 | 0.089 / 0.264 |
+| DU -5 -5 -2, g0 = 1 | -- / 1.965 | 0.320 / 0.719 | 0.077 / 0.237 |
+| DT -2.5 -5 -1.1, g0 = 1 | -- / 1.998 | 0.350 / 0.755 | 0.086 / 0.262 |
+
+With a fixed start (the last rows) the MATLAB programs have only the double integral (on one thread, as in the first
+column); the single integral uses the noncentral kernel, written in C to be vectorized, and `'auto'` takes it.  The
+script `timing_fixed.m` produces these rows.
 
 ## Downloading a built MEX file
 
@@ -56,7 +73,8 @@ From the repository root, on macOS (Linux: `c++ -shared`, extension `mexa64`; ad
 
 ```sh
 mkdir -p build
-for f in dfl_special dfl_mgf dfl_single dfl_gen dfl_moments dfl_double dfl_api dfl_threads tables; do cc -std=c11 -O2 -c c/$f.c -o build/$f.o; done
+for f in dfl_special dfl_mgf dfl_single dfl_moments dfl_double dfl_api dfl_threads tables; do cc -std=c11 -O2 -c c/$f.c -o build/$f.o; done
+cc -std=c11 -O3 -c c/dfl_gen.c -o build/dfl_gen.o    # -O3: the l-rule of the fixed start is written to be vectorized
 c++ -std=c++11 -O2 -c c/faddeeva/Faddeeva.cc -o build/Faddeeva.o
 c++ -std=c++11 -O2 -c c/faddeeva/faddeeva_shim.cpp -o build/faddeeva_shim.o
 cc -std=c11 -O2 -DDFLIMIT_STUB -c c/mex/ltratio_mex.c -o build/ltratio_mex.o

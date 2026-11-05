@@ -605,11 +605,12 @@ static void pathlog(pfn_t f, const void *ctx, int n, const cdouble *S, const cdo
 typedef struct { int model; double c; } gctx1;
 static cdouble f_eta(cdouble s, const void *v) { const gctx1 *g = v; dfl_girs_t G; dfl_girsanov(1, g->c, s, &G); return G.eta; }
 static cdouble f_Dt(cdouble s, const void *v) { const gctx1 *g = v; cdouble mu; return dfl_Dscaled(g->model, g->c, ZERO, s, &mu); }
-static void qpieces(int model, double c, cdouble S, double gg, cdouble s1, cdouble s2, cdouble *Q0, cdouble *m1s, cdouble *m2s)
+void dfl_qpieces(int model, double c, cdouble S, double gg, cdouble s1, cdouble s2, bool girs, cdouble *Q0, cdouble *m1s, cdouble *m2s)
 {
+    cdouble (*qf)(int, double, cdouble, cdouble) = girs ? dfl_qstart : dfl_qstart_d;
     cdouble la = cdiv(CPX(0.25, 0), s1), lb = cdiv(CPX(-0.25, 0), s2);
-    *Q0 = cscale(gg * gg, dfl_qstart_d(model, c, ZERO, S));
-    cdouble Qa = csub(cscale(gg * gg, dfl_qstart_d(model, c, la, S)), *Q0), Qb = csub(cscale(gg * gg, dfl_qstart_d(model, c, lb, S)), *Q0);
+    *Q0 = cscale(gg * gg, qf(model, c, ZERO, S));
+    cdouble Qa = csub(cscale(gg * gg, qf(model, c, la, S)), *Q0), Qb = csub(cscale(gg * gg, qf(model, c, lb, S)), *Q0);
     cdouble A11 = cdiv(cscale(0.5, la), csub(ONE, cmul(la, s1))), A12 = cdiv(cscale(-0.5, la), cadd(ONE, cmul(la, s2)));
     cdouble A21 = cdiv(cscale(0.5, lb), csub(ONE, cmul(lb, s1))), A22 = cdiv(cscale(-0.5, lb), cadd(ONE, cmul(lb, s2)));
     cdouble dt = csub(cmul(A11, A22), cmul(A12, A21));
@@ -644,7 +645,7 @@ static void nodepar(const sctx_t *S, int n, const cdouble *Sn, cdouble *L, cdoub
     if (S->nzR) {
         if (S->stat) {
             double *ph = malloc(n * sizeof(double)); cdouble *d1 = malloc(n * sizeof(cdouble)), *mu1 = malloc(n * sizeof(cdouble)), *mu2 = malloc(n * sizeof(cdouble));
-            for (int k = 0; k < n; k++) { cdouble Q0; qpieces(S->model, S->c, Sn[k], 1.0, cscale(2, k1[k]), cscale(-2, k2[k]), &Q0, &mu1[k], &mu2[k]); d1[k] = csub(ONE, cscale(2 * S->s02, Q0)); ph[k] = cimag(clog(d1[k])); }
+            for (int k = 0; k < n; k++) { cdouble Q0; dfl_qpieces(S->model, S->c, Sn[k], 1.0, cscale(2, k1[k]), cscale(-2, k2[k]), false, &Q0, &mu1[k], &mu2[k]); d1[k] = csub(ONE, cscale(2 * S->s02, Q0)); ph[k] = cimag(clog(d1[k])); }
             for (int k = 1; k < n; k++) ph[k] -= 2 * M_PI * round((ph[k] - ph[k - 1]) / (2 * M_PI));
             for (int k = 0; k < n; k++) {
                 L[k] = csub(L[k], cscale(0.5, CPX(log(cabs(d1[k])), ph[k])));
@@ -657,7 +658,7 @@ static void nodepar(const sctx_t *S, int n, const cdouble *Sn, cdouble *L, cdoub
             }
             free(ph); free(d1); free(mu1); free(mu2);
         } else {
-            for (int k = 0; k < n; k++) { cdouble Q0; qpieces(S->model, S->c, Sn[k], S->g0, cscale(2, k1[k]), cscale(-2, k2[k]), &Q0, &mq[k], &m2s[k]); L[k] = cadd(L[k], Q0); }
+            for (int k = 0; k < n; k++) { cdouble Q0; dfl_qpieces(S->model, S->c, Sn[k], S->g0, cscale(2, k1[k]), cscale(-2, k2[k]), false, &Q0, &mq[k], &m2s[k]); L[k] = cadd(L[k], Q0); }
         }
     }
     if (S->nz) {
@@ -694,7 +695,7 @@ static cdouble gden(const sctx_t *S, double aa, cdouble k1, cdouble k2, cdouble 
     cdouble z = cscale(fabs(aa), be);
     return cdiv(cmul(cexp(csub(cneg(cscale(aa, al)), z)), dfl_k0scaled(z)), cscale(2 * M_PI, cmul(csqrt(k1), csqrt(cneg(k2)))));
 }
-static cdouble Pkap(cdouble k1, cdouble k2, double a, bool pdfm, int Nl, bool nc, cdouble m1s, cdouble m2s)
+cdouble dfl_Pkap(cdouble k1, cdouble k2, double a, bool pdfm, int Nl, bool nc, cdouble m1s, cdouble m2s)
 {
     const double *wl; const double *zl = dfl_rule(Nl, &wl);
     cdouble s1 = cscale(2, k1), s2 = cscale(-2, k2), m1 = csqrt(m1s), m2 = csqrt(m2s);
@@ -729,14 +730,14 @@ static cdouble Pkap(cdouble k1, cdouble k2, double a, bool pdfm, int Nl, bool nc
 }
 static cdouble Pk(const sctx_t *S, cdouble k1, cdouble k2, double a, cdouble mq, cdouble m2)
 {
-    if (S->nzR && !S->stat) return Pkap(k1, k2, a, S->pdfm, S->Nl, true, mq, m2);
+    if (S->nzR && !S->stat) return dfl_Pkap(k1, k2, a, S->pdfm, S->Nl, true, mq, m2);
     if (S->dkfixed) {
         cdouble m = cscale(S->g0, mq); double r = sqrt(2 * a + S->g0 * S->g0); cdouble sg = csqrt(cscale(4, k1));
         cdouble rm = cdiv(csub(CPX(r, 0), m), sg), rp = cdiv(cadd(CPX(r, 0), m), sg);
         if (S->pdfm) return cscale(1.0 / (2 * r), cdiv(cadd(cexp(cneg(cmul(rm, rm))), cexp(cneg(cmul(rp, rp)))), cscale(sqrt(M_PI) / 2, sg)));
         return cscale(0.5, cadd(dfl_erf(rm), dfl_erf(rp)));
     }
-    return Pkap(k1, k2, a, S->pdfm, S->Nl, false, ZERO, ZERO);
+    return dfl_Pkap(k1, k2, a, S->pdfm, S->Nl, false, ZERO, ZERO);
 }
 /* H(b) for the b's of one piece */
 typedef struct { sctx_t *S; const double *bv; int nb; double *H; } hbjob;

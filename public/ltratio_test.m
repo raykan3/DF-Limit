@@ -52,6 +52,9 @@ for k = 1:size(P,1)
     f2 = ltratio_pdf(xs,cas,c,setfield(o,'method','double'));
     check(sprintf('%s c=%g c0=%g: F single vs double (%d points; %.1f/%.1f s)',cas,c,c0,numel(xs),i1.time,i2.time),max(abs(F1-F2)),1e-11);
     check(sprintf('%s c=%g c0=%g: f single vs double (relative)',cas,c,c0),max(abs(f1-f2)./max(abs(f2),1e-3)),1e-10);
+    [Fa,ia] = ltratio_cdf(xs,cas,c,o); fa = ltratio_pdf(xs,cas,c,o);          % the automatic choice (ltratio_method)
+    check(sprintf('%s c=%g c0=%g: F auto (%d of %d by the double) vs double (%.1f s)',cas,c,c0,ia.ndouble,numel(xs),ia.time),max(abs(Fa-F2)),1e-11);
+    check(sprintf('%s c=%g c0=%g: f auto vs double (relative)',cas,c,c0),max(abs(fa-f2)./max(abs(f2),1e-3)),1e-10);
 end
 
 fprintf('\n=== 2. exact values, critical values and quantiles ===\n');

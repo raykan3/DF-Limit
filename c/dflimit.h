@@ -131,9 +131,10 @@ typedef struct {
 } dfl_single_opts;
 void dfl_single_defaults(dfl_single_opts *o);
 /* kind 1: density, 2: distribution function; stat: stationary start; returns 0, or an error code with a message */
-int dfl_single(int kind, int n, const double *x, int model, double c, double c0, bool stat, const dfl_single_opts *o, double *out, char *err, size_t errlen);
-double dfl_single_value_c0(int kind, double x, int model, double c, bool stat, const dfl_single_opts *o);      /* one value at c0 = 0 */
-double dfl_single_value_gen(int kind, double x, int model, double c, double c0, bool stat, const dfl_single_opts *o);   /* the general kernel */
+int dfl_single(int kind, int n, const double *x, int model, double c, double c0, double g0, bool stat, const dfl_single_opts *o, double *out, char *err, size_t errlen);
+double dfl_single_value_c0(int kind, double x, int model, double c, bool stat, const dfl_single_opts *o);      /* one value at c0 = 0, zero or stationary start */
+double dfl_single_value_gen(int kind, double x, int model, double c, double c0, double g0, bool stat, const dfl_single_opts *o);   /* the general kernel (c0 != 0 or a fixed start g0 != 0) */
+extern int DFL_NLNC;                                /* nodes of the l-rule of the noncentral kernel of a fixed start (40) */
 
 /* ---- moments (dfl_moments.c) ---- */
 int dfl_moments(int model, double c, double c0, double g0, bool stat, int pmax, double *m, double *errest, char *err, size_t errlen);
@@ -142,13 +143,17 @@ int dfl_moments(int model, double c, double c0, double g0, bool stat, int pmax, 
 typedef struct { int M, Nv, Nl, maxlev; double plen, otol, stepw, errtol, blo, bhi, bmin, mumin, tdec; } dfl_double_opts;
 void dfl_double_defaults(dfl_double_opts *o);
 typedef struct { double err; int status, nbad, nunres, nrefine; } dfl_double_info;
+/* the noncentral probability P[kap_1 Z_1^2 + kap_2 Z_2^2 <= a] (nc: with the squared means m1s, m2s) or its derivative in a
+ * (pdfm), by the Nl-point l-rule; and the partial fractions of Q(s,t): Q(0,t) and the squared means mu_1, mu_2 times gg^2
+ * (s1, s2 here are the variances 2 kap_1, -2 kap_2; girs: the Girsanov form of Q for c > CGIRS) */
+cdouble dfl_Pkap(cdouble k1, cdouble k2, double a, bool pdfm, int Nl, bool nc, cdouble m1s, cdouble m2s);
+void dfl_qpieces(int model, double c, cdouble S, double gg, cdouble s1, cdouble s2, bool girs, cdouble *Q0, cdouble *m1s, cdouble *m2s);
 int dfl_double(int kind, int n, const double *x, int model, double c, double c0, double g0, bool stat, const dfl_double_opts *o, double *out, dfl_double_info *info, char *err, size_t errlen);
 
 /* ---- the user-level entry points (dfl_api.c) ---- */
-/* method 0: automatic (dfl_automethod at each x), 1: the single integral, 2: the double integral; a fixed start g0 != 0
- * forces 2.  NULL options take the defaults.  nstatus (may be NULL) counts the points of the double integral with a
+/* method 0: automatic (dfl_automethod at each x), 1: the single integral, 2: the double integral.  NULL options take the defaults.  nstatus (may be NULL) counts the points of the double integral with a
  * nonzero status.  Non-finite x: 0 at -Inf, 1 (cdf) or 0 (density) at Inf, NaN at NaN. */
-int dfl_automethod(int model, double c0, double x);
+int dfl_automethod(int model, double c, double c0, double g0, double x);
 int dfl_dist(int kind, int n, const double *x, int model, double c, double c0, double g0, bool stat, int method,
              const dfl_single_opts *so, const dfl_double_opts *dopt, double *out, int *nstatus, char *err, size_t errlen);
 /* quantiles q of the probabilities p (in (0, 1)) by safeguarded Newton to the tolerance tol (1e-10); Fq, iter, conv
