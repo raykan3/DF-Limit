@@ -277,34 +277,81 @@ static void dksaddles(double b, double a, double c, bool pdfm, const dksad_t *pr
     if (prev) { rsad_warm(dk_real, &d1, b, smx, prev->B.s, prev->B.a1, &out->B.s, &out->B.a1, &out->B.g2, &out->B.L0); rsad_warm(dk_real, &d2, b, smx, prev->C.s, prev->C.a1, &out->C.s, &out->C.a1, &out->C.g2, &out->C.L0); }
     else { rsad1(dk_real, &d1, b, smx, &out->B.s, &out->B.a1, &out->B.g2, &out->B.L0); rsad1(dk_real, &d2, b, smx, &out->C.s, &out->C.a1, &out->C.g2, &out->C.L0); }
 }
+/* ---- the inner inversion by several paths, accepted when two of them agree ----
+ * evalpath(pth, NN, ctx, &I, &E) gives the trapezoidal value and the nested-rule estimate of path pth with NN nodes.  Each
+ * path is first refined on its own (the node count doubled up to three times until its estimate is below tol max(1, |I|));
+ * a value is accepted as soon as two paths agree to within that tolerance, the one with the smaller estimate being kept
+ * and the discrepancy entering the error.  The nested rule alone can be fooled: an oscillating tail that is not
+ * resolved by the rule and its half aliases into the same wrong value on both (case DK, c = 5, c0 = -5, v = 0.086,
+ * a = 35: the parabola with 96 and 192 nodes agrees with itself to 1e-15 and is off by 1e-7, which the vertical line
+ * exposes).  When no two paths agree, the value with the smallest estimate is kept if every other path is consistent
+ * with it, the discrepancy within ten times the sum of the two estimates (a path that converges slowly, or not at all,
+ * is no evidence against a resolved one); otherwise the inconsistent paths and the best one are recomputed with the node
+ * count doubled, up to three more times, until two agree or all are consistent, and if they still disagree the best
+ * value is returned with the smallest inconsistent discrepancy as its error, which the outer rule then reports. */
+typedef void (*pathfn_t)(int pth, int NN, void *ctx, double *Iv, double *E);
+static bool paths_agree(const double *Iv, int p, int q, double tol)
+{
+    return isfinite(Iv[p]) && isfinite(Iv[q]) && fabs(Iv[p] - Iv[q]) <= 2 * tol * fmax(1, fmax(fabs(Iv[p]), fabs(Iv[q])));
+}
+static void paths_accept(const double *Iv, const double *E, int p, int q, double *H, double *Eout)
+{
+    int b = E[p] <= E[q] ? p : q; *H = Iv[b]; *Eout = fmax(E[b], fabs(Iv[p] - Iv[q]));
+}
+static bool paths_inconsistent(const double *Iv, const double *E, int b, int q) { return q != b && isfinite(Iv[q]) && fabs(Iv[b] - Iv[q]) > 10 * (E[b] + E[q]); }
+static int paths_best(const double *E, int np) { int b = 0; for (int p = 1; p < np; p++) if (E[p] < E[b]) b = p; return b; }
+static void agreepaths(pathfn_t evalpath, void *ctx, int np, int NN, double tol, double *H, double *Eout)
+{
+    double Iv[3], E[3]; int N[3];
+    for (int p = 0; p < np; p++) { Iv[p] = NAN; E[p] = INFINITY; N[p] = NN; }
+    for (int p = 0; p < np; p++) {
+        int NNq = NN;
+        for (int rf = 0; rf <= 3; rf++) {
+            double Ip, Ep; evalpath(p + 1, NNq, ctx, &Ip, &Ep);
+            if (Ep < E[p]) { Iv[p] = Ip; E[p] = Ep; N[p] = NNq; }
+            if (Ep <= tol * fmax(1, fabs(Ip))) break;
+            NNq *= 2;
+        }
+        for (int q = 0; q < p; q++) if (paths_agree(Iv, p, q, tol)) { paths_accept(Iv, E, p, q, H, Eout); return; }
+    }
+    int b = paths_best(E, np); bool bad[3], anybad = false;
+    if (!isfinite(E[b])) { *H = 0; *Eout = INFINITY; return; }
+    for (int q = 0; q < np; q++) { bad[q] = paths_inconsistent(Iv, E, b, q); anybad |= bad[q]; }
+    if (!anybad) { *H = Iv[b]; *Eout = E[b]; return; }
+    for (int round = 0; round < 3; round++) {
+        for (int p = 0; p < np; p++) if (p == b || bad[p]) { N[p] *= 2; evalpath(p + 1, N[p], ctx, &Iv[p], &E[p]); }   /* the finer rule replaces the value */
+        for (int p = 0; p < np; p++) for (int q = 0; q < p; q++) if (paths_agree(Iv, p, q, tol)) { paths_accept(Iv, E, p, q, H, Eout); return; }
+        b = paths_best(E, np); anybad = false;
+        if (!isfinite(E[b])) { *H = 0; *Eout = INFINITY; return; }
+        for (int q = 0; q < np; q++) { bad[q] = paths_inconsistent(Iv, E, b, q); anybad |= bad[q]; }
+        if (!anybad) { *H = Iv[b]; *Eout = E[b]; return; }
+    }
+    double dmin = INFINITY;
+    for (int q = 0; q < np; q++) if (bad[q]) dmin = fmin(dmin, fabs(Iv[b] - Iv[q]));
+    *H = Iv[b]; *Eout = fmax(E[b], dmin);
+}
+typedef struct { double b, c, a, v; int k0; const dksad_t *sad; } dkpath_ctx;
+static void dkpath(int pth, int NNq, void *v, double *Iv, double *Eq)
+{
+    dkpath_ctx *p = v; double dummy;
+    dkctx dk = {p->b, p->c, p->a, p->v, p->k0};
+    if (pth == 1) pathW(dk_lk, &dk, p->b, p->sad->main.s, p->sad->main.a1 / 2, NNq, false, Iv, Eq);
+    else if (pth == 2) pathT(dk_lk, &dk, p->b, p->a, p->sad->main.s, p->sad->main.a1, NNq, p->c, false, false, Iv, Eq, &dummy);
+    else { double IB, EB, IC, EC; dkctx d1 = {p->b, p->c, p->a, p->v, 1}, d2 = {p->b, p->c, p->a, p->v, 2};
+        pathW(dk_lk, &d1, p->b, p->sad->B.s, p->sad->B.a1 / 2, NNq, false, &IB, &EB); pathT(dk_lk, &d2, p->b, p->a, p->sad->C.s, p->sad->C.a1, NNq, p->c, false, false, &IC, &EC, &dummy);
+        *Iv = IB - IC; *Eq = EB + EC; }
+}
 static void dkpair(double b, double a, double c, bool pdfm, int NN, const dksad_t *sad, double *H, double *E)
 {
     *H = 0; *E = 0;
     if (!(a > 0)) return;
     double v = a - c * b, tol = 1e-13; int k0 = pdfm ? 3 : 0;
     dksad_t sd; if (sad == NULL) { dksaddles(b, a, c, pdfm, NULL, &sd); sad = &sd; }
-    double s = sad->main.s, a1 = sad->main.a1, g2 = sad->main.g2, L0 = sad->main.L0;
+    double g2 = sad->main.g2, L0 = sad->main.L0;
     double Lh = L0 - log(2 * M_PI * fmax(g2, 1e-6 * b * b)) / 2, lw = pdfm ? 1.5 * log(b) : log(b);
     if (Lh + lw < -35) return;
-    double Hk = 0, Ek = INFINITY;
-    for (int pth = 1; pth <= (pdfm ? 2 : 3); pth++) {
-        int NNq = NN;
-        for (int rf = 0; rf <= 3; rf++) {
-            double Iv, Eq, dummy;
-            dkctx dk = {b, c, a, v, k0};
-            if (pth == 1) pathW(dk_lk, &dk, b, s, a1 / 2, NNq, false, &Iv, &Eq);
-            else if (pth == 2) pathT(dk_lk, &dk, b, a, s, a1, NNq, c, false, false, &Iv, &Eq, &dummy);
-            else { double IB, EB, IC, EC; dkctx d1 = {b, c, a, v, 1}, d2 = {b, c, a, v, 2};
-                pathW(dk_lk, &d1, b, sad->B.s, sad->B.a1 / 2, NNq, false, &IB, &EB); pathT(dk_lk, &d2, b, a, sad->C.s, sad->C.a1, NNq, c, false, false, &IC, &EC, &dummy);
-                Iv = IB - IC; Eq = EB + EC; }
-            if (Eq < Ek) { Hk = Iv; Ek = Eq; }
-            double sc = fmax(1, fabs(Iv));
-            if (!(Eq > tol * sc && Ek > tol * sc)) break;
-            NNq *= 2;
-        }
-        if (Ek <= tol * fmax(1, fabs(Hk))) break;
-    }
-    *H = Hk; *E = Ek;
+    dkpath_ctx pc = {b, c, a, v, k0, sad};
+    agreepaths(dkpath, &pc, pdfm ? 2 : 3, NN, tol, H, E);
 }
 
 /* ---- cases DU, DT, zero start ---- */
@@ -348,6 +395,20 @@ static void iisaddle(double b, double r, double c, int model, const sad_t *prev,
     else rsad1(ii_real, &d, b, sab, &out->s, &out->a1, &out->g2, &out->L0);
     if (out->s > sab - 1 / b) { out->s = sab - 1 / b; out->a1 = 1 / b; out->g2 = b * b; out->L0 = ii_real(out->s, &d); }
 }
+typedef struct { iictx d; double b, r, c, s, a1, sab; bool pdfm; } iipath_ctx;
+static void iipath(int pth, int NNq, void *v, double *Iv, double *Eq)
+{
+    iipath_ctx *p = v; iictx d = p->d;
+    if (pth == 1) {
+        double sq = p->s;
+        if (!p->pdfm) { if (fabs(sq) < p->a1) sq = sq >= 0 ? p->a1 : -p->a1; sq = fmin(sq, p->sab - 0.5 * p->a1); }
+        pathW(iilog, &d, p->b, sq, p->a1 / 2, NNq, !p->pdfm, Iv, Eq);
+        if (!p->pdfm && sq < 0) *Iv += creal(cexp(CPX(ii_real(0, &d), 0)));
+    } else {
+        double sA; pathT(iilog, &d, p->b, p->r, p->s, p->a1, NNq, p->c, !p->pdfm, !p->pdfm, Iv, Eq, &sA);
+        if (!p->pdfm && sA < 0) *Iv += creal(cexp(CPX(ii_real(0, &d), 0)));
+    }
+}
 static void iipair(double b, double r, double c, int model, bool pdfm, int NN, const sad_t *sad, double *H, double *E)
 {
     double tol = 1e-13; if (fabs(r) < 1e-200) r = 1e-200;
@@ -358,28 +419,8 @@ static void iipair(double b, double r, double c, int model, bool pdfm, int NN, c
     double lw = pdfm ? 1.5 * log(b) : log(b) + log(1 + fabs(c) + fabs(r) / b) - log(fmax(fabs(s), a1));
     *H = 0; *E = 0;
     if (Lh + lw < -35) { if (!pdfm && s < 0) *H = creal(cexp(CPX(ii_real(0, &d), 0))); return; }
-    double Hk = 0, Ek = INFINITY;
-    for (int pth = 1; pth <= 2; pth++) {
-        int NNq = NN;
-        for (int rf = 0; rf <= 3; rf++) {
-            double Iv, Eq;
-            if (pth == 1) {
-                double sq = s;
-                if (!pdfm) { if (fabs(sq) < a1) sq = sq >= 0 ? a1 : -a1; sq = fmin(sq, sab - 0.5 * a1); }
-                pathW(iilog, &d, b, sq, a1 / 2, NNq, !pdfm, &Iv, &Eq);
-                if (!pdfm && sq < 0) Iv += creal(cexp(CPX(ii_real(0, &d), 0)));
-            } else {
-                double sA; pathT(iilog, &d, b, r, s, a1, NNq, c, !pdfm, !pdfm, &Iv, &Eq, &sA);
-                if (!pdfm && sA < 0) Iv += creal(cexp(CPX(ii_real(0, &d), 0)));
-            }
-            if (Eq < Ek) { Hk = Iv; Ek = Eq; }
-            double scl = fmax(1, fabs(Iv));
-            if (!(Eq > tol * scl && Ek > tol * scl)) break;
-            NNq *= 2;
-        }
-        if (Ek <= tol * fmax(1, fabs(Hk))) break;
-    }
-    *H = Hk; *E = Ek;
+    iipath_ctx pc = {d, b, r, c, s, a1, sab, pdfm};
+    agreepaths(iipath, &pc, 2, NN, tol, H, E);
 }
 /* P[k1 Z1^2 + k2 Z2^2 <= a] for real weights: composite Gauss-Legendre over [l0, l0 + 40 sd] */
 static double Pk0(double k1, double k2, double a)

@@ -7,8 +7,8 @@ function nfail = ltratio_test(quick,strict)
 %   in MATLAB), LTRATIO_TEST(quick,true) raises an error at the end when a
 %   check has failed, for use in scripts.
 %
-%    1. the two representations against each other: the single integral
-%       (DFX_CORE) and the double integral (TR_LIMDIST), distribution function
+%    1. the two representations against each other: the line integral
+%       (DFX_CORE) and the conditional integral (TR_LIMDIST), distribution function
 %       and density, zero and stationary starts, c on both sides of the unit
 %       root and local null values c0 ~= 0 (the two share nothing but the
 %       Fredholm determinant);
@@ -34,7 +34,7 @@ if nargin < 2 || isempty(strict), strict = false; end
 nfail = 0; ntest = 0; t00 = tic;
 S = struct('method','single'); D = struct('method','double');
 
-fprintf('\n=== 1. single integral (DFX) against double integral (TR_LIMDIST) ===\n');
+fprintf('\n=== 1. line integral (DFX) against conditional integral (TR_LIMDIST) ===\n');
 if quick
     P = {'DK',0,0,[-2.5 -0.5 1.5]; 'DU',0,0,[-3.4 -1.6 0.2]; 'DT',-5,0,[-3.5 -2.5]; 'SU',-5,0,[-2.8 -1.2]; 'DK',2,2,[-1.5 0 1.5]};
 else
@@ -133,7 +133,7 @@ for cfg = {{'DU',0},{'DU',-5},{'SU',-5},{'DT',-10},{'SK',-2.5}}
     check(sprintf('%s c=%g: LTRATIO_MOM vs DFX_MOMENTS (relative)',cas,cc),max(abs(m1(:)-m2(:))./abs(m2(:))),1e-9);
 end
 % the mean against a Gauss-Legendre integral of the density (DU, c = -5, c0 = 0; 192
-% nodes: with 96 the rule itself is off by 8e-7, the single and the double integral
+% nodes: with 96 the rule itself is off by 8e-7, the single and the conditional integral
 % agreeing on both)
 m = ltratio_mom(1,'DU',-5,struct('c0',0));
 [xg,wg] = glnodes(192,-12,6);
@@ -168,8 +168,8 @@ check('DK c0=2: f(-sqrt(2 c0)) = Inf',double(~isinf(f)),0);
 
 fprintf('\n=== 7. tails with c0 ~= 0 ===\n');
 % a far root of X(v) = c0 v^2 + q v + 1/2 was dropped by BREAKPTS, which ran the near-side form
-% past it (an error, 'Re alpha <= 0 on a ray', or a wrong value); the single integral's absolute
-% error floor (1e-14 to 1e-21) is handled by the double integral below 1e-3 (LTRATIO_DIST)
+% past it (an error, 'Re alpha <= 0 on a ray', or a wrong value); the line integral's absolute
+% error floor (1e-14 to 1e-21) is handled by the conditional integral below 1e-3 (LTRATIO_DIST)
 nerr = 0; f = zeros(1,4);
 try, f(1) = ltratio_pdf(9,'SU',-1.2,struct('c0',-1.2)); catch, nerr = nerr + 1; end
 try, f(2) = ltratio_pdf(-9,'SU',-1.2,struct('c0',1.2)); catch, nerr = nerr + 1; end
@@ -179,7 +179,7 @@ check('no error at far roots: SU c=-1.2, c0=-1.2 (x=9), c0=1.2 (x=-9), c0=-0.05 
 g = ltratio_pdf([3 -9],'SU',-1.2,struct('c0',-0.05,'method','double'));
 check('SU c=-1.2 c0=-0.05, x=3: single (far root kept) vs double (relative)',abs(f(4)-g(1))/g(1),1e-10);
 g = ltratio_pdf(-9,'SU',-1.2,struct('c0',1.2,'method','double'));
-check('SU c=-1.2 c0=1.2, x=-9 (f = 6.2e-16): default (tail by the double integral) vs double (rel)',abs(f(2)-g)/g,1e-10);
+check('SU c=-1.2 c0=1.2, x=-9 (f = 6.2e-16): default (tail by the conditional integral) vs double (rel)',abs(f(2)-g)/g,1e-10);
 xs = [-9 -8 -6 3 4 5]; fd = ltratio_pdf(xs,'DT',0,struct('c0',-2,'method','double')); fn = ltratio_pdf(xs,'DT',0,struct('c0',-2));
 check('DT c=0 c0=-2: default vs double in both tails, f from 4e-11 to 2.5e-6 (relative)',max(abs(fn-fd)./abs(fd)),1e-10);
 fs = ltratio_pdf([8.5 9 10 12],'SU',-1.2,struct('c0',-1.2,'method','single'));    % noise below the floor

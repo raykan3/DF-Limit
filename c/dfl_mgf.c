@@ -246,7 +246,10 @@ static struct { int model; double c; bool stat; double ts; } TSCACHE[TSMAX]; sta
 static dfl_lock_t tslock = DFL_LOCK_INIT;
 static double tstar_g(int model, double c, bool stat, double t)
 {
-    if (model == 1 && !stat) return creal(dfl_eta1(c, CPX(t, 0)));
+    /* case DK: the sign of D = eta S from the cancellation-free eta and the sign of S = sinh(mu)/mu (sin(th)/th for 2t > c^2);
+     * eta alone changes sign at the poles of coth as well, and for c < 0 the first zero of D lies just below the pole
+     * (c^2 + pi^2)/2, inside a stretch that the 5% steps of the bracketing can skip (c = -9.5: 61.6 for 49.2) */
+    if (model == 1 && !stat) { double q = c * c - 2 * t, sg = q >= 0 ? 1.0 : (sin(sqrt(-q)) >= 0 ? 1.0 : -1.0); return creal(dfl_eta1(c, CPX(t, 0))) * sg; }
     if (!stat && c > DFL_CGIRS) { dfl_girs_t G; dfl_girsanov(model, c, CPX(t, 0), &G); return creal(G.D); }
     return creal(dfl_Dfun(model, c, ZERO, CPX(t, 0), stat));
 }

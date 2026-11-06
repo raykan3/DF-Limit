@@ -18,9 +18,9 @@ for m in 1:3, c in (-5.0, 0.0, 2.5, 7.0), (s, t) in ((complex(0.3), complex(0.5)
     m > 1 && w("qstart", m, c, s, t, D.qstart(m, c, s, t), D.qstart_d(m, c, s, t))
     m == 1 && w("qstart", m, c, s, t, D.qstart(m, c, s, t), D.qstart(m, c, s, t))
 end
-for m in 1:3, c in (-5.0, 0.0, 2.5, 10.0), st in (false, true)
+for m in 1:3, c in (-20.0, -9.5, -5.0, 0.0, 2.5, 10.0), st in (false, true)
     (st && c >= 0) && continue
-    w("tstar", m, c, st ? 1 : 0, D.tstar(m, c; stat = st))
+    w("tstar", m, c, st ? 1 : 0, D.tstar(m, c; stat = st))      # (c = -20, -9.5: the first zero of D just below the pole of eta in case DK)
 end
 for m in 1:3, c in (-5.0, 0.0, 3.0, 10.0), st in (false, true)
     (st && c >= 0) && continue

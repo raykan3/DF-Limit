@@ -70,6 +70,10 @@ for m in 2:3, c in (2.5, -1.0), t in (complex(0.05), complex(0.3, 0.7), complex(
     global wg = max(wg, abs(exp(c) * cosh(G.th) * G.D / D.Dfun(m, c, complex(0.0), t) - 1))
 end
 check(wg < 1e-12, @sprintf("Girsanov determinant vs D(0, t): worst relative difference %.1e", wg))
+# the domain end t_* of case DK at c < 0: the first zero of D(0, t) lies just below the pole of eta at (c^2 + pi^2)/2, which
+# a bracketing on the sign of eta alone could skip (61.6 for 49.2 at c = -9.5, 313 for 204.5 at c = -20)
+wts = maximum(abs(D.tstar(1, c) - D.dksmax(c)) / D.dksmax(c) for c in (-9.5, -20.0, -30.0))
+check(wts < 1e-12 && abs(D.tstar(1, -9.5) - 49.18660310687472) < 1e-9, @sprintf("t_* of case DK at c = -9.5, -20, -30 vs dksmax: %.1e", wts))
 
 # 8. the moments: E tau_mu^2 at the unit root is 3.05599535 (Nabeya, 1999); the first implementation agrees
 m2 = D.moments(2; pmax = 2)[2]

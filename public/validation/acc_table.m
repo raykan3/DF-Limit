@@ -1,7 +1,7 @@
-%ACC_TABLE  Table "The two representations against each other" of the paper: the single
-%   integral (method single) against the double integral (method double) at seven points per
-%   configuration (mean plus -2.5..2.5 sd), zero, stationary and fixed start, with the median
-%   times per value of the distribution function.  Runs on the C engine (the MEX file in c/mex,
+%ACC_TABLE  The tables "The two representations against each other" of the paper (zero and
+%   stationary start; fixed start, with a gamma_0 column): the line integral (method single)
+%   against the conditional integral (method double) at seven points per configuration (mean
+%   plus -2.5..2.5 sd), with the median times per value of the distribution function.  Runs on the C engine (the MEX file in c/mex,
 %   through LTRATIO, all threads) when it is on the path, otherwise on the MATLAB programs; the
 %   engine and the thread count are recorded in the log.  Writes acc_table.log and acc_rows.tex.
 here = fileparts(mfilename('fullpath')); addpath(fullfile(here,'..'));
@@ -50,7 +50,7 @@ for ic = 1:size(cfg,1)
         end
     end
     fmt = @(v) fmtv(v);
-    lab = sprintf('$%g$ & $%g$', c, c0); if st == 'F', lab = sprintf('$%g$ & $%g$, $\\gamma_0=%g$', c, c0, g0); end
+    lab = sprintf('$%g$ & $%g$', c, c0); if st == 'F', lab = sprintf('$%g$ & $%g$ & $%g$', c, c0, g0); end   % (the fixed-start table has a gamma_0 column)
     row = sprintf('%s & %s & %s & %s & %s & %s & %s & %.3f & %.3f\\\\', lab, fmt(dF(1)), fmt(dF(2)), fmt(dF(3)), fmt(df(1)), fmt(df(2)), fmt(df(3)), median(t1), median(t2));
     fprintf('ROW %s %s   %% flagged:%s\n', st, row, note); rows{end+1} = row;
 end

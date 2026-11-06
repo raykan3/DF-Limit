@@ -7,7 +7,10 @@ function [cas,c,c0,g0,method] = ltratio_args(cas,c,opts)
 %   and the options c0 (the local null value, default 0), g0 (the fixed start
 %   y_0 = g0 sigma sqrt(n), default 0; fixed-start cases only) and method
 %   ('auto' by default: the faster representation point by point, see
-%   LTRATIO_METHOD; 'single'; 'double'; a fixed start g0 ~= 0 forces 'double').
+%   LTRATIO_METHOD; 'single', the line integral representation of Theorem 2
+%   of the paper, also accepted as 'line'; 'double', the conditional integral
+%   representation of Theorem 3, also accepted as 'conditional'; a fixed start
+%   g0 ~= 0 forces 'double'), returned as 'auto', 'single' or 'double'.
 %
 %   See also LTRATIO_CDF, LTRATIO_PDF, LTRATIO_ICDF, LTRATIO_MOM.
 if ~(ischar(cas) || isstring(cas)), error('ltratio:args','ltratio: the case must be one of DK, DU, DT, SK, SU, ST.'); end
@@ -24,6 +27,8 @@ g0 = 0; if isfield(opts,'g0') && ~isempty(opts.g0), g0 = opts.g0; end
 if ~(isnumeric(g0) && isscalar(g0) && isreal(g0) && isfinite(g0)), error('ltratio:args','ltratio: opts.g0 must be a finite real scalar.'); end
 if g0 ~= 0 && cas(1) == 'S', error('ltratio:args','ltratio: opts.g0 (a fixed start) applies to cases DK, DU, DT only.'); end
 method = 'auto'; if isfield(opts,'method') && ~isempty(opts.method), method = lower(char(opts.method)); end
-if ~any(strcmp(method,{'auto','single','double'})), error('ltratio:args','ltratio: opts.method must be ''auto'', ''single'' or ''double''.'); end
-if g0 ~= 0, method = 'double'; end                  % the single integral needs a central form of U + 1/2
+% the paper's names, the line integral (Theorem 2) and the conditional integral (Theorem 3), are synonyms
+if strcmp(method,'line'), method = 'single'; elseif strcmp(method,'conditional'), method = 'double'; end
+if ~any(strcmp(method,{'auto','single','double'})), error('ltratio:args','ltratio: opts.method must be ''auto'', ''single'' (''line'') or ''double'' (''conditional'').'); end
+if g0 ~= 0, method = 'double'; end                  % the line integral needs a central form of U + 1/2
 end

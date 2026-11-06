@@ -22,29 +22,31 @@ function [F,info] = ltratio_cdf(x,cas,c,opts)
 %   V = int_0^1 J~^2 dr, J the Ornstein-Uhlenbeck process dJ = cJ dr + dW
 %   and J~ its residual on the deterministic terms of the regression (the
 %   paper, Section 2).  Two exact representations are implemented:
-%      'single'  the single integral of Theorem 2 (default): the inversion in
+%      'single'  the line integral of Theorem 2 (or 'line'): the inversion in
 %                the argument of U is explicit (a scaled chi-square(1) density
 %                in case DK, a Bessel K_0 density otherwise) and one integral
 %                along Re t = tau remains (engine DFX_CORE);
-%      'double'  the double integral of Theorem 3: the inner inversion in the
-%                argument of V along a path through a saddle point, the outer
-%                integral over V = b (engine TR_LIMDIST).
+%      'double'  the conditional integral of Theorem 3 (or 'conditional'): the
+%                inner inversion in the argument of V along a path through a
+%                saddle point, the outer integral over V = b (engine TR_LIMDIST).
 %   opts.method selects it: 'auto' (the default) takes, point by point, the
 %   faster of the two as measured in these programs (LTRATIO_METHOD: the
-%   single integral for c0 = 0; with c0 ~= 0 the double integral except for
-%   c0 > 0 at x >= 0 in cases DK, DU, DT, SK, and the single integral except
+%   line integral for c0 = 0; with c0 ~= 0 the conditional integral except for
+%   c0 > 0 at x >= 0 in cases DK, DU, DT, SK, and the line integral except
 %   for c0 < 0 at x >= 0 in cases SU, ST), and recomputes the tails of the
-%   single integral by the double integral (LTRATIO_DIST); with a fixed
-%   nonzero start (g0 ~= 0) only the double integral is available (the
-%   inversion in the argument of U is then no longer in closed form), and
-%   it is used whatever opts.method says.  The two agree to about 1e-12
+%   line integral by the conditional integral (LTRATIO_DIST); with a fixed
+%   nonzero start (g0 ~= 0) only the conditional integral is available in these
+%   programs (the C and Julia implementations also carry the noncentral
+%   kernel of the line integral), and it is used whatever opts.method
+%   says.  The two agree to about 1e-12
 %   (LTRATIO_TEST).
 %
 %   Further options are passed to the engine: for 'single' those of DFX_CDF
 %   (tau, hu, N, ...), for 'double' those of TR_LIMDIST (M, Nv, otol, ...).
 %   info: method, time, and the engine's diagnostics (for 'double' the
-%   status and error estimates of TR_LIMDIST; a nonzero status raises a
-%   warning there).
+%   status and error estimates of TR_LIMDIST, where a nonzero status raises
+%   a warning; with 'auto' a point whose status is nonzero gets the line
+%   integral's value instead, info.nfallback counting them).
 %
 %   Examples
 %      ltratio_cdf(-2.86, 'DU')                       % P[tau_mu <= -2.86] at the unit root

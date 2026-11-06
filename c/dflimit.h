@@ -151,8 +151,9 @@ void dfl_qpieces(int model, double c, cdouble S, double gg, cdouble s1, cdouble 
 int dfl_double(int kind, int n, const double *x, int model, double c, double c0, double g0, bool stat, const dfl_double_opts *o, double *out, dfl_double_info *info, char *err, size_t errlen);
 
 /* ---- the user-level entry points (dfl_api.c) ---- */
-/* method 0: automatic (dfl_automethod at each x), 1: the single integral, 2: the double integral.  NULL options take the defaults.  nstatus (may be NULL) counts the points of the double integral with a
- * nonzero status.  Non-finite x: 0 at -Inf, 1 (cdf) or 0 (density) at Inf, NaN at NaN. */
+/* method 0: automatic (dfl_automethod at each x), 1: the single integral, 2: the double integral.  NULL options take the defaults.  nstatus (may be NULL) counts the points at which the double
+ * integral reports that its error estimate is not met; with method 0 those points get the single integral's value, with method 2 the flagged value is returned.  Non-finite x: 0 at -Inf, 1 (cdf) or
+ * 0 (density) at Inf, NaN at NaN. */
 int dfl_automethod(int model, double c, double c0, double g0, double x);
 int dfl_dist(int kind, int n, const double *x, int model, double c, double c0, double g0, bool stat, int method,
              const dfl_single_opts *so, const dfl_double_opts *dopt, double *out, int *nstatus, char *err, size_t errlen);
