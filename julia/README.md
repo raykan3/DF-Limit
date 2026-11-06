@@ -16,7 +16,8 @@ ltratio_pdf(-2.0, "DT", -5)                        # density
 ltratio_mom(4, "DT")                               # first four moments of tau_tau
 ```
 
-`x` may be an array; `method = :auto` (the default) takes the line integral at c0 = 0 and with a fixed start (the
+The case `"DG"` is the GLS-detrended trend case of Elliott, Rothenberg and Stock (1996) at cbar = -13.5 (the DF-GLS
+tests, Section 9 of the paper; zero start, line integral only, Julia only).  `x` may be an array; `method = :auto` (the default) takes the line integral at c0 = 0 and with a fixed start (the
 noncentral kernel), and when c0 != 0 with a zero start the conditional integral, except for c0 > 0 at x >= 0, where the
 line integral has no breakpoint and is the faster one; it recomputes the values of the line
 integral below 1e-3 by the conditional integral (the line integral's error is absolute, the conditional integral's

@@ -126,7 +126,7 @@ function gstat_scaled(model::Int, z::Complex{T}) where {T}
     Ct = (1 + e2) / 2; St = (1 - e2) / (2mu); Qt = (exp(-mu) - Ct) / z          # cosh mu, sinh mu/mu, (1 - cosh mu)/z, times e^{-mu}
     model == 2 ? (2Qt + St) / z : (-12Ct + Qt * (24 - 4z) + St * (24 + z)) / z^3
 end
-kernel(model::Int, stat::Bool) = (model == 1 && !stat) ? 1 : 2      # rank of the quadratic form R under the tilt
+kernel(model::Int, stat::Bool) = ((model == 1 || model == 4) && !stat) ? 1 : 2   # rank of the quadratic form R under the tilt (4: GLS-detrended, trend)
 
 """D(s, t) for f = 0 (log M = -s/2 + extra - log(D)/2, extra = -c/2 for M1 and 0 otherwise); with stat = true the
 stationary-start determinant, for which extra = -c/2 - log(e^c)/2... is absorbed: D_stat includes the factor e^c for M1 too."""
@@ -188,6 +188,24 @@ function tparts(model::Int, c::T, t::Vector{Complex{T}}; stat::Bool = false) whe
         ph = unwrap!(angle.(S))
         for j in 1:nt
             P[j] = exp(-c / 2) * abs(S[j])^(-T(1) / 2) * exp(-im * ph[j] / 2)
+        end
+        return P, s1, s2, M0
+    end
+    if model == 4 && !stat
+        # the GLS-detrended trend case: M(s,t) = e^{-s/2} P(t) (s_1 - s)^{-1/2} as in case DK, with M_{V_g}(t) = e^{-c/2}
+        # (cosh th |I - Q Sig|)^{-1/2} and s_1 = 1/(2 kap_1), 2 kap_1 = (1 - lam)^2 v' Sig (I - Q Sig)^{-1} v the variance of the
+        # detrended end point under the tilt; branches continuous along the nodes (t[1] real)
+        lam = lam_gls(CBAR_GLS); v = Complex{T}.(VGLS)
+        lD = Vector{Complex{T}}(undef, nt); lch = similar(lD)
+        for j in 1:nt
+            G = girsanov(4, c, t[j])
+            lD[j] = log(G.D); lch[j] = G.lch
+            s1[j] = 1 / ((1 - lam)^2 * (transpose(v) * (G.Sg * (G.N \ v))))
+            s2[j] = zero(t[j]); M0[j] = zero(t[j])
+        end
+        ph = unwrap!(imag.(lD)); ps = unwrap!(angle.(s1))
+        for j in 1:nt
+            P[j] = exp(-c / 2 - (lch[j] + real(lD[j]) + im * ph[j]) / 2 + (log(abs(s1[j])) + im * ps[j]) / 2)
         end
         return P, s1, s2, M0
     end
@@ -304,6 +322,11 @@ function eta1(c::T, t::Complex{T}) where {T}
     e2 = exp(-2mu)
     -2t / (mu + c) + 2mu * e2 / (1 - e2)
 end
+"""The GLS detrending of Elliott, Rothenberg and Stock (1996), trend case: cbar and lambda = (1 - cbar)/(1 - cbar + cbar^2/3)."""
+const CBAR_GLS = -13.5
+lam_gls(cb) = (1 - cb) / (1 - cb + cb * cb / 3)
+const VGLS = [1.0, 0.0, -3.0]                                             # V_cbar(1) = (1 - lam) (W(1) - 3 int r W)
+
 """
     girsanov(model, c, t)
 
@@ -339,6 +362,17 @@ function girsanov(model::Int, c::T, t::Complex{T}) where {T}
         dS = g1 * g3 - g2 * g2
         D = N11 * (1 + 2t * g3) + 2c * t * g2 * g2
         A2 = D / dS; A1 = (g1 - 2g2) / dS + 2t; A0 = -one(q)
+    elseif model == 4
+        # the GLS-detrended trend case of Elliott, Rothenberg and Stock (1996) at cbar = CBAR_GLS: the detrended path is
+        # J(r) - r L, L = lam J(1) + 3 (1 - lam) K, so that V_g = int W^2 - X' Gam_g X and R_g = (1 - lam)^2 (X_1 - 3 X_3)^2 / 2
+        # (rank one), with X = (W(1), int W, int r W); the covariance under the tilt and the determinant as in case T
+        lam = lam_gls(CBAR_GLS)
+        Sg = [g1 g2 g3; g2 g3 g4; g3 g4 g5]
+        Gm = [-lam * lam / 3 0 lam * lam; 0 0 0; lam * lam 0 3 * (1 - lam * lam)]
+        Qd = Matrix{Complex{T}}([c 0 0; 0 0 0; 0 0 0]) .- 2t .* Gm
+        N = Matrix{Complex{T}}(I, 3, 3) - Qd * Sg
+        D = det3(N); dS = det3(Sg)
+        A2 = D / dS; A1 = zero(q); A0 = zero(q)
     else
         Sg = [g1 g2 g3; g2 g3 g4; g3 g4 g5]; Qd = [c 0 0; 0 -8t 12t; 0 12t -24t]
         N = Matrix{Complex{T}}(I, 3, 3) - Qd * Sg; N[1,1] = N11
@@ -374,15 +408,16 @@ function tstar(model::Int, c::Float64; stat::Bool = false)
         # 2t > c^2); eta alone changes sign at the poles of coth as well, and for c < 0 the first zero of D lies just below
         # the pole (c^2 + pi^2)/2, inside a stretch that the 5% steps of the bracketing can skip (c = -9.5: 61.6 for 49.2)
         sgnS(t) = (q = c * c - 2t; q >= 0 ? 1.0 : sign(sin(sqrt(-q))))
-        g(t) = (model == 1 && !stat) ? real(eta1(c, complex(t))) * sgnS(t) :
+        g(t) = (model == 4 && !stat) ? (G = girsanov(4, c, complex(t)); real(exp(G.lch) * G.D)) :   # GLS: the sign of cosh(th) |I - Q Sig|
+               (model == 1 && !stat) ? real(eta1(c, complex(t))) * sgnS(t) :
                (!stat && c > CGIRS) ? real(girsanov(model, c, complex(t)).D) :
                real(Dfun(model, c, complex(0.0), complex(t); stat))
         a = 1e-6                                                 # t_* ~ e^{-2c}: start below it
         while g(a) <= 0 && a > 1e-300; a /= 1e3; end
         g(a) > 0 || error("D(0, t) not positive near t = 0")
-        b = a
+        b = a; fac = model == 4 ? 1.005 : 1.05
         while g(b) > 0
-            a = b; b *= 1.05
+            a = b; b *= fac
             b > 1e4 && error("no zero of D(0, t) below t = 1e4")
         end
         for _ in 1:100
@@ -1505,7 +1540,7 @@ end
 
 """Quantile by Newton's method on the distribution function with the density as derivative."""
 function quantile(prob::Float64, model::Int; c::Float64 = 0.0, q0 = nothing, tol = 1e-9, start::Symbol = :zero, c0::Float64 = 0.0)
-    q = q0 === nothing ? (model == 1 ? -0.5 : model == 2 ? -1.6 : -2.2) : q0
+    q = q0 === nothing ? (model == 1 ? -0.5 : model == 2 ? -1.6 : model == 4 ? -2.4 : -2.2) : q0
     lo, hi = q - 1.0, q + 1.0                                          # a bracket, then Newton safeguarded by bisection
     while cdf(lo, model; c, start, c0) > prob; lo -= 2(q - lo); end
     while cdf(hi, model; c, start, c0) < prob; hi += 2(hi - q); end
@@ -1726,7 +1761,7 @@ end
 #   "DU"  regression on 1 and y_{t-1}            (tau_mu),   start g0
 #   "DT"  regression on 1, t and y_{t-1}         (tau_tau),  start g0
 #   "SK", "SU", "ST"  the same regressions with y_0 from the stationary distribution, J(0) ~ N(0, -1/(2c)), c < 0
-const CASES = ("DK", "DU", "DT", "SK", "SU", "ST")
+const CASES = ("DK", "DU", "DT", "SK", "SU", "ST", "DG")                 # DG: GLS-detrended, trend, zero start (Section 9)
 """the method of `method = :auto` at the point x: the single integral at c0 = 0 (its fixed node layouts make it the faster
 one by 2-20x, zero or stationary start, any c) and with a fixed start g0 != 0 (the noncentral kernel, 2-6x faster than
 the double integral and without its limit c <= 2); with c0 != 0 and a zero start the double integral, except for
@@ -1748,7 +1783,7 @@ stationary start requires c < 0), the local null value c0, the fixed start g0 (f
 """
 function ltratio_args(cas::AbstractString, c::Real; c0::Real = 0.0, g0::Real = 0.0, method::Symbol = :auto)
     cas = uppercase(String(cas))
-    cas in CASES || throw(ArgumentError("the case must be one of DK, DU, DT, SK, SU, ST"))
+    cas in CASES || throw(ArgumentError("the case must be one of DK, DU, DT, SK, SU, ST, DG"))
     isfinite(c) || throw(ArgumentError("c must be a finite real scalar"))
     stat = cas[1] == 'S'
     stat && !(c < 0) && throw(ArgumentError("a stationary start (cases SK, SU, ST) requires c < 0"))
@@ -1756,7 +1791,12 @@ function ltratio_args(cas::AbstractString, c::Real; c0::Real = 0.0, g0::Real = 0
     isfinite(g0) || throw(ArgumentError("g0 must be a finite real scalar"))
     g0 != 0 && stat && throw(ArgumentError("g0 (a fixed start) applies to cases DK, DU, DT only"))
     method in (:auto, :single, :double) || throw(ArgumentError("method must be :auto, :single or :double"))
-    model = findfirst(==(cas[2]), "KUT")
+    model = cas == "DG" ? 4 : findfirst(==(cas[2]), "KUT")
+    if model == 4                                                     # the GLS-detrended trend case: the line integral only
+        method == :double && throw(ArgumentError("case DG has the line integral representation only"))
+        g0 != 0 && throw(ArgumentError("g0 (a fixed start) applies to cases DK, DU, DT only"))
+        method = :single
+    end
     model, stat, Float64(c0), Float64(g0), method
 end
 
@@ -1796,7 +1836,8 @@ end
     ltratio_cdf(x, cas, c = 0; c0 = 0, g0 = 0, method = :auto)
 
 The limit as n -> inf of P[t <= x] for the least squares t-ratio t of the hypothesis phi = 1 + c0/n under phi = 1 + c/n,
-case `cas` ("DK", "DU", "DT": fixed start g0, default 0; "SK", "SU", "ST": stationary start, c < 0).  x may be an array.
+case `cas` ("DK", "DU", "DT": fixed start g0, default 0; "SK", "SU", "ST": stationary start, c < 0; "DG": the GLS-detrended
+trend case of Elliott, Rothenberg and Stock, cbar = -13.5, zero start, line integral only).  x may be an array.
 Non-finite x: 0 at -Inf, 1 at Inf, NaN at NaN.  method: :auto (the faster of the two representations at each x, see
 `automethod`; the values of the single integral below 1e-3 are recomputed by the double integral, and a point at which
 the double integral reports that its error estimate is not met gets the single integral's value), :single (the single

@@ -74,6 +74,11 @@ check(wg < 1e-12, @sprintf("Girsanov determinant vs D(0, t): worst relative diff
 # a bracketing on the sign of eta alone could skip (61.6 for 49.2 at c = -9.5, 313 for 204.5 at c = -20)
 wts = maximum(abs(D.tstar(1, c) - D.dksmax(c)) / D.dksmax(c) for c in (-9.5, -20.0, -30.0))
 check(wts < 1e-12 && abs(D.tstar(1, -9.5) - 49.18660310687472) < 1e-9, @sprintf("t_* of case DK at c = -9.5, -20, -30 vs dksmax: %.1e", wts))
+# the GLS-detrended trend case (model 4, case DG): at c = 0, P(tau <= 0) = P{V(1)^2 <= 1} with Var V(1) = 0.2 (1 - lam)^2 in
+# closed form; node doubling and the contour at the 5% point
+lamg = D.lam_gls(D.CBAR_GLS); F0g = D.ltratio_cdf(0.0, "DG", 0.0); F0c = erf(1 / sqrt(0.4 * (1 - lamg)^2))
+Fg = D.cdf(-2.8456, 4; c = -5.0); D.NODEFAC[] = 2; Fg2 = D.cdf(-2.8456, 4; c = -5.0); D.NODEFAC[] = 1; Fg3 = D.cdf(-2.8456, 4; c = -5.0, tau = 0.5)
+check(abs(F0g - F0c) < 1e-12 && abs(Fg - Fg2) < 1e-11 && abs(Fg - Fg3) < 1e-11, @sprintf("case DG (GLS, trend): P(tau <= 0) at c = 0 vs the closed form %.1e; doubling %.1e, contour %.1e", abs(F0g - F0c), abs(Fg - Fg2), abs(Fg - Fg3)))
 
 # 8. the moments: E tau_mu^2 at the unit root is 3.05599535 (Nabeya, 1999); the first implementation agrees
 m2 = D.moments(2; pmax = 2)[2]
