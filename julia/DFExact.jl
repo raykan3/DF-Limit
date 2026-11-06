@@ -370,7 +370,11 @@ const TSTAR = Dict{Tuple{Int,Float64,Bool},Float64}()
 const TSTARLOCK = ReentrantLock()
 function tstar(model::Int, c::Float64; stat::Bool = false)
     lock(TSTARLOCK) do; get!(TSTAR, (model, c, stat)) do
-        g(t) = (model == 1 && !stat) ? real(eta1(c, complex(t))) :
+        # case DK: the sign of D = eta S from the cancellation-free eta and the sign of S = sinh(mu)/mu (sin(th)/th for
+        # 2t > c^2); eta alone changes sign at the poles of coth as well, and for c < 0 the first zero of D lies just below
+        # the pole (c^2 + pi^2)/2, inside a stretch that the 5% steps of the bracketing can skip (c = -9.5: 61.6 for 49.2)
+        sgnS(t) = (q = c * c - 2t; q >= 0 ? 1.0 : sign(sin(sqrt(-q))))
+        g(t) = (model == 1 && !stat) ? real(eta1(c, complex(t))) * sgnS(t) :
                (!stat && c > CGIRS) ? real(girsanov(model, c, complex(t)).D) :
                real(Dfun(model, c, complex(0.0), complex(t); stat))
         a = 1e-6                                                 # t_* ~ e^{-2c}: start below it
