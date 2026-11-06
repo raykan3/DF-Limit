@@ -39,7 +39,8 @@ int dfl_single(int kind, int n, const double *x, int model, double c, double c0,
  * integral has no breakpoint and takes 0.2-5 ms against 1-60 ms (ten threads).  Elsewhere with c0 != 0 the double
  * integral is the faster one at every c, by 2-10x, measured point by point over c in [-5, 5], c0 in {-5, -1, 1, 3} and
  * x in [-4, 32] in the three cases (with c0 < 0 the saddle part of the single integral costs up to 1 s at x ~ 8 with
- * c0 = -1).  The tails below 1e-3 are recomputed by the double integral in any case (dfl_dist). */
+ * c0 = -1).  The tails below 1e-3 are recomputed by the double integral in any case, and a point at which the double
+ * integral reports that its error estimate is not met gets the single integral's value (dfl_dist, method 0). */
 int dfl_automethod(int model, double c, double c0, double g0, double x)
 {
     (void) c;
@@ -76,7 +77,11 @@ int dfl_dist(int kind, int n, const double *x, int model, double c, double c0, d
         double *Fd = malloc(nd * sizeof(double)); dfl_double_info *info = malloc(nd * sizeof(dfl_double_info));
         rc = dfl_double(kind, nd, xd, model, c, c0, g0, stat, dopt, Fd, info, err, errlen);
         if (rc == 0) for (int j = 0; j < nd; j++) {
-            if (j < nchosen || info[j].status == 0) out[id[j]] = Fd[j];   /* a flagged tail point keeps the single integral's value */
+            int k = id[j];
+            if (info[j].status == 0 || method == 2) out[k] = Fd[j];
+            else if (j < nchosen)                                       /* a flagged point chosen by the rule: the single integral's value instead */
+                out[k] = (c0 != 0 || g0 != 0 || so->gen) ? dfl_single_value_gen(kind, x[k], model, c, c0, g0, stat, so) : dfl_single_value_c0(kind, x[k], model, c, stat, so);
+            /* (a flagged tail point keeps the single integral's value) */
             if (nstatus && info[j].status) (*nstatus)++;
         }
         free(Fd); free(info);

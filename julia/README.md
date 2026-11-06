@@ -18,9 +18,10 @@ ltratio_mom(4, "DT")                               # first four moments of tau_t
 
 `x` may be an array; `method = :auto` (the default) takes the line integral at c0 = 0 and with a fixed start (the
 noncentral kernel), and when c0 != 0 with a zero start the conditional integral, except for c0 > 0 at x >= 0, where the
-line integral has no breakpoint and is the faster one; it recomputes the values of the single
-integral below 1e-3 by the conditional integral (the line integral's error is absolute, the double's relative); a computed
-density below zero is returned as zero; `:single` and `:double` force one representation.  The engine functions take the model number 1, 2, 3 for K, U, T:
+line integral has no breakpoint and is the faster one; it recomputes the values of the line
+integral below 1e-3 by the conditional integral (the line integral's error is absolute, the conditional integral's
+relative), returns the line integral's value at a point where the conditional integral reports that its error estimate
+is not met, and returns a computed density below zero as zero; `:single` and `:double` force one representation.  The engine functions take the model number 1, 2, 3 for K, U, T:
 `DFExact.cdf(q, model; c, c0, start = :zero | :stationary)`, `DFExact.density`, `DFExact.quantile`,
 `DFExact.moments(model; c, c0, g0, start)`, `DFExact.tstar(model, c)`, `DFExact.tr_limdist(x, model, c; ...)`.
 Install the dependencies once with `julia --project=julia -e 'using Pkg; Pkg.instantiate()'`.

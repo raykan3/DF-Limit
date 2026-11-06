@@ -1764,17 +1764,23 @@ function ltratio_dist(kind::Int, x, cas::AbstractString, c::Real; c0::Real = 0.0
     fin = findall(isfinite, xs)
     dbl = [k for k in fin if method == :double || (method == :auto && automethod(model, Float64(c), c0, g0, xs[k]) == :double)]
     sgl = setdiff(fin, dbl)
-    isempty(dbl) || (F[dbl] .= tr_limdist(xs[dbl], model, Float64(c); c0, g0, start, pdf = kind == 1, kw...)[1])
-    for k in sgl
-        F[k] = kind == 2 ? cdf(xs[k], model; c = Float64(c), c0, g0, start, kw...) : density(xs[k], model; c = Float64(c), c0, g0, start, kw...)
+    single(k) = kind == 2 ? cdf(xs[k], model; c = Float64(c), c0, g0, start, kw...) : density(xs[k], model; c = Float64(c), c0, g0, start, kw...)
+    if !isempty(dbl)
+        Fd, info = tr_limdist(xs[dbl], model, Float64(c); c0, g0, start, pdf = kind == 1, warn = method == :double, kw...)
+        for (j, k) in enumerate(dbl)
+            # a point chosen by the rule at which the double integral reports that its error estimate is not met gets the
+            # single integral's value (with method = :double the flagged value is returned, with a warning)
+            F[k] = (method == :auto && info.status[j] != 0) ? single(k) : Fd[j]
+        end
     end
+    for k in sgl; F[k] = single(k); end
     # the tails: the single integral's error is absolute (1e-14 to 1e-21, not reduced by finer rules), so with method = :auto
     # the values of the single integral below 1e-3 (a density in absolute value, a distribution function in the lower tail)
     # are recomputed by the double integral, which keeps its relative accuracy there (as the MATLAB programs do)
     if method == :auto
         tl = [k for k in sgl if (kind == 1 ? abs(F[k]) : F[k]) < 1e-3]
         if !isempty(tl)
-            Ft, info = tr_limdist(xs[tl], model, Float64(c); c0, g0, start, pdf = kind == 1, kw...)
+            Ft, info = tr_limdist(xs[tl], model, Float64(c); c0, g0, start, pdf = kind == 1, warn = false, kw...)
             for (j, k) in enumerate(tl); info.status[j] == 0 && (F[k] = Ft[j]); end   # (where the double integral flags the point, the single integral's value stays)
         end
     end
@@ -1788,8 +1794,10 @@ end
 The limit as n -> inf of P[t <= x] for the least squares t-ratio t of the hypothesis phi = 1 + c0/n under phi = 1 + c/n,
 case `cas` ("DK", "DU", "DT": fixed start g0, default 0; "SK", "SU", "ST": stationary start, c < 0).  x may be an array.
 Non-finite x: 0 at -Inf, 1 at Inf, NaN at NaN.  method: :auto (the faster of the two representations at each x, see
-`automethod`), :single (the single integral of Theorem 2; with a fixed start the noncentral kernel) or :double (the
-double integral of Theorem 3).  Further keywords go to the engine (tau, hu, N, pfac, ...).
+`automethod`; the values of the single integral below 1e-3 are recomputed by the double integral, and a point at which
+the double integral reports that its error estimate is not met gets the single integral's value), :single (the single
+integral of Theorem 2; with a fixed start the noncentral kernel) or :double (the double integral of Theorem 3, whose
+flagged values are returned with a warning).  Further keywords go to the engine (tau, hu, N, pfac, ...).
 
     ltratio_cdf(-2.86, "DU")                        # P[tau_mu <= -2.86] at the unit root
     ltratio_cdf(-1.94087, "DK", -5)                 # power of the 5% test of tau at c = -5
@@ -3858,7 +3866,7 @@ vector), with a fixed start g0 or a stationary start.  info.status is 0 where th
 status gives a warning.  Options: M (outer nodes per piece), Nv (nodes on the contour), Nl (nodes of the integral over l
 for the noncentral probability), plen, otol, maxlev, stepw, errtol, blo, bhi, bmin, mumin, tdec.
 """
-function tr_limdist(x::Vector{Float64}, model::Int, c::Float64; c0::Float64 = 0.0, g0::Float64 = 0.0, start::Symbol = :zero, pdf::Bool = false, kw...)
+function tr_limdist(x::Vector{Float64}, model::Int, c::Float64; c0::Float64 = 0.0, g0::Float64 = 0.0, start::Symbol = :zero, pdf::Bool = false, warn::Bool = true, kw...)
     stat = startflag(start, c)
     stat && g0 != 0 && error("a fixed start g0 applies to the zero-start cases only")
     if !stat && g0 == 0
@@ -3866,7 +3874,7 @@ function tr_limdist(x::Vector{Float64}, model::Int, c::Float64; c0::Float64 = 0.
     else
         F, info = double_start(x, model, c, c0, g0, stat, pdf; kw...)
     end
-    if any(!=(0), info.status)
+    if warn && any(!=(0), info.status)
         iw = findfirst(!=(0), info.status)
         @warn "tr_limdist: $(count(!=(0), info.status)) of $(length(x)) points with nonzero status (first: x = $(x[iw]), status $(info.status[iw]), error estimate $(info.err[iw])); the result may be inaccurate there"
     end

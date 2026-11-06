@@ -44,8 +44,9 @@ function [F,info] = ltratio_cdf(x,cas,c,opts)
 %   Further options are passed to the engine: for 'single' those of DFX_CDF
 %   (tau, hu, N, ...), for 'double' those of TR_LIMDIST (M, Nv, otol, ...).
 %   info: method, time, and the engine's diagnostics (for 'double' the
-%   status and error estimates of TR_LIMDIST; a nonzero status raises a
-%   warning there).
+%   status and error estimates of TR_LIMDIST, where a nonzero status raises
+%   a warning; with 'auto' a point whose status is nonzero gets the line
+%   integral's value instead, info.nfallback counting them).
 %
 %   Examples
 %      ltratio_cdf(-2.86, 'DU')                       % P[tau_mu <= -2.86] at the unit root

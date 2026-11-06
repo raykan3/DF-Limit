@@ -23,7 +23,8 @@ ltratio('threads')                                    % the number of threads (a
 and when c0 is not 0 with a zero start the conditional integral, except for c0 > 0 at x >= 0, where the line integral has
 no breakpoint and is the faster one by 5-50x (the faster representation at each point, measured over c in [-5, 5] and
 the three cases); as in the MATLAB programs, the values of the line integral below 1e-3 (a density, or a distribution function in the lower tail) are
-then recomputed by the conditional integral, whose accuracy is relative where the line integral's is absolute, and a
+then recomputed by the conditional integral, whose accuracy is relative where the line integral's is absolute, a point at
+which the conditional integral reports that its error estimate is not met gets the line integral's value, and a
 computed density below zero is returned as zero.  The MEX file itself takes numeric arguments only (see the header of
 `ltratio_mex.c`): `'single'`, `'double'`, `'dist'`, `'icdf'`, `'mom'`, `'tstar'`, `'threads'`.
 

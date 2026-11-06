@@ -9,7 +9,10 @@ function [F,info] = ltratio_dist(x,cas,c,opts,mode)
 %   two representations in the MATLAB programs (single for c0 = 0; with
 %   c0 ~= 0 double except for c0 > 0 at x >= 0 in cases DK, DU, DT, SK, and
 %   single except for c0 < 0 at x >= 0 in cases SU, ST); info.ndouble is
-%   the number of points sent to the conditional integral by the rule.
+%   the number of points sent to the conditional integral by the rule.  A point
+%   at which the conditional integral reports that its error estimate is not
+%   met (info.status, info.err) gets the line integral's value instead, when a
+%   zero or stationary start makes it available; info.nfallback counts them.
 %
 %   Tails.  The line integral has an absolute accuracy, not a relative one:
 %   its terms are of order one, and the computed density or distribution
@@ -58,10 +61,16 @@ if any(fin(:))
             end
             if any(dbl(:))
                 o2 = rmfield_safe(opts,{'method'}); o2.c0 = c0; o2.g0 = g0;
+                ws = warning('off','tr_limdist:status');
                 [Fv,inf2] = tr_limdist(x(dbl),cas,c,o2,mode);
+                warning(ws);
                 F(dbl) = Fv;
                 info.err = NaN(size(x)); if isfield(inf2,'err'), info.err(dbl) = inf2.err; end
-                if isfield(inf2,'status'), info.status = zeros(size(x)); info.status(dbl) = inf2.status; end
+                info.status = zeros(size(x)); if isfield(inf2,'status'), info.status(dbl) = inf2.status; end
+                % a point at which the conditional integral reports that its error estimate is not met gets the line
+                % integral's value (the conditional integral is the only route with a fixed start)
+                fb = info.status ~= 0 & g0 == 0; info.nfallback = nnz(fb);
+                if any(fb(:)), F(fb) = single_values(x(fb),cas,c,c0,opts,mode); end
             end
     end
 end
