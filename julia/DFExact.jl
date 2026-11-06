@@ -1732,7 +1732,9 @@ one at every c, measured point by point over c in [-5, 5], c0 in {-5, -1, 1, 3} 
 (by 2-10x in C; with c0 < 0 the single integral's saddle part costs up to 1 s at x ~ 8 with c0 = -1, and here its
 general kernel is 5-90x slower).  The tails below 1e-3 are recomputed by the double integral in any case
 (ltratio_dist)."""
-automethod(model::Int, c::Float64, c0::Float64, g0::Float64, x::Float64) = (c0 != 0 && g0 == 0 && !(c0 > 0 && x >= 0)) ? :double : :single
+automethod(model::Int, c::Float64, c0::Float64, g0::Float64, x::Float64) =
+    (model == 1 && c0 > 0 && g0 == 0 && x == -sqrt(2c0)) ? :single :       # the infinite density of case DK: the single integral returns Inf there without a flag
+    (c0 != 0 && g0 == 0 && !(c0 > 0 && x >= 0)) ? :double : :single
 """
     ltratio_args(cas, c; c0, g0, method) -> (model, stat, c0, g0, method)
 
@@ -3070,6 +3072,54 @@ function pathT(lk, b::Float64, a::Float64, sq::Float64, a1q::Float64, NN::Int, c
     I, E, sA
 end
 
+"""
+    agreepaths(evalpath, np, NN, tol) -> I, E
+
+An inner inversion by `np` paths (`evalpath(p, NN)` returns the trapezoidal value and the nested-rule estimate of path
+p with NN nodes).  Each path is first refined on its own, the node count doubled up to three times until its estimate is
+below tol max(1, |I|); a value is accepted as soon as two paths agree to within that tolerance, the one with the smaller
+estimate being kept and the discrepancy entering the error.  The nested rule alone can be fooled: an oscillating tail
+that is not resolved by the rule and its half aliases into the same wrong value on both (case DK, c = 5, c0 = -5,
+v = 0.086, a = 35: the parabola with 96 and 192 nodes agrees with itself to 1e-15 and is off by 1e-7, which the
+vertical line exposes).  When no two paths agree, the value with the smallest estimate is kept if every other path is
+consistent with it, the discrepancy within ten times the sum of the two estimates (a path that converges slowly, or not
+at all, is no evidence against a resolved one); otherwise the inconsistent paths and the best one are recomputed with the node
+count doubled, up to three more times, until two agree or all are consistent, and if they still disagree the best
+value is returned with the smallest inconsistent discrepancy as its error, which the outer rule then reports."""
+function agreepaths(evalpath, np::Int, NN::Int, tol::Float64)
+    I = fill(NaN, np); E = fill(Inf, np); N = fill(NN, np)
+    scale(p, q) = max(1.0, abs(I[p]), abs(I[q]))
+    agree(p, q) = isfinite(I[p]) && isfinite(I[q]) && abs(I[p] - I[q]) <= 2tol * scale(p, q)
+    accept(p, q) = (b = E[p] <= E[q] ? p : q; (I[b], max(E[b], abs(I[p] - I[q]))))
+    inconsistent(b, q) = q != b && isfinite(I[q]) && abs(I[b] - I[q]) > 10(E[b] + E[q])
+    for p in 1:np
+        NNq = NN
+        for _ in 0:3
+            Ip, Ep = evalpath(p, NNq)
+            if Ep < E[p]; I[p] = Ip; E[p] = Ep; N[p] = NNq; end
+            Ep <= tol * max(1.0, abs(Ip)) && break
+            NNq *= 2
+        end
+        for q in 1:p-1; agree(p, q) && return accept(p, q); end
+    end
+    b = argmin(E)
+    isfinite(E[b]) || return 0.0, Inf
+    bad = [q for q in 1:np if inconsistent(b, q)]
+    isempty(bad) && return I[b], E[b]
+    for _ in 1:3
+        for p in [b; bad]
+            N[p] *= 2
+            I[p], E[p] = evalpath(p, N[p])                            # the finer rule replaces the value, whatever its estimate
+        end
+        for p in 1:np, q in 1:p-1; agree(p, q) && return accept(p, q); end
+        b = argmin(E)
+        isfinite(E[b]) || return 0.0, Inf
+        bad = [q for q in 1:np if inconsistent(b, q)]
+        isempty(bad) && return I[b], E[b]
+    end
+    I[b], max(E[b], minimum(abs(I[b] - I[q]) for q in bad))
+end
+
 """the saddle data of the pair (b, a) in case DK: (s, a1, g2, L0) of the whole integrand and, for the cdf, of M_V and of
 M_V erfc (the third route); warm-started from `prev` (the data of a neighbouring b) when given"""
 function dksaddles(b::Float64, a::Float64, c::Float64, pdfm::Bool, prev)
@@ -3096,27 +3146,19 @@ function dkpair(b::Float64, a::Float64, c::Float64, pdfm::Bool, NN::Int; sad = n
     Lh = L0 - log(2pi * max(g2, 1e-6 * b * b)) / 2                    # log of the saddle-point approximation
     lw = pdfm ? 1.5log(b) : log(b)
     Lh + lw < -35 && return 0.0, 0.0                                  # negligible (in d log b)
-    Hk = 0.0; Ek = Inf
     sB, aB = sad[2][1], sad[2][2]; sC, aC = sad[3][1], sad[3][2]
-    for pth in (pdfm ? (1:2) : (1:3))
-        NNq = NN
-        for _ in 0:3
-            if pth == 1
-                I, E = pathW(S -> lk(S, k0), b, s, a1 / 2, NNq)
-            elseif pth == 2
-                I, E, _ = pathT(S -> lk(S, k0), b, a, s, a1, NNq, c)
-            else
-                IB, EB = pathW(S -> lk(S, 1), b, sB, aB / 2, NNq); IC, EC, _ = pathT(S -> lk(S, 2), b, a, sC, aC, NNq, c)
-                I = IB - IC; E = EB + EC
-            end
-            if E < Ek; Hk = I; Ek = E; end
-            sc = max(1.0, abs(I))
-            (E > tol * sc && Ek > tol * sc) || break
-            NNq *= 2
+    function evalpath(pth::Int, NNq::Int)
+        if pth == 1
+            I, E = pathW(S -> lk(S, k0), b, s, a1 / 2, NNq)
+        elseif pth == 2
+            I, E, _ = pathT(S -> lk(S, k0), b, a, s, a1, NNq, c)
+        else
+            IB, EB = pathW(S -> lk(S, 1), b, sB, aB / 2, NNq); IC, EC, _ = pathT(S -> lk(S, 2), b, a, sC, aC, NNq, c)
+            I = IB - IC; E = EB + EC
         end
-        Ek <= tol * max(1.0, abs(Hk)) && break                         # resolved: the other paths are not needed
+        I, E
     end
-    Hk, Ek
+    agreepaths(evalpath, pdfm ? 2 : 3, NN, tol)
 end
 
 # ---------- cases DU, DT, zero start: the closed form of E[e^{sV} delta(R - r)] ----------
@@ -3227,30 +3269,22 @@ function iipair(b::Float64, r::Float64, c::Float64, model::Int, pdfm::Bool, NN::
         (!pdfm && s < 0) && return real(exp(lk([complex(0.0)])[1])), 0.0   # the residue at the pole
         return 0.0, 0.0
     end
-    Hk = 0.0; Ek = Inf
-    for pth in 1:2
-        NNq = NN
-        for _ in 0:3
-            if pth == 1
-                sq = s
-                if !pdfm
-                    abs(sq) < a1 && (sq = sq >= 0 ? a1 : -a1)
-                    sq = min(sq, sab - 0.5a1)
-                end
-                I, E = pathW(lk, b, sq, a1 / 2, NNq; divS = !pdfm)
-                (!pdfm && sq < 0) && (I += real(exp(lk([complex(0.0)])[1])))
-            else
-                I, E, sA = pathT(lk, b, r, s, a1, NNq, c; divS = !pdfm, polegap = !pdfm)
-                (!pdfm && sA < 0) && (I += real(exp(lk([complex(0.0)])[1])))
+    function evalpath(pth::Int, NNq::Int)
+        if pth == 1
+            sq = s
+            if !pdfm
+                abs(sq) < a1 && (sq = sq >= 0 ? a1 : -a1)
+                sq = min(sq, sab - 0.5a1)
             end
-            if E < Ek; Hk = I; Ek = E; end
-            scl = max(1.0, abs(I))
-            (E > tol * scl && Ek > tol * scl) || break
-            NNq *= 2
+            I, E = pathW(lk, b, sq, a1 / 2, NNq; divS = !pdfm)
+            (!pdfm && sq < 0) && (I += real(exp(lk([complex(0.0)])[1])))
+        else
+            I, E, sA = pathT(lk, b, r, s, a1, NNq, c; divS = !pdfm, polegap = !pdfm)
+            (!pdfm && sA < 0) && (I += real(exp(lk([complex(0.0)])[1])))
         end
-        Ek <= tol * max(1.0, abs(Hk)) && break                         # the first path already resolved: the second is not needed
+        I, E
     end
-    Hk, Ek
+    agreepaths(evalpath, 2, NN, tol)
 end
 """P[k1 Z1^2 + k2 Z2^2 <= a], k1 > 0 > k2 real: 2 int_{l0}^inf phi(l; s2) erf(sqrt((2a + l^2)/(2 s1))) dl"""
 function Pk0(k1::Float64, k2::Float64, a::Float64)

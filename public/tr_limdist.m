@@ -764,7 +764,7 @@ function [H,Ek] = dkpairs(b,a,v,c,o,pdfm)
 % log of the integrand: kind 0 (cdf) or 3 (pdf); the split path uses kinds 1
 % (log M_B) and 2 (log of M_B erfc(sqrt(a eta))).  Three paths, each with a
 % nested-rule error estimate (plus rounding from the size of the integrand),
-% refined by doubling; the best is kept.
+% refined by doubling; a value is accepted when two paths agree (AGREEPATHS).
 NN = getf(o,'Nv',96); kap = 2; tl = 45; tol = 1e-13;
 b = b(:)'; a = a(:)'; v = v(:)';
 H = zeros(size(a)); Ek = zeros(size(a)); ok = a > 0;
@@ -778,18 +778,18 @@ ia = 1:n;
 Lh = L0 - log(2*pi*max(g2,1e-6*bb.^2))/2;                       % log of the saddle-point approximation
 if pdfm, lw = 1.5*log(bb); else, lw = log(bb); end
 act = find(~(Lh + lw < -35));                   % the others are negligible (in d log b)
-Hk = zeros(1,n); Ekk = inf(1,n);
-pths = 1:3; if pdfm, pths = 1:2; end
-for pth = pths
-    q = act; NNq = NN;
-    if pth == 3 && ~isempty(q)
-        % H = f_B - H_c, H_c = E[delta(B - b) 1{R > a}]: saddle points of
-        % log M_B - s b and of log M_B erfc - s b, left of s_max
-        [sB,aB] = rsad(@(S,q) lk(S,act(q),1),bb(act),smx);
-        [sC,aC] = rsad(@(S,q) lk(S,act(q),2),bb(act),smx);
-    end
-    for rf = 0:3
-        if isempty(q), break, end
+if ~pdfm && ~isempty(act)
+    % the third route, H = f_B - H_c, H_c = E[delta(B - b) 1{R > a}]: saddle points
+    % of log M_B - s b and of log M_B erfc - s b, left of s_max
+    [sB,aB] = rsad(@(S,q) lk(S,act(q),1),bb(act),smx);
+    [sC,aC] = rsad(@(S,q) lk(S,act(q),2),bb(act),smx);
+end
+np = 3; if pdfm, np = 2; end
+[Hk,Ekk] = agreepaths(@evalp,np,act,n,NN,tol);
+H(ok) = Hk; Ek(ok) = Ekk; H = H(:); Ek = Ek(:);
+
+    function [I,E] = evalp(pth,q,NNq)
+        % the value and the nested-rule estimate of path pth at the pairs q
         if pth == 1
             [I,E] = pthW(q,s(q),a1(q)/2,NNq,k0);
         elseif pth == 2
@@ -799,13 +799,7 @@ for pth = pths
             [IB,EB] = pthW(q,sB(iq),aB(iq)/2,NNq,1); [IC,EC] = pthT(q,sC(iq),aC(iq),NNq,2);
             I = IB - IC; E = EB + EC;
         end
-        better = E < Ekk(q); Hk(q(better)) = I(better); Ekk(q(better)) = E(better);
-        sc = max(1,abs(I));
-        q = q(E > tol*sc & Ekk(q) > tol*sc); NNq = 2*NNq;
     end
-end
-sk = true(1,n); sk(act) = false; Ekk(sk) = 0;
-H(ok) = Hk; Ek(ok) = Ekk; H = H(:); Ek = Ek(:);
 
     function [I,E] = pthW(q,sq,mu,NN,k)
         % parabola s^ + mu t^2 - 2 i mu t near the saddle, bending into the
@@ -839,6 +833,89 @@ function [I,E] = fin(G)
 nf = any(~isfinite(G),1); G(~isfinite(G)) = 0;
 I = real(sum(G,1)); Ih = real(sum(2*G(1:2:end,:),1));       % the rule with step 2 h
 E = abs(I - Ih) + 1e-14*sum(abs(G),1) + 1e3*abs(G(end,:)); E(nf) = Inf;   % (last term: the truncation)
+end
+
+function [Hk,Ekk,pk] = agreepaths(evalp,np,act,n,NN,tol)
+% The inner inversion by np paths, for the pairs act of 1:n: evalp(pth,q,NN)
+% gives the trapezoidal values and the nested-rule estimates of path pth with
+% NN nodes at the pairs q.  Each path is refined on its own, the node count
+% doubled up to three times until its estimate is below tol max(1,|I|); a pair
+% is accepted as soon as two of its paths agree to 2 tol max(1,|I|), the value
+% with the smaller estimate being kept and the discrepancy entering the error.
+% The nested rule alone can be fooled: an oscillating tail that neither the
+% rule nor its half resolves aliases into the same wrong value on both (case
+% DK, c = 5, c0 = -5, b = 0.086, a = 35: the parabola with 96 and 192 nodes
+% agrees with itself to 1e-15 and is off by 1e-7, which the vertical line
+% exposes).  Where no two paths agree, the value with the smallest estimate is
+% kept if every other path is consistent with it, the discrepancy within ten
+% times the sum of the two estimates (a path that converges slowly, or not at
+% all, is no evidence against a resolved one); otherwise the inconsistent paths and
+% the best one are recomputed with the node count doubled, up to three more
+% times, until two agree or all are consistent, and if they still disagree
+% the best value is kept with the smallest inconsistent discrepancy as its
+% error, which the outer rule then reports.  Pairs not in act are
+% negligible: zero with a zero error.  pk is the path kept.
+Hk = zeros(1,n); Ekk = zeros(1,n); pk = zeros(1,n);
+IP = nan(np,n); EP = inf(np,n); NP = NN*ones(np,n);
+done = true(1,n); done(act) = false;
+agree = @(x,y) isfinite(x) & isfinite(y) & abs(x - y) <= 2*tol*max(1,max(abs(x),abs(y)));
+for pth = 1:np
+    q = find(~done); qr = q; NNq = NN;
+    for rf = 0:3
+        if isempty(qr), break, end
+        [I,E] = evalp(pth,qr,NNq);
+        better = E < EP(pth,qr); IP(pth,qr(better)) = I(better); EP(pth,qr(better)) = E(better); NP(pth,qr(better)) = NNq; %#ok<*AGROW>
+        qr = qr(E > tol*max(1,abs(I))); NNq = 2*NNq;
+    end
+    for pp = 1:pth-1
+        ag = q(~done(q) & agree(IP(pth,q),IP(pp,q)));
+        if isempty(ag), continue, end
+        [Hk(ag),Ekk(ag),pk(ag)] = accept(IP([pth pp],ag),EP([pth pp],ag),[pth pp]); done(ag) = true;
+    end
+end
+for round = 0:3
+    q = find(~done); if isempty(q), break, end
+    % the best path of each pair, and the paths inconsistent with it
+    [Eb,pb] = min(EP(:,q),[],1); ib = sub2ind(size(IP),pb,q); Ib = IP(ib);
+    bad = false(np,numel(q));
+    for pth = 1:np
+        bad(pth,:) = pth ~= pb & isfinite(IP(pth,q)) & abs(Ib - IP(pth,q)) > 10*(Eb + EP(pth,q));
+    end
+    cons = ~any(bad,1) & isfinite(Eb);
+    Hk(q(cons)) = Ib(cons); Ekk(q(cons)) = Eb(cons); pk(q(cons)) = pb(cons); done(q(cons)) = true;
+    nf = ~isfinite(Eb); Hk(q(nf)) = 0; Ekk(q(nf)) = Inf; pk(q(nf)) = pb(nf); done(q(nf)) = true;
+    q = q(~cons & ~nf); bad = bad(:,~cons & ~nf); pb = pb(~cons & ~nf);
+    if isempty(q), break, end
+    if round == 3
+        % still disagreeing: the best value with the smallest inconsistent discrepancy as its error
+        for k = 1:numel(q)
+            d = abs(IP(pb(k),q(k)) - IP(bad(:,k),q(k)));
+            Hk(q(k)) = IP(pb(k),q(k)); Ekk(q(k)) = max(EP(pb(k),q(k)),min(d)); pk(q(k)) = pb(k);
+        end
+        done(q) = true; break
+    end
+    for pth = 1:np
+        qq = q(bad(pth,:) | pb == pth); if isempty(qq), continue, end
+        NP(pth,qq) = 2*NP(pth,qq);
+        for NNv = unique(NP(pth,qq))
+            qn = qq(NP(pth,qq) == NNv); [I,E] = evalp(pth,qn,NNv);   % the finer rule replaces the value
+            IP(pth,qn) = I; EP(pth,qn) = E;
+        end
+    end
+    for p1 = 1:np
+        for p2 = 1:p1-1
+            m = ~done(q) & agree(IP(p1,q),IP(p2,q)); ag = q(m);
+            if isempty(ag), continue, end
+            [Hk(ag),Ekk(ag),pk(ag)] = accept(IP([p1 p2],ag),EP([p1 p2],ag),[p1 p2]); done(ag) = true;
+        end
+    end
+end
+end
+function [H,E,p] = accept(V,Es,paths)
+% of two agreeing paths (rows of V, Es) keep the value with the smaller estimate;
+% the discrepancy enters the error
+[Em,ib] = min(Es,[],1); m = size(V,2);
+H = V(sub2ind(size(V),ib,1:m)); E = max(Em,abs(V(1,:) - V(2,:))); p = paths(ib);
 end
 
 function L = dklam(s,b,c,a,v,kind)
@@ -1181,7 +1258,8 @@ function [H,Ek,info] = iipairs(b,r,c,cas,o,pdfm)
 %   log J = -c/2 - lcd/2 - log pi - log(-A0)/2 - 2 A2 r/(A1+S) + log K0s(S r/(-2 A0)), r > 0
 %   (r < 0: (A1+S)|r|/(2 A0) in place of the exponential term), S = sqrt(A1^2 - 4 A0 A2),
 % analytic through the end of the domain of M_B.  Saddle point of log J - s b on the
-% real axis; paths W (parabola/wedge) and T (vertical line in th), as for case DK.
+% real axis; paths W (parabola/wedge) and T (vertical line in th), as for case DK,
+% accepted when they agree (AGREEPATHS).
 NN=getf(o,'Nv',96); kap=2; tl=45; tol=1e-13;
 b=b(:)'; r=r(:)'; n=numel(b); r(abs(r)<1e-200)=1e-200;     % (log singularity of g at r = 0)
 bb=b; rr=r;
@@ -1196,17 +1274,8 @@ Lh=L0-log(2*pi*max(g2,1e-6*bb.^2))/2;
 % negligible in the outer measure (pdf: sqrt(b) b d log b; cdf: a'(b) b d log b)
 if pdfm, lw=1.5*log(bb); else, lw=log(bb)+log(1+abs(c)+abs(rr)./bb)-log(max(abs(s),a1)); end   % (cdf: the factor 1/s)
 act=find(~(Lh+lw<-35));
-Hk=zeros(1,n); Ekk=inf(1,n); pk=zeros(1,n);
-for pth=1:2
-  q=act; NNq=NN;
-  for rf=0:3
-    if isempty(q), break, end
-    if pth==1, [I,E]=pthW(q,NNq); else, [I,E]=pthT(q,NNq); end
-    better=E<Ekk(q); Hk(q(better))=I(better); Ekk(q(better))=E(better); pk(q(better))=pth;
-    scl=max(1,abs(I)); q=q(E>tol*scl & Ekk(q)>tol*scl); NNq=2*NNq;
-  end
-end
-sk=true(1,n); sk(act)=false; Ekk(sk)=0;
+[Hk,Ekk,pk]=agreepaths(@evalp,2,act,n,NN,tol);
+sk=true(1,n); sk(act)=false;
 if ~pdfm
   % negligible path integral, but crossing left of the pole at 0 leaves its residue
   % J(0;r), the density of R (the cdf integrand is the density on {B > b})
@@ -1214,6 +1283,10 @@ if ~pdfm
 end
 H=Hk(:); Ek=Ekk(:); info=struct('s',s,'path',pk,'Lh',Lh,'sab',sab);
 
+  function [I,E]=evalp(pth,q,NNq)
+    % the value and the nested-rule estimate of path pth at the pairs q
+    if pth==1, [I,E]=pthW(q,NNq); else, [I,E]=pthT(q,NNq); end
+  end
   function [I,E]=pthW(q,NN)
     bq=bb(q); mu=a1(q)/2; sq=s(q);
     if ~pdfm

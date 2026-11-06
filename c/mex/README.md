@@ -19,11 +19,11 @@ ltratio('mom', 4, 'SU', -5)                           % moments
 ltratio('threads')                                    % the number of threads (all processors; set with a second argument)
 ```
 
-`opts.method` defaults to `'auto'`: the single integral at c0 = 0 and with a fixed start g0 (the noncentral kernel),
-and when c0 is not 0 with a zero start the double integral, except for c0 > 0 at x >= 0, where the single integral has
+`opts.method` defaults to `'auto'`: the line integral at c0 = 0 and with a fixed start g0 (the noncentral kernel),
+and when c0 is not 0 with a zero start the conditional integral, except for c0 > 0 at x >= 0, where the line integral has
 no breakpoint and is the faster one by 5-50x (the faster representation at each point, measured over c in [-5, 5] and
-the three cases); as in the MATLAB programs, the values of the single integral below 1e-3 (a density, or a distribution function in the lower tail) are
-then recomputed by the double integral, whose accuracy is relative where the single integral's is absolute, and a
+the three cases); as in the MATLAB programs, the values of the line integral below 1e-3 (a density, or a distribution function in the lower tail) are
+then recomputed by the conditional integral, whose accuracy is relative where the line integral's is absolute, and a
 computed density below zero is returned as zero.  The MEX file itself takes numeric arguments only (see the header of
 `ltratio_mex.c`): `'single'`, `'double'`, `'dist'`, `'icdf'`, `'mom'`, `'tstar'`, `'threads'`.
 
@@ -52,8 +52,8 @@ Seconds per value of the distribution function, MATLAB R2026b on an M4 laptop (t
 | DU -5 -5 -2, g0 = 1 | -- / 1.965 | 0.320 / 0.719 | 0.077 / 0.237 |
 | DT -2.5 -5 -1.1, g0 = 1 | -- / 1.998 | 0.350 / 0.755 | 0.086 / 0.262 |
 
-With a fixed start (the last rows) the MATLAB programs have only the double integral (on one thread, as in the first
-column); the single integral uses the noncentral kernel, written in C to be vectorized, and `'auto'` takes it.  The
+With a fixed start (the last rows) the MATLAB programs have only the conditional integral (on one thread, as in the first
+column); the line integral uses the noncentral kernel, written in C to be vectorized, and `'auto'` takes it.  The
 script `timing_fixed.m` produces these rows.
 
 ## Downloading a built MEX file

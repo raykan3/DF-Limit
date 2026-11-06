@@ -27,11 +27,12 @@
 %   ltratio_mom   - moments E[t^j], j = 1..p
 %   Options: c0 (the local null value, 0), g0 (fixed start, 0), method
 %   ('auto', the default: the faster of the two exact representations of
-%   the paper point by point, see ltratio_method; 'single' or 'double'
-%   forces one; a fixed start g0 ~= 0 uses 'double').
+%   the paper point by point, see ltratio_method; 'single' (or 'line') and
+%   'double' (or 'conditional') force the line integral and the conditional
+%   integral representation; a fixed start g0 ~= 0 uses 'double').
 %   ltratio_method - the automatic choice of the representation
 %
-% The single integral (Theorem 2 of the paper; the inversion in the argument
+% The line integral (Theorem 2 of the paper; the inversion in the argument
 % of U is explicit and one integral along the line Re t = tau remains)
 %   dfx_core      - the engine: the transforms Phi_x(t), their partition into
 %                   a smooth and an oscillating part, the trapezoidal and
@@ -44,7 +45,7 @@
 %   dfx_series    - Taylor coefficients of the determinants for the port
 %   dfx_test      - the port against the stored reference values of DFExact.jl
 %
-% The double integral (Theorem 3 of the paper; the inner inversion in the
+% The conditional integral (Theorem 3 of the paper; the inner inversion in the
 % argument of V along a path through a saddle point, the outer integral
 % over V)
 %   tr_limdist    - distribution function and density: part (i) in case DK

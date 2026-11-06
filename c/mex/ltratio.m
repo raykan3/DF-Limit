@@ -9,9 +9,10 @@ function varargout = ltratio(what,varargin)
 %
 %   The arguments are those of LTRATIO_CDF, LTRATIO_PDF, LTRATIO_ICDF and LTRATIO_MOM of the MATLAB programs: cas is
 %   'DK', 'DU', 'DT', 'SK', 'SU' or 'ST', c defaults to 0, opts is a structure with the fields c0 (0), g0 (0), method
-%   ('auto', the default: the faster representation at each x, the single integral at c0 = 0, with a fixed start and
-%   with c0 > 0 at x >= 0, the double integral otherwise with c0 ~= 0 and for the values below 1e-3; 'single';
-%   'double') and, for 'icdf', tol (1e-10).  Nothing but
+%   ('auto', the default: the faster representation at each x, the line integral at c0 = 0, with a fixed start and
+%   with c0 > 0 at x >= 0, the conditional integral otherwise with c0 ~= 0 and for the values below 1e-3; 'single' or
+%   'line', the line integral representation of Theorem 2; 'double' or 'conditional', the conditional integral
+%   representation of Theorem 3) and, for 'icdf', tol (1e-10).  Nothing but
 %   this file and the MEX file is needed; with the MATLAB programs on the path too, DFX_CORE, TR_LIMDIST and
 %   TR_LIMMOM next to this file replace their engines, so that LTRATIO_CDF and the others run on the C engine.
 %
@@ -34,9 +35,9 @@ method = 0;
 if isfield(opts,'method') && ~isempty(opts.method)
     switch lower(char(opts.method))
         case 'auto', method = 0;
-        case 'single', method = 1;
-        case 'double', method = 2;
-        otherwise, error('ltratio:args','opts.method must be ''auto'', ''single'' or ''double''.');
+        case {'single','line'}, method = 1;                 % the line integral representation (Theorem 2)
+        case {'double','conditional'}, method = 2;          % the conditional integral representation (Theorem 3)
+        otherwise, error('ltratio:args','opts.method must be ''auto'', ''single'' (''line'') or ''double'' (''conditional'').');
     end
 end
 switch lower(what)

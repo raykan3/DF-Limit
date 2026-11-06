@@ -40,7 +40,12 @@ int dfl_single(int kind, int n, const double *x, int model, double c, double c0,
  * integral is the faster one at every c, by 2-10x, measured point by point over c in [-5, 5], c0 in {-5, -1, 1, 3} and
  * x in [-4, 32] in the three cases (with c0 < 0 the saddle part of the single integral costs up to 1 s at x ~ 8 with
  * c0 = -1).  The tails below 1e-3 are recomputed by the double integral in any case (dfl_dist). */
-int dfl_automethod(int model, double c, double c0, double g0, double x) { (void) model; (void) c; return (c0 != 0 && g0 == 0 && !(c0 > 0 && x >= 0)) ? 2 : 1; }
+int dfl_automethod(int model, double c, double c0, double g0, double x)
+{
+    (void) c;
+    if (model == 1 && c0 > 0 && g0 == 0 && x == -sqrt(2 * c0)) return 1;   /* the infinite density of case DK: the single integral returns Inf there without a flag */
+    return (c0 != 0 && g0 == 0 && !(c0 > 0 && x >= 0)) ? 2 : 1;
+}
 
 int dfl_dist(int kind, int n, const double *x, int model, double c, double c0, double g0, bool stat, int method,
              const dfl_single_opts *so, const dfl_double_opts *dopt, double *out, int *nstatus, char *err, size_t errlen)
