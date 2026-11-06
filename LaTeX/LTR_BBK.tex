@@ -3,6 +3,9 @@
 \usepackage[letterpaper,textwidth=6.5in,textheight=8.8in]{geometry}
 \usepackage[breaklinks=true,colorlinks,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
 \usepackage{array,multirow}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepgfplotslibrary{groupplots}
 
 \journal{Journal of Econometrics}
 
@@ -767,6 +770,54 @@ $\hat\tau_\tau$ & zero & $-2.1814$ & $-2.2927$ & $-2.4738$ & $-2.8644$ & $-3.590
 \end{center}
 {\small Mean and, in parentheses, standard deviation of the limit of the Dickey--Fuller $t$-ratio ($c_0=0$) under $\phi=1+c/n$, no drift, from Proposition~\ref{prop:mom}; the stationary start requires $c<0$.  At $c=0$ the values are those of \cite{Nabeya1999}.}
 \end{table}
+
+\section{Application: the two Dickey--Fuller tests under local alternatives}
+\label{sec:app}
+
+The coefficient statistic $n(\hat\phi-\phi_0)$ of \cite{DickeyFuller1979} has, in the same three regressions and under the same local alternatives, the limit $(U-c_0V)/V$, whose distribution function at $x$ is $\PP\{U-(c_0+x)V\le0\}$: the distribution function of Theorem~\ref{th:single} at zero, with $c_0+x$ in place of $c_0$, which has the one-dimensional representation of Section~\ref{sec:quant}.  The local power of the two tests can therefore be set side by side from one set of programs, exactly.  The comparison has been made by simulation \citep{Phillips1987,Stock1994,ElliottRothenbergStock1996}, and \cite{NabeyaTanaka1990b} computed the limiting power of the coefficient test, and of other ratios of quadratic forms, by Fredholm determinants and numerical inversion; the $t$-ratio, a ratio with a square root, was out of their reach.
+
+Figure~\ref{fig:power} shows the power of the $5\%$ tests against $c$, with the critical values at the unit root with a zero start ($-1.94087$, $-2.86157$ and $-3.41045$ for the $t$-ratios, $-8.039$, $-14.094$ and $-21.711$ for the coefficient statistics, which the tables of \cite{Fuller1996} give to one decimal), with a zero and with a stationary start, together with the power envelope of \cite{ElliottRothenbergStock1996} in cases \Fk\ and \Fu, where, as they note, it is one curve: the point-optimal test against $\bar c$ rejects for large values of the log likelihood ratio $\bar cU-\frac12\bar c^2V$ of the zero-start process, a linear combination of $U$ and $V$, whose distribution function at $c=0$ and at $c=\bar c$ follows from Proposition~\ref{prop:mgf} by the inversion formula of \cite{GilPelaez1951}; its power at $\bar c=-7$, where they place the point of power one half, is $0.499$.
+
+Three things stand out.  Without deterministic terms the two tests are indistinguishable and essentially efficient: both reach power one half within $0.1$ of $c=-7.0$, where the envelope does, and neither departs from it by more than $0.006$ at any $c$.  With a constant or a trend the coefficient test is the more powerful by a wide margin, at power one half by $c=-10.6$ against $-13.5$ in case \Fu\ and by $-15.9$ against $-17.8$ in case \Ft, and at $c=-10$ its power is $0.46$ against $0.30$ and $0.23$ against $0.18$; both are far below the envelope, whose point-optimal tests use the GLS-detrended data.  The stationary start moves the two tests in opposite directions: it raises the power of the $t$-ratio (one half at $c=-6.5$, $-13.0$ and $-17.5$) and lowers that of the coefficient test ($-7.1$, $-10.8$ and $-16.0$), so that in case \Fk\ the $t$-ratio with a stationary start lies above the envelope of the zero-start problem, whose optimal test is not optimal under a stationary start \citep{Elliott1999}.
+
+\begin{figure}[tbp]
+\pgfplotsset{
+  powerpanel/.style={width=0.345\textwidth, height=0.30\textwidth, xmin=-30, xmax=0, ymin=0, ymax=1, x dir=reverse,
+    xtick={0,-10,-20,-30}, ytick={0,0.25,0.5,0.75,1}, yticklabels={$0$,$0.25$,$0.5$,$0.75$,$1$},
+    tick label style={font=\footnotesize}, label style={font=\footnotesize}, title style={font=\footnotesize, yshift=-0.8ex},
+    axis line style={line width=0.4pt}, every tick/.style={line width=0.4pt}, tick align=outside, tick pos=left,
+    every axis plot/.append style={line width=0.7pt, mark=none, smooth}, xlabel={$c$}, xlabel style={yshift=0.5ex},
+    legend style={font=\footnotesize, draw=none, fill=none, column sep=0.6em, /tikz/every even column/.append style={column sep=0.6em}}, legend cell align=left}
+}
+\begin{center}
+\begin{tikzpicture}
+\begin{groupplot}[group style={group size=3 by 1, horizontal sep=0.9cm, y descriptions at=edge left}, powerpanel, ylabel={power}]
+\nextgroupplot[title={$\hat\tau$, $\hat\rho$}, legend to name=powerlegend, legend columns=3]
+\addplot[black!35, line width=1.8pt] table[x=c,y=env] {figures/power_K.dat};
+\addplot[blue!70!black] table[x=c,y=tau0] {figures/power_K.dat};
+\addplot[red!80!black] table[x=c,y=rho0] {figures/power_K.dat};
+\addplot[blue!70!black, dashed] table[x=c,y=tauS] {figures/power_K.dat};
+\addplot[red!80!black, dashed] table[x=c,y=rhoS] {figures/power_K.dat};
+\legend{power envelope, $t$-ratio, coefficient statistic, $t$-ratio{,} stationary start, coefficient statistic{,} stationary start}
+\nextgroupplot[title={$\hat\tau_\mu$, $\hat\rho_\mu$}]
+\addplot[black!35, line width=1.8pt] table[x=c,y=env] {figures/power_U.dat};
+\addplot[blue!70!black] table[x=c,y=tau0] {figures/power_U.dat};
+\addplot[red!80!black] table[x=c,y=rho0] {figures/power_U.dat};
+\addplot[blue!70!black, dashed] table[x=c,y=tauS] {figures/power_U.dat};
+\addplot[red!80!black, dashed] table[x=c,y=rhoS] {figures/power_U.dat};
+\nextgroupplot[title={$\hat\tau_\tau$, $\hat\rho_\tau$}]
+\addplot[blue!70!black] table[x=c,y=tau0] {figures/power_T.dat};
+\addplot[red!80!black] table[x=c,y=rho0] {figures/power_T.dat};
+\addplot[blue!70!black, dashed] table[x=c,y=tauS] {figures/power_T.dat};
+\addplot[red!80!black, dashed] table[x=c,y=rhoS] {figures/power_T.dat};
+\end{groupplot}
+\end{tikzpicture}\\[0.4ex]
+\pgfplotslegendfromname{powerlegend}
+\end{center}
+\caption{Local power of the $5\%$ Dickey--Fuller tests}
+\label{fig:power}
+{\small $\PP(\text{reject})$ under $\phi=1+c/n$, no drift, for the $t$-ratio and the coefficient statistic centered at the unit root, with the limiting $5\%$ critical values of the zero start; solid: zero start, dashed: stationary start; gray: the power envelope of \cite{ElliottRothenbergStock1996}, one curve for cases \Fk\ and \Fu\ (for the detrended case see their Figure~2).  From Theorem~\ref{th:single} and Proposition~\ref{prop:mgf} (\texttt{julia/application/power.jl}).}
+\end{figure}
 
 \section{Conclusion}
 \label{sec:concl}
