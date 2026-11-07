@@ -842,7 +842,7 @@ Figure~\ref{fig:ci} shows the $95\%$ belts of the two pivots in case \Fu\ with a
 }
 \begin{center}
 \begin{tikzpicture}
-\begin{groupplot}[group style={group size=2 by 2, horizontal sep=1.9cm, vertical sep=1.4cm}, cipanel]
+\begin{groupplot}[group style={group size=2 by 2, horizontal sep=1.9cm, vertical sep=1.2cm, x descriptions at=edge bottom}, cipanel]
 \nextgroupplot[title={95\% belt of the coefficient statistic $\hat\rho_\mu$}, ylabel={$\hat\rho_\mu$}, ymin=-55, ymax=10]
 \addplot[red!80!black] table[x=c0,y=rlo0] {figures/ci_belts_U.dat};
 \addplot[red!80!black, dashed] table[x=c0,y=rmed0] {figures/ci_belts_U.dat};
