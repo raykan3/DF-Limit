@@ -825,6 +825,58 @@ Three things stand out.  Without deterministic terms the two tests are indisting
 {\small $\PP(\text{reject})$ under $\phi=1+c/n$, no drift, for the $t$-ratio and the coefficient statistic centered at the unit root, with the limiting $5\%$ critical values of the zero start; solid: zero start, dashed: stationary start; gray: the power envelopes of \cite{ElliottRothenbergStock1996}, one curve for cases \Fk\ and \Fu\ and the trend envelope in the fourth panel.  The first panel is also the power of the DF-GLS tests with a constant, whose limit is that of case \Fk; the fourth panel is the DF-GLS tests with a trend, detrended at $\bar c=-13.5$, in $t$-ratio and coefficient form, with a zero start.  From Theorem~\ref{th:single} and Proposition~\ref{prop:mgf} (\texttt{julia/application/power.jl}).}
 \end{figure}
 
+\section{Application: confidence sets for the persistence parameter}
+\label{sec:ci}
+
+The $t$-ratio centered at $c_0$ is the Wald statistic for the hypothesis $c=c_0$, and $n(\hat\phi-1)-c_0$ is its coefficient form; under $c=c_0$ their limits are $(U-c_0V)/\sqrt V$ and $(U-c_0V)/V$ with $c=c_0$.  The set of $c_0$ at which the observed statistic lies between the $\alpha/2$ and $1-\alpha/2$ quantiles of its limit is therefore a confidence set for $c$ of asymptotic level $1-\alpha$, and the $c_0$ at which it sits at the median is a median-unbiased estimator \citep{Stock1991,Andrews1993}.  For the coefficient form the set is Stock's, the pivot being a shift of the unit root statistic; for the $t$-ratio it is not, since the observed pivot $\hat\tau(1-c_0/\hat\rho)$ is a line in $c_0$ through $(\hat\rho,0)$.  Stock's intervals, and those of \cite{ElliottStock2001} for the GLS statistics and of \cite{Hansen1999}, come from simulated tables or a bootstrap over a grid of $c$; here the belts are exact at every $c_0$, including the explosive side, and they come with the initial condition.
+
+Figure~\ref{fig:ci} shows the $95\%$ belts of the two pivots in case \Fu\ with a zero and a stationary start and for the GLS-detrended trend case, with the median curves that give the estimator, and the probability that a false value $c_0$ is excluded from the $95\%$ set when the true value is $-5$: the power of the two-sided test of $c_0$, which measures the length of the sets.  The two forms differ at the two ends.  The coefficient form excludes values on the unit root side far more often: at $c=-5$ it excludes $c_0=0$ with probability $0.107$ against $0.061$ for the $t$-ratio, and $c_0=2$ with $0.27$ against $0.13$; at $c=-10$ it excludes the unit root with $0.30$ against $0.18$.  On the stationary side the $t$-ratio is marginally the better one ($0.226$ against $0.222$ at $c_0=-10$).  The stationary start shortens the sets on that side ($0.236$ at $c_0=-10$, $0.765$ at $-20$ against $0.741$) and lengthens them slightly toward the unit root.  With a trend the least squares sets are the longest ($0.160$ at $c_0=-10$ when $c=-5$), and GLS detrending restores the lengths of the constant case on the stationary side ($0.230$, $0.516$ at $-15$, $0.741$ at $-20$, within $0.001$ of case \Fu) but not toward the unit root ($0.060$ at $c_0=0$), the two GLS forms being indistinguishable.  For the example, $\hat\rho_\mu=-8$ and $\hat\tau_\mu=-2$, the $95\%$ sets are $[-13.6,3.3]$ by the coefficient form and $[-13.4,3.7]$ by the $t$-ratio, with the median-unbiased estimates $-4.0$ and $-4.2$; a stationary start leaves the sets within $0.05$ and moves the estimates to $-4.4$ and $-4.3$.  Each set takes a few seconds.
+
+\begin{figure}[tbp]
+\pgfplotsset{
+  cipanel/.style={width=0.46\textwidth, height=0.30\textwidth, xmin=-30, xmax=4, x dir=reverse,
+    xtick={4,0,-10,-20,-30}, tick label style={font=\footnotesize}, label style={font=\footnotesize}, title style={font=\footnotesize, yshift=-0.8ex},
+    axis line style={line width=0.4pt}, every tick/.style={line width=0.4pt}, tick align=outside, tick pos=left,
+    every axis plot/.append style={line width=0.7pt, mark=none, smooth}, xlabel={$c_0$}, xlabel style={yshift=0.5ex},
+    legend style={font=\footnotesize, draw=none, fill=none, column sep=0.6em}, legend cell align=left}
+}
+\begin{center}
+\begin{tikzpicture}
+\begin{groupplot}[group style={group size=2 by 2, horizontal sep=1.9cm, vertical sep=1.4cm}, cipanel]
+\nextgroupplot[title={95\% belt of the coefficient statistic $\hat\rho_\mu$}, ylabel={$\hat\rho_\mu$}, ymin=-55, ymax=10]
+\addplot[red!80!black] table[x=c0,y=rlo0] {figures/ci_belts_U.dat};
+\addplot[red!80!black, dashed] table[x=c0,y=rmed0] {figures/ci_belts_U.dat};
+\addplot[red!80!black] table[x=c0,y=rhi0] {figures/ci_belts_U.dat};
+\addplot[red!80!black, dotted] table[x=c0,y=rloS] {figures/ci_belts_U.dat};
+\addplot[red!80!black, dotted] table[x=c0,y=rhiS] {figures/ci_belts_U.dat};
+\addplot[black!60, line width=0.5pt] coordinates {(4,-8) (-30,-8)};
+\nextgroupplot[title={95\% belt of the $t$-ratio centered at $c_0$}, ylabel={$t$-ratio pivot}, ymin=-4, ymax=4]
+\addplot[blue!70!black] table[x=c0,y=tlo0] {figures/ci_belts_U.dat};
+\addplot[blue!70!black, dashed] table[x=c0,y=tmed0] {figures/ci_belts_U.dat};
+\addplot[blue!70!black] table[x=c0,y=thi0] {figures/ci_belts_U.dat};
+\addplot[blue!70!black, dotted] table[x=c0,y=tloS] {figures/ci_belts_U.dat};
+\addplot[blue!70!black, dotted] table[x=c0,y=thiS] {figures/ci_belts_U.dat};
+\addplot[black!60, line width=0.5pt] coordinates {(4,-3) (-30,5.5)};
+\nextgroupplot[title={probability of excluding $c_0$ at $c=-5$, case \Fu}, ylabel={probability}, ymin=0, ymax=1, ytick={0,0.25,0.5,0.75,1}, yticklabels={$0$,$0.25$,$0.5$,$0.75$,$1$}, legend to name=cilegend, legend columns=2]
+\addplot[red!80!black] table[x=c0,y=r0] {figures/ci_excl_c5.dat};
+\addplot[blue!70!black] table[x=c0,y=t0] {figures/ci_excl_c5.dat};
+\addplot[red!80!black, dotted] table[x=c0,y=rS] {figures/ci_excl_c5.dat};
+\addplot[blue!70!black, dotted] table[x=c0,y=tS] {figures/ci_excl_c5.dat};
+\legend{coefficient statistic, $t$-ratio}
+\nextgroupplot[title={probability of excluding $c_0$ at $c=-5$, trend}, ylabel={probability}, ymin=0, ymax=1, ytick={0,0.25,0.5,0.75,1}, yticklabels={$0$,$0.25$,$0.5$,$0.75$,$1$}]
+\addplot[red!80!black] table[x=c0,y=rT] {figures/ci_excl_c5.dat};
+\addplot[blue!70!black] table[x=c0,y=tT] {figures/ci_excl_c5.dat};
+\addplot[red!80!black, dotted] table[x=c0,y=rG] {figures/ci_excl_c5.dat};
+\addplot[blue!70!black, dotted] table[x=c0,y=tG] {figures/ci_excl_c5.dat};
+\end{groupplot}
+\end{tikzpicture}\\[0.4ex]
+\pgfplotslegendfromname{cilegend}
+\end{center}
+\caption{Confidence sets for $c$ by inverting the Wald pivots, case \Fu}
+\label{fig:ci}
+{\small Top: the $2.5\%$ and $97.5\%$ quantiles (solid; dotted: stationary start) and the median (dashed) of the limit of the pivot under $c=c_0$, against $c_0$, for the coefficient statistic, $c_0+(U-c_0V)/V$, and the $t$-ratio centered at $c_0$, whose observed pivot is $\hat\tau_\mu(1-c_0/\hat\rho_\mu)$; the gray line is the worked example, $\hat\rho_\mu=-8$ and $\hat\tau_\mu=-2$, whose confidence set is the range of $c_0$ over which it lies inside the belt and whose median-unbiased estimate is where it crosses the median.  Bottom: the probability that the $95\%$ set excludes $c_0$ when the true value is $c=-5$: case \Fu\ with a zero (solid) and a stationary (dotted) start, and the trend case with least squares (solid) and GLS (dotted) detrending.  From Theorem~\ref{th:single} (\texttt{julia/application/ci.jl}).}
+\end{figure}
+
 \section{Conclusion}
 \label{sec:concl}
 
