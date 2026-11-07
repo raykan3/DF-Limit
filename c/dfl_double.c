@@ -923,6 +923,7 @@ void dfl_double_defaults(dfl_double_opts *o)
 }
 int dfl_double(int kind, int n, const double *x, int model, double c, double c0, double g0, bool stat, const dfl_double_opts *o, double *out, dfl_double_info *info, char *err, size_t errlen)
 {
+    if (model == 4) { snprintf(err, errlen, "the GLS-detrended case (model 4) has the single integral only"); return 1; }
     if (stat && g0 != 0) { snprintf(err, errlen, "a fixed start g0 applies to the zero-start cases only"); return 1; }
     if (stat && !(c < 0)) { snprintf(err, errlen, "a stationary start requires c < 0"); return 1; }
     if (!stat && g0 == 0) return double_zero(kind, n, x, model, c, c0, o, out, info);

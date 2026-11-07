@@ -310,7 +310,7 @@ static void edge_body(int j, void *v) { octx *o = v; cdouble Is, Ie; cdouble t =
 
 static double outer_c0(int kind, int model, double c, double q, double tau, bool stat, const dfl_single_opts *o)
 {
-    int kern = (model == 1 && !stat) ? 1 : 2;
+    int kern = ((model == 1 || model == 4) && !stat) ? 1 : 2;
     double hu = o->hu, cde = tau; int N = o->N;
     /* the smooth part: the trapezoidal rule in u, w = tau sinh u */
     double umax = asinh(WMAX / cde); int nu = (int) floor(umax / hu) + 1;
@@ -402,7 +402,7 @@ static void uni_body(int j, void *v) { uctx *o = v; cdouble Is, Ie;
     cdouble val = cmul(o->P[j], cadd(Is, Ie)); if (o->kind == 2) val = cdiv(val, o->t[j]); o->g[j] = creal(val); }
 static double uniform_c0(int kind, int model, double c, double q, double tau, bool stat, double hw)
 {
-    int kern = (model == 1 && !stat) ? 1 : 2; int n = (int) floor(WMAX / hw) + 1;
+    int kern = ((model == 1 || model == 4) && !stat) ? 1 : 2; int n = (int) floor(WMAX / hw) + 1;
     cdouble *t = malloc(n * sizeof(cdouble)), *P = malloc(n * sizeof(cdouble)), *s1 = malloc(n * sizeof(cdouble)), *s2 = malloc(n * sizeof(cdouble)), *M0 = malloc(n * sizeof(cdouble));
     double *g = malloc(n * sizeof(double));
     for (int j = 0; j < n; j++) t[j] = CPX(tau, j * hw);

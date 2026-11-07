@@ -16,7 +16,10 @@ function [F,info] = ltratio_cdf(x,cas,c,opts)
 %            stationary distribution (c < 0)
 %   With a fixed start y_0 = g0 sigma sqrt(n) (opts.g0, default 0), the start
 %   enters the limit through the Ornstein-Uhlenbeck process started at g0.
-%   c defaults to 0 (the unit root).  x may be an array.
+%   The case 'DG' is the GLS-detrended trend case of Elliott, Rothenberg and
+%   Stock (1996), detrended at cbar = -13.5 (the DF-GLS tests; Section 9 of
+%   the paper): zero start, the line integral representation only, no
+%   moments.  c defaults to 0 (the unit root).  x may be an array.
 %
 %   The limit is tau = (U - c0 V)/sqrt(V), with U = int_0^1 J~ dJ and
 %   V = int_0^1 J~^2 dr, J the Ornstein-Uhlenbeck process dJ = cJ dr + dW

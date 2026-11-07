@@ -1867,9 +1867,13 @@ as the derivative, safeguarded by bisection, started at the normal approximation
     ltratio_icdf([0.01, 0.05, 0.10], "DU")          # the asymptotic critical values of tau_mu
 """
 function ltratio_icdf(p, cas::AbstractString, c::Real = 0; tol::Real = 1e-10, c0::Real = 0.0, g0::Real = 0.0, method::Symbol = :auto, kw...)
-    ltratio_args(cas, c; c0, g0, method)
-    m = ltratio_mom(2, cas, c; c0, g0)
-    mu = m[1]; sd = sqrt(max(m[2] - m[1]^2, 1e-6))
+    model, = ltratio_args(cas, c; c0, g0, method)
+    if model == 4                                                     # (no moments for case DG: a rough start, the search is safeguarded)
+        mu = -1.9 + 0.1min(c, 0.0); sd = 0.8
+    else
+        m = ltratio_mom(2, cas, c; c0, g0)
+        mu = m[1]; sd = sqrt(max(m[2] - m[1]^2, 1e-6))
+    end
     one(pk) = begin
         0 < pk < 1 || throw(ArgumentError("p must lie in (0, 1)"))
         x = mu + sd * sqrt(2) * erfinv(2pk - 1)
@@ -1900,6 +1904,7 @@ m[j] = E[t^j], j = 1..p, for the limit (U - c0 V)/sqrt(V) of the t-ratio under p
 function ltratio_mom(p::Int, cas::AbstractString, c::Real = 0; c0::Real = 0.0, g0::Real = 0.0, kw...)
     p >= 1 || throw(ArgumentError("p must be a positive integer"))
     model, stat, c0, g0, _ = ltratio_args(cas, c; c0, g0)
+    model == 4 && throw(ArgumentError("the moments are not available for case DG"))
     moments(model; c = Float64(c), c0, g0, start = stat ? :stationary : :zero, pmax = p, kw...)
 end
 

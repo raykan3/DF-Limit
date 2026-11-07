@@ -38,6 +38,7 @@ function dbl = ltratio_method(cas,c,c0,g0,x)
 %   x >= 16).
 %
 %   See also LTRATIO_DIST, LTRATIO_CDF, LTRATIO_PDF.
+if strcmp(cas,'DG'), dbl = false(size(x)); return; end   % the GLS-detrended case: the line integral only
 if g0 ~= 0, dbl = true(size(x)); return; end
 if c0 == 0, dbl = false(size(x)); return; end
 if any(strcmp(cas,{'SU','ST'}))

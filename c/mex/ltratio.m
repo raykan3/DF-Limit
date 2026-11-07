@@ -25,8 +25,13 @@ function varargout = ltratio(what,varargin)
 if strcmpi(what,'threads'), varargout{1} = ltratio_mex('threads', varargin{:}); return, end
 if nargin < 3, error('ltratio:args','usage: ltratio(what, x, cas, c, opts)'); end
 x = varargin{1}; cas = upper(char(varargin{2}));
-if ~(numel(cas) == 2 && any(cas(1) == 'DS') && any(cas(2) == 'KUT')), error('ltratio:args','the case must be DK, DU, DT, SK, SU or ST.'); end
-model = find('KUT' == cas(2)); stat = double(cas(1) == 'S');
+if strcmp(cas,'DG')                                   % the GLS-detrended trend case (model 4): zero start, the line integral only
+    model = 4; stat = 0;
+elseif numel(cas) == 2 && any(cas(1) == 'DS') && any(cas(2) == 'KUT')
+    model = find('KUT' == cas(2)); stat = double(cas(1) == 'S');
+else
+    error('ltratio:args','the case must be DK, DU, DT, SK, SU, ST or DG.');
+end
 c = 0; if nargin > 3 && ~isempty(varargin{3}), c = varargin{3}; end
 opts = struct; if nargin > 4 && ~isempty(varargin{4}), opts = varargin{4}; end
 c0 = 0; if isfield(opts,'c0') && ~isempty(opts.c0), c0 = opts.c0; end

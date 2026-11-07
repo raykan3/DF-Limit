@@ -30,6 +30,9 @@
 %   the paper point by point, see ltratio_method; 'single' (or 'line') and
 %   'double' (or 'conditional') force the line integral and the conditional
 %   integral representation; a fixed start g0 ~= 0 uses 'double').
+%   The cases are DK, DU, DT (zero or fixed start), SK, SU, ST (stationary
+%   start) and DG (the GLS-detrended trend case of Elliott, Rothenberg and
+%   Stock, cbar = -13.5: zero start, line integral only, no moments).
 %   ltratio_method - the automatic choice of the representation
 %
 % The line integral (Theorem 2 of the paper; the inversion in the argument

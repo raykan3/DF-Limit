@@ -8,7 +8,9 @@ P = ((1, 2.0, 2.0, false, [-1.5, 0.0, 1.5, 3.0]), (2, 2.0, 1.0, false, [-3.0, -0
      (2, 10.0, 5.0, false, [0.0, 10.0]), (3, 10.0, 5.0, false, [0.0]), (2, -5.0, 1.0, true, [-2.0, 0.0]), (1, -5.0, -1.0, true, [-2.5, 0.5]),
      (1, 2.0, 2.0, false, [-2.1, -1.9]), (2, 0.0, 0.0, false, [-2.86, 0.5]), (1, 0.0, 0.0, false, [-1.94, 0.5]), (3, -5.0, 0.0, false, [-3.5]),
      # the far roots of X(v) with c0 != 0 (Raymond Kan, November 2026): kept now, where dropping them failed or was wrong
-     (2, -1.2, -1.2, true, [9.0, 3.0]), (2, -1.2, 1.2, true, [-9.0]), (2, -1.2, -0.05, true, [3.0, -2.0]), (3, 0.0, -2.0, false, [-9.0, 5.0]))
+     (2, -1.2, -1.2, true, [9.0, 3.0]), (2, -1.2, 1.2, true, [-9.0]), (2, -1.2, -0.05, true, [3.0, -2.0]), (3, 0.0, -2.0, false, [-9.0, 5.0]),
+     # the GLS-detrended trend case (model 4): the coefficient form through c0 at x = 0, and c0 = 0 by the general kernel
+     (4, -5.0, -8.0, false, [0.0, -1.0]), (4, -13.5, -20.0, false, [0.0]), (4, 0.0, 0.0, false, [-2.8456, 0.5]), (4, 2.0, 1.0, false, [-1.0, 0.5]))
 for (model, c, c0, st, xs) in P
     for x in xs
         gen = c0 == 0

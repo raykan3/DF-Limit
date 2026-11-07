@@ -34,8 +34,8 @@ function varargout = dfx_core(action, varargin)
 switch lower(action)
     case {'cdf','pdf'}
         q = varargin{1}; model = varargin{2};
-        if ~(isnumeric(model) && isscalar(model) && any(model == [1 2 3]))
-            error('dfx: model must be 1, 2 or 3 (no deterministic terms, intercept, intercept and trend)');
+        if ~(isnumeric(model) && isscalar(model) && any(model == [1 2 3 4]))
+            error('dfx: model must be 1, 2, 3 or 4 (no deterministic terms, intercept, intercept and trend, GLS-detrended trend)');
         end
         c = 0; if numel(varargin) >= 3 && ~isempty(varargin{3}), c = varargin{3}; end
         o = struct(); if numel(varargin) >= 4 && ~isempty(varargin{4}), o = varargin{4}; end
@@ -128,8 +128,41 @@ end
 end
 
 function k = kernel(model, stat)
-% rank of the quadratic form R under the tilt
-if model == 1 && ~stat, k = 1; else, k = 2; end
+% rank of the quadratic form R under the tilt (model 4, the GLS-detrended trend case: one)
+if (model == 1 || model == 4) && ~stat, k = 1; else, k = 2; end
+end
+
+function lam = lam_gls(cb)
+% the GLS detrending of Elliott, Rothenberg and Stock (1996), trend case: lambda = (1 - cbar)/(1 - cbar + cbar^2/3)
+lam = (1 - cb) / (1 - cb + cb^2 / 3);
+end
+
+function [lch, D, s1] = gls_parts(t, c)
+% the GLS-detrended trend case (model 4) at cbar = -13.5, elementwise in t: log cosh th, D = det(I - Q Sig) and the root
+% s1 = 1/(2 kap1), 2 kap1 = (1 - lam)^2 v' Sig (I - Q Sig)^-1 v, v = (1, 0, -3), from the Girsanov forms of case DT:
+% the detrended path J - r L, L = lam J(1) + 3 (1 - lam) K, V_g = int W^2 - X' Gam X with Gam = [-lam^2/3 0 lam^2; 0 0 0;
+% lam^2 0 3(1 - lam^2)], R_g = (1 - lam)^2 (X1 - 3 X3)^2 / 2 (rank one); Q = diag(c, 0, 0) - 2 t Gam
+t = t(:); lam = lam_gls(-13.5); l2 = lam^2;
+q = c^2 - 2 * t; th = sqrt(q); sm = abs(th) < 1; e2 = exp(-2 * th);
+tn = (1 - e2) ./ (1 + e2); sc = 2 * exp(-th) ./ (1 + e2);
+g1 = tn ./ th; g2 = (1 - sc) ./ th.^2; g3 = (th - tn) ./ th.^3; g4 = (th.^2 - 2 + 2 * sc) ./ (2 * th.^4); g5 = (th.^3 / 3 - th + tn) ./ th.^5;
+lch = th + log((1 + e2) / 2);
+if any(sm)
+    % the Taylor series of the g's in q = th^2 (as in IIPAR_DFX)
+    T=[1.0 -0.33333333333333333 0.13333333333333333 -0.053968253968253968 0.021869488536155203 -0.0088632355299021966 0.003592128036572481 -0.0014558343870513183 0.00059002744094558598 -0.00023912911424355248 9.6915379569294503e-5 -3.9278323883316834e-5 1.5918905069328965e-5 -6.4516892156554308e-6 2.6147711512907546e-6 -1.0597268320104654e-6 4.2949110782738059e-7 -1.7406618963571648e-7 7.0546369464009683e-8 -2.8591366623052539e-8 1.1587644432798852e-8 -4.6962953982309016e-9 1.9033368339312759e-9 -7.7139336353590623e-10 3.126339545892087e-10 -1.2670576930305401e-10 5.1351914080393677e-11 -2.0812146867700474e-11 8.4348454190943383e-12 -3.4185140868111558e-12 1.3854715742948469e-12 -5.6151047924146801e-13 2.2757162553728748e-13 -9.2231305851395317e-14 3.7379940310967389e-14 -1.5149519187148605e-14 6.1398688626168138e-15 -2.4883951222762789e-15 1.0085085566354096e-15 -4.0873312268690138e-16 1.6565329513786284e-16 -6.7136751750487117e-17 2.7209500613044588e-17 -1.1027595233722371e-17 4.4693160072374125e-18];
+    E=[1.0 -0.5 0.20833333333333333 -0.084722222222222222 0.034350198412698413 -0.013922233245149912 0.0056424968100315323 -0.0022868190951648293 0.00092681292737742184 -0.0003756231338525945 0.00015223432221797662 -6.1698246877700525e-5 2.5005357609459247e-5 -1.0134289721572026e-5 4.1072729198567004e-6 -1.664615015128028e-6 6.7464305456632013e-7 -2.7342253129896734e-7 1.1081397802278207e-7 -4.4911213669537136e-8 1.820182931124577e-8 -7.3769235610848765e-9 2.9897545073926764e-9 -1.2117018619561619e-9 4.9108426750009155e-10 -1.9902895700495881e-10 8.066339801136952e-11 -3.2691643852499818e-11 1.3249424201396147e-11 -5.3697893706595739e-12 2.1762936597810882e-12 -8.8201859824934e-13 3.5746867347671487e-13 -1.4487659644686842e-13 5.871627293628006e-14 -2.3796809091881837e-14 9.6444834564008509e-15 -3.9087619176859166e-15 1.5841615363041244e-15 -6.4203648775599251e-16 2.6020758752402585e-16 -1.0545816304260601e-16 4.2740583616893926e-17 -1.7322106086512011e-17 7.0203851674541611e-18 -2.8452549391662691e-18];
+    h = @(cf) polyval(fliplr(cf), q(sm));
+    g1(sm) = h(T); g2(sm) = -h(E(2:end)); g3(sm) = -h(T(2:end)); g4(sm) = h(E(3:end)); g5(sm) = h(T(3:end));
+    lch(sm) = log(cosh(th(sm)));
+end
+Sg = {g1, g2, g3; g2, g3, g4; g3, g4, g5};
+Qd = {c + 2 * l2 / 3 * t, 0 * t, -2 * l2 * t; 0 * t, 0 * t, 0 * t; -2 * l2 * t, 0 * t, -6 * (1 - l2) * t};
+N = cell(3); for i = 1:3, for j = 1:3, N{i,j} = (i == j) - (Qd{i,1} .* Sg{1,j} + Qd{i,2} .* Sg{2,j} + Qd{i,3} .* Sg{3,j}); end, end
+D = det3(N); A = adj3(N);
+v = [1 0 -3];
+x = cell(3, 1); for i = 1:3, x{i} = (A{i,1} * v(1) + A{i,2} * v(2) + A{i,3} * v(3)) ./ D; end   % N^-1 v
+y = cell(3, 1); for i = 1:3, y{i} = Sg{i,1} .* x{1} + Sg{i,2} .* x{2} + Sg{i,3} .* x{3}; end   % Sig N^-1 v
+s1 = 1 ./ ((1 - lam)^2 * (v(1) * y{1} + v(2) * y{2} + v(3) * y{3}));
 end
 
 function S = series()
@@ -267,6 +300,15 @@ if model == 1 && ~stat
     P = exp(-c / 2) * abs(S).^(-1/2) .* exp(-1i * ph / 2);
     return
 end
+if model == 4 && ~stat
+    % the GLS-detrended trend case: M(s,t) = e^(-s/2) P(t) (s1 - s)^(-1/2) as in case DK, with M_Vg(t) = e^(-c/2)
+    % (cosh th det(I - Q Sig))^(-1/2) and s1 from GLS_PARTS; the branches of D and s1 continued along the grid
+    [lch, D, s1] = gls_parts(t, c);
+    lD = log(D); lD = real(lD) + 1i * unwrapc(imag(lD));
+    ls = log(s1); ls = real(ls) + 1i * unwrapc(imag(ls));
+    P = exp(-c / 2 - (lch + lD) / 2 + ls / 2);
+    return
+end
 if ~stat && c > 2
     % D(s,t)/e^c cancels catastrophically at large c (terms of size e^(2c) against a value
     % near 1): the roots and the prefactor from the Girsanov forms of the DF-Test paper
@@ -327,11 +369,17 @@ persistent CACHE
 if isempty(CACHE), CACHE = containers.Map('KeyType', 'char', 'ValueType', 'double'); end
 key = sprintf('%d|%.17g|%d', model, c, stat);
 if isKey(CACHE, key), ts = CACHE(key); return; end
-if model == 1 && ~stat
-    % D(0,t) e^-c = S eta with S = sinh(mu)/mu > 0 on the real domain: the sign is that of
-    % eta = mu coth mu - c, formed without the cancellation of C - c S at large c (as in
-    % TPARTS): mu - c = -2t/(mu + c), mu coth mu - mu = 2 mu e^(-2mu)/(1 - e^(-2mu))
-    g = @(t) eta1(c, t);
+fac = 1.05;
+if model == 4 && ~stat
+    % the GLS-detrended trend case: the sign of cosh(th) det(I - Q Sig), scanned in steps of 0.5%
+    g = @(t) gls_sign(t, c); fac = 1.005;
+elseif model == 1 && ~stat
+    % D(0,t) e^-c = S eta with S = sinh(mu)/mu: the sign is that of eta = mu coth mu - c, formed
+    % without the cancellation of C - c S at large c (as in TPARTS), times the sign of S, which is
+    % sin(th)/th for 2t > c^2.  eta alone changes sign at the poles of coth as well, and for c < 0
+    % the first zero of D lies just below the pole (c^2 + pi^2)/2, inside a stretch that the 5%
+    % steps of the bracketing can skip (c = -9.5: 61.6 for 49.2).
+    g = @(t) eta1(c, t) * sgnS(c, t);
 elseif ~stat && c > 2
     % cases DU, DT at large c: the Girsanov form det(I - Q Sig) of IIPAR_DFX, whose first
     % real zero is t_*, in place of D(0,t), whose terms of size e^(2c) cancel to a value of
@@ -346,7 +394,7 @@ while ~(g(a) > 0) && a > 1e-300, a = a / 100; end          % (t_* is about 4e-7 
 if ~(g(a) > 0), error('dfx: D(0,t) not positive near t = 0'); end
 b = a;
 while g(b) > 0
-    a = b; b = b * 1.05;
+    a = b; b = b * fac;
     if b > 1e4, error('dfx: no zero of D(0,t) below t = 1e4'); end
 end
 for it = 1:100
@@ -356,6 +404,17 @@ for it = 1:100
 end
 ts = (a + b) / 2;
 CACHE(key) = ts;
+end
+
+function s = sgnS(c, t)
+% the sign of S = sinh(mu)/mu at real t (sin(th)/th for 2t > c^2)
+q = c * c - 2 * t;
+if q >= 0, s = 1; else, s = sign(sin(sqrt(-q))); end
+end
+
+function g = gls_sign(t, c)
+[lch, D] = gls_parts(complex(t), c);
+g = real(exp(lch) * D);
 end
 
 function e = eta1(c, t)
@@ -858,6 +917,7 @@ function m = moments(model, c, o)
 % E tau^p = Gamma(p/2)^(-1) int_0^inf s^(p/2-1) m_p(s) ds, m_p(s) = d^p/du^p M(u,-s) at u = 0, by
 % Cauchy integrals on a circle of radius 0.4 min|s_k(-s)| (N = 64) and the trapezoidal rule in log s
 stat = startflag(getf(o, 'start', 'zero'), c);
+if model == 4, error('dfx: the moments are not available for the GLS-detrended case (model 4)'); end
 pmax = getf(o, 'pmax', 4); h = getf(o, 'h', 0.05); N = getf(o, 'Nc', 64); rfrac = getf(o, 'rfrac', 0.4);
 if model == 1 && ~stat, extra = -c / 2; else, extra = 0; end
 kern = kernel(model, stat);

@@ -64,6 +64,7 @@ static double zrad(int model, double c, double c0, double s, double r0)
 int dfl_moments(int model, double c, double c0, double g0, bool stat, int pmax, double *m, double *errest, char *err, size_t errlen)
 {
     if (stat && g0 != 0) { snprintf(err, errlen, "a fixed start g0 applies to the zero-start cases only"); return 1; }
+    if (model == 4) { snprintf(err, errlen, "the moments are not available for the GLS-detrended case (model 4)"); return 1; }
     int kern = (model == 1 && !stat) ? 1 : 2;
     double smax = dfl_tstar(model, c, stat);
     double h = 0.05, tlo = fmin(-60.0, -2 * c - 40), thi = 8.0, rfac = 0.4; int Nu = 64;

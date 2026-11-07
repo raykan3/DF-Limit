@@ -65,6 +65,14 @@ for cc = [-10 0 2 5 20]
     check(sprintf('DK c=%g: F(0) = erf((2v)^(-1/2)), double',cc),abs(G-erf(1/sqrt(2*v))),1e-12);
 end
 check('DU c=0: F(0) = 0.95756559 (Bao and Kan, 2026, eight digits)',abs(ltratio_cdf(0,'DU',0)-0.95756559),5e-9);
+% the GLS-detrended trend case (DG): P(tau <= 0) at c = 0 in closed form, the 5% critical value, the coefficient form and
+% the power at c = -13.5 against the Julia implementation (10 digits)
+lamg = (1 + 13.5)/(1 + 13.5 + 13.5^2/3);
+check('DG c=0: F(0) = erf((0.4)^(-1/2) (1-lambda)^(-1)) (closed form)',abs(ltratio_cdf(0,'DG',0)-erf(1/sqrt(0.4*(1-lamg)^2))),1e-11);
+check('DG c=0: F(-2.8456308262) = 0.05 (the 5% critical value)',abs(ltratio_cdf(-2.8456308262,'DG',0)-0.05),1e-10);
+check('DG c=-13.5: F(-2.89) = 0.4817352773 (Julia)',abs(ltratio_cdf(-2.89,'DG',-13.5)-0.4817352773219187),1e-10);
+check('DG c=-5 c0=-8: F(0) = 0.5677921222 (the coefficient form, Julia)',abs(ltratio_cdf(0,'DG',-5,struct('c0',-8))-0.567792122181),1e-10);
+check('DG: LTRATIO_ICDF(0.05) = -2.8456308262',abs(ltratio_icdf(0.05,'DG',0)+2.8456308262),1e-8);
 ref = [0.000302655553129 0.000414190811913]; cs = {'DK','DU','DT'};
 for j = 2:3
     F = ltratio_cdf(0,cs{j},10,struct('c0',5));

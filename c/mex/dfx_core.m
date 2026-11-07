@@ -21,8 +21,8 @@ if isempty(nodefac), nodefac = 1; end
 switch lower(action)
     case {'cdf','pdf'}
         q = varargin{1}; model = varargin{2};
-        if ~(isnumeric(model) && isscalar(model) && any(model == [1 2 3]))
-            error('dfx: model must be 1, 2 or 3 (no deterministic terms, intercept, intercept and trend)');
+        if ~(isnumeric(model) && isscalar(model) && any(model == [1 2 3 4]))
+            error('dfx: model must be 1, 2, 3 or 4 (no deterministic terms, intercept, intercept and trend, GLS-detrended trend)');
         end
         c = 0; if numel(varargin) >= 3 && ~isempty(varargin{3}), c = varargin{3}; end
         o = struct(); if numel(varargin) >= 4 && ~isempty(varargin{4}), o = varargin{4}; end

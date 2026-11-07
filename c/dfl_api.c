@@ -12,7 +12,9 @@
 static int check_args(int kind, int model, double c, double c0, double g0, bool stat, char *err, size_t errlen)
 {
     if (kind != 1 && kind != 2) { snprintf(err, errlen, "kind must be 1 (density) or 2 (distribution function)"); return 1; }
-    if (model < 1 || model > 3) { snprintf(err, errlen, "model must be 1, 2 or 3 (no deterministic terms, intercept, intercept and trend)"); return 1; }
+    if (model < 1 || model > 4) { snprintf(err, errlen, "model must be 1, 2, 3 or 4 (no deterministic terms, intercept, intercept and trend, GLS-detrended trend)"); return 1; }
+    if (model == 4 && stat) { snprintf(err, errlen, "the GLS-detrended case (model 4) has a zero start only"); return 1; }
+    if (model == 4 && g0 != 0) { snprintf(err, errlen, "a fixed start g0 applies to models 1, 2 and 3 only"); return 1; }
     if (!isfinite(c)) { snprintf(err, errlen, "c must be a finite real scalar"); return 1; }
     if (!isfinite(c0)) { snprintf(err, errlen, "c0 must be a finite real scalar"); return 1; }
     if (!isfinite(g0)) { snprintf(err, errlen, "g0 must be a finite real scalar"); return 1; }
@@ -44,6 +46,7 @@ int dfl_single(int kind, int n, const double *x, int model, double c, double c0,
 int dfl_automethod(int model, double c, double c0, double g0, double x)
 {
     (void) c;
+    if (model == 4) return 1;                                                /* the GLS-detrended case: the single integral only */
     if (model == 1 && c0 > 0 && g0 == 0 && x == -sqrt(2 * c0)) return 1;   /* the infinite density of case DK: the single integral returns Inf there without a flag */
     return (c0 != 0 && g0 == 0 && !(c0 > 0 && x >= 0)) ? 2 : 1;
 }
@@ -53,6 +56,7 @@ int dfl_dist(int kind, int n, const double *x, int model, double c, double c0, d
 {
     if (check_args(kind, model, c, c0, g0, stat, err, errlen)) return 1;
     if (method < 0 || method > 2) { snprintf(err, errlen, "method must be 0 (automatic), 1 (single integral) or 2 (double integral)"); return 1; }
+    if (model == 4 && method == 2) { snprintf(err, errlen, "the GLS-detrended case (model 4) has the single integral only"); return 1; }
     dfl_single_opts sd; if (so == NULL) { dfl_single_defaults(&sd); so = &sd; }
     dfl_double_opts dd; if (dopt == NULL) { dfl_double_defaults(&dd); dopt = &dd; }
     if (nstatus) *nstatus = 0;
@@ -110,9 +114,12 @@ int dfl_icdf(int n, const double *p, int model, double c, double c0, double g0, 
 {
     if (check_args(2, model, c, c0, g0, stat, err, errlen)) return 1;
     for (int k = 0; k < n; k++) if (!(p[k] > 0 && p[k] < 1)) { snprintf(err, errlen, "p must lie in (0, 1)"); return 1; }
-    double m[2], me[2];
-    if (dfl_moments(model, c, c0, g0, stat, 2, m, me, err, errlen)) return 1;
-    double mu = m[0], sd = sqrt(fmax(m[1] - m[0] * m[0], 1e-6));
+    double m[2], me[2], mu, sd;
+    if (model == 4) { mu = -1.9 + 0.1 * fmin(c, 0.0); sd = 0.8; }   /* (no moments for the GLS-detrended case: a rough start, the search is safeguarded) */
+    else {
+        if (dfl_moments(model, c, c0, g0, stat, 2, m, me, err, errlen)) return 1;
+        mu = m[0]; sd = sqrt(fmax(m[1] - m[0] * m[0], 1e-6));
+    }
     if (!(tol > 0)) tol = 1e-10;
 #define CDF(xx, out) do { if (dfl_dist(2, 1, &(xx), model, c, c0, g0, stat, method, so, dopt, &(out), NULL, err, errlen)) return 1; } while (0)
 #define PDF(xx, out) do { if (dfl_dist(1, 1, &(xx), model, c, c0, g0, stat, method, so, dopt, &(out), NULL, err, errlen)) return 1; } while (0)

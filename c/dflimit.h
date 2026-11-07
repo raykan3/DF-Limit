@@ -104,6 +104,9 @@ cdouble dfl_gstat(int model, cdouble z);
 cdouble dfl_gstat_scaled(int model, cdouble z);
 cdouble dfl_Dfun(int model, double c, cdouble s, cdouble t, bool stat);
 cdouble dfl_Dscaled(int model, double c, cdouble s, cdouble t, cdouble *mu);
+/* models: 1 no deterministic terms (case DK), 2 intercept (DU), 3 intercept and trend (DT), 4 the GLS-detrended trend case of
+ * Elliott, Rothenberg and Stock (1996) at cbar = DFL_CBAR_GLS (case DG: zero start, the single integral only, no moments) */
+#define DFL_CBAR_GLS (-13.5)
 typedef struct { cdouble th, del, eta, lsh, lch, dS, D, A2, A1, A0; cdouble Sg[9], N[9]; int dim; } dfl_girs_t;
 void dfl_girsanov(int model, double c, cdouble t, dfl_girs_t *G);
 cdouble dfl_eta1(double c, cdouble t);

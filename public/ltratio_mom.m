@@ -21,6 +21,7 @@ function [m,info] = ltratio_mom(p,cas,c,opts)
 if nargin < 3 || isempty(c), c = 0; end
 if nargin < 4 || isempty(opts), opts = struct; end
 [cas,c,c0,g0] = ltratio_args(cas,c,opts);
+if strcmp(cas,'DG'), error('ltratio:args','ltratio_mom: the moments are not available for case DG.'); end
 if ~(isnumeric(p) && isscalar(p) && p == round(p) && p >= 1), error('ltratio:args','ltratio_mom: p must be a positive integer.'); end
 o = opts; if isfield(o,'method'), o = rmfield(o,'method'); end
 o.c0 = c0; o.g0 = g0;
