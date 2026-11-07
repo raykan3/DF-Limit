@@ -97,7 +97,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
         int kind = intarg(prhs[1], "kind"); if (kind != 1 && kind != 2) mexErrMsgIdAndTxt("ltratio:args", "kind must be 1 (density) or 2 (distribution function)");
         int model = intarg(prhs[3], "model"); double c = scalar(prhs[4], "c"), c0 = nrhs > 5 ? scalar(prhs[5], "c0") : 0.0, g0 = nrhs > 6 ? scalar(prhs[6], "g0") : 0.0;
         bool stat = nrhs > 7 && scalar(prhs[7], "stat") != 0;
-        if (model < 1 || model > 3) mexErrMsgIdAndTxt("ltratio:args", "model must be 1, 2 or 3");
+        if (model < 1 || model > 4) mexErrMsgIdAndTxt("ltratio:args", "model must be 1, 2, 3 or 4");
         if (stat && !(c < 0)) mexErrMsgIdAndTxt("ltratio:args", "a stationary start requires c < 0");
         /* finite x only: the m-file handles the rest */
         const double *x = mxGetPr(xa); for (int k = 0; k < n; k++) if (!isfinite(x[k])) mexErrMsgIdAndTxt("ltratio:args", "x must be finite");

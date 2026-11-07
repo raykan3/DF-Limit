@@ -2,21 +2,23 @@ function [cas,c,c0,g0,method] = ltratio_args(cas,c,opts)
 %LTRATIO_ARGS  Validation of the arguments of the LTRATIO functions.
 %
 %   [cas,c,c0,g0,method] = LTRATIO_ARGS(cas,c,opts) checks the case ('DK',
-%   'DU', 'DT', 'SK', 'SU', 'ST'; upper case returned), the local-to-unity
+%   'DU', 'DT', 'SK', 'SU', 'ST', or 'DG', the GLS-detrended trend case of
+%   Elliott, Rothenberg and Stock at cbar = -13.5, zero start, line integral
+%   only; upper case returned), the local-to-unity
 %   parameter c (a finite real scalar; a stationary start requires c < 0),
 %   and the options c0 (the local null value, default 0), g0 (the fixed start
 %   y_0 = g0 sigma sqrt(n), default 0; fixed-start cases only) and method
 %   ('auto' by default: the faster representation point by point, see
 %   LTRATIO_METHOD; 'single', the line integral representation of Theorem 2
 %   of the paper, also accepted as 'line'; 'double', the conditional integral
-%   representation of Theorem 3, also accepted as 'conditional'; a fixed start
+%   representation of Theorem S1 of the Supplementary Material, also accepted as 'conditional'; a fixed start
 %   g0 ~= 0 forces 'double'), returned as 'auto', 'single' or 'double'.
 %
 %   See also LTRATIO_CDF, LTRATIO_PDF, LTRATIO_ICDF, LTRATIO_MOM.
 if ~(ischar(cas) || isstring(cas)), error('ltratio:args','ltratio: the case must be one of DK, DU, DT, SK, SU, ST.'); end
 cas = upper(char(cas));
-if ~any(strcmp(cas,{'DK','DU','DT','SK','SU','ST'}))
-    error('ltratio:args','ltratio: the case must be one of DK, DU, DT, SK, SU, ST.');
+if ~any(strcmp(cas,{'DK','DU','DT','SK','SU','ST','DG'}))
+    error('ltratio:args','ltratio: the case must be one of DK, DU, DT, SK, SU, ST, DG.');
 end
 if ~(isnumeric(c) && isscalar(c) && isreal(c) && isfinite(c)), error('ltratio:args','ltratio: c must be a finite real scalar.'); end
 if cas(1) == 'S' && ~(c < 0), error('ltratio:args','ltratio: a stationary start (cases SK, SU, ST) requires c < 0.'); end
@@ -27,8 +29,13 @@ g0 = 0; if isfield(opts,'g0') && ~isempty(opts.g0), g0 = opts.g0; end
 if ~(isnumeric(g0) && isscalar(g0) && isreal(g0) && isfinite(g0)), error('ltratio:args','ltratio: opts.g0 must be a finite real scalar.'); end
 if g0 ~= 0 && cas(1) == 'S', error('ltratio:args','ltratio: opts.g0 (a fixed start) applies to cases DK, DU, DT only.'); end
 method = 'auto'; if isfield(opts,'method') && ~isempty(opts.method), method = lower(char(opts.method)); end
-% the paper's names, the line integral (Theorem 2) and the conditional integral (Theorem 3), are synonyms
+% the paper's names, the line integral (Theorem 2) and the conditional integral (Theorem S1 of the Supplementary Material), are synonyms
 if strcmp(method,'line'), method = 'single'; elseif strcmp(method,'conditional'), method = 'double'; end
 if ~any(strcmp(method,{'auto','single','double'})), error('ltratio:args','ltratio: opts.method must be ''auto'', ''single'' (''line'') or ''double'' (''conditional'').'); end
 if g0 ~= 0, method = 'double'; end                  % the line integral needs a central form of U + 1/2
+if strcmp(cas,'DG')                                  % the GLS-detrended trend case: zero start, the line integral only
+    if g0 ~= 0, error('ltratio:args','ltratio: opts.g0 (a fixed start) applies to cases DK, DU, DT only.'); end
+    if strcmp(method,'double'), error('ltratio:args','ltratio: case DG has the line integral representation only.'); end
+    method = 'single';
+end
 end

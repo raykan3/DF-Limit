@@ -2,7 +2,7 @@
 
 Bao, Broda and Kan, "The Exact Limiting Distribution of the Dickey-Fuller t-Ratio".
 
-The limiting distribution function, density, quantiles and moments of the Dickey-Fuller t-ratios tau, tau_mu and tau_tau under local alternatives phi = 1 + c/n, for the statistic centered at the unit root or at any local null value phi_0 = 1 + c_0/n, with a zero, a fixed or a stationary initial observation of the order of sqrt(n).
+The limiting distribution function, density, quantiles and moments of the Dickey-Fuller t-ratios tau, tau_mu and tau_tau under local alternatives phi = 1 + c/n, for the statistic centered at the unit root or at any local null value phi_0 = 1 + c_0/n, with a zero, a fixed or a stationary initial observation of the order of sqrt(n).  The GLS-detrended trend case of Elliott, Rothenberg and Stock (1996), the DF-GLS tests, is the case `DG` in all three implementations (zero start, line integral only).
 
 - `LaTeX/` — the paper: `LTR_BBK.tex`, `LTR_BBK.bib`, and the compiled `LTR_BBK.pdf`.
 - `public/` — the MATLAB programs (start with `Contents.m` and the manual `doc/ltratio_manual.pdf`): the user-level routines `ltratio_cdf`, `ltratio_pdf`, `ltratio_icdf`, `ltratio_mom`, the two engines (the line integral `dfx_*`, the conditional integral `tr_*`), the validation suite `ltratio_test` and `ltratio_paper`, which reproduces the tables; `public/validation/` holds the script behind the accuracy table and the logs.

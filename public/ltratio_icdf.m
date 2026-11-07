@@ -16,7 +16,11 @@ if nargin < 4 || isempty(opts), opts = struct; end
 ltratio_args(cas,c,opts);
 if ~(isnumeric(p) && isreal(p) && all(p(:) > 0 & p(:) < 1)), error('ltratio:args','ltratio_icdf: p must lie in (0,1).'); end
 tol = 1e-10; if isfield(opts,'tol') && ~isempty(opts.tol), tol = opts.tol; o = rmfield(opts,'tol'); else, o = opts; end
-m = ltratio_mom(2,cas,c,o); mu = m(1); sd = sqrt(max(m(2) - m(1)^2,1e-6));
+if strcmp(upper(char(cas)),'DG')
+    mu = -1.9 + 0.1*min(c,0); sd = 0.8;                % (no moments for case DG: a rough start, the search is safeguarded)
+else
+    m = ltratio_mom(2,cas,c,o); mu = m(1); sd = sqrt(max(m(2) - m(1)^2,1e-6));
+end
 q = zeros(size(p)); Fq = q; it = q; conv = false(size(p));
 for k = 1:numel(p)
     pk = p(k);

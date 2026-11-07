@@ -1,4 +1,4 @@
-%ACC_TABLE  The tables "The two representations against each other" of the paper (zero and
+%ACC_TABLE  The tables "The two representations against each other" of the Supplementary Material (zero and
 %   stationary start; fixed start, with a gamma_0 column): the line integral (method single)
 %   against the conditional integral (method double) at seven points per configuration (mean
 %   plus -2.5..2.5 sd), with the median times per value of the distribution function.  Runs on the C engine (the MEX file in c/mex,

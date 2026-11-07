@@ -30,6 +30,9 @@
 %   the paper point by point, see ltratio_method; 'single' (or 'line') and
 %   'double' (or 'conditional') force the line integral and the conditional
 %   integral representation; a fixed start g0 ~= 0 uses 'double').
+%   The cases are DK, DU, DT (zero or fixed start), SK, SU, ST (stationary
+%   start) and DG (the GLS-detrended trend case of Elliott, Rothenberg and
+%   Stock, cbar = -13.5: zero start, line integral only, no moments).
 %   ltratio_method - the automatic choice of the representation
 %
 % The line integral (Theorem 2 of the paper; the inversion in the argument
@@ -45,7 +48,7 @@
 %   dfx_series    - Taylor coefficients of the determinants for the port
 %   dfx_test      - the port against the stored reference values of DFExact.jl
 %
-% The conditional integral (Theorem 3 of the paper; the inner inversion in the
+% The conditional integral (Theorem S1 of the Supplementary Material; the inner inversion in the
 % argument of V along a path through a saddle point, the outer integral
 % over V)
 %   tr_limdist    - distribution function and density: part (i) in case DK
@@ -87,7 +90,7 @@
 %                   the moments, the right-tailed tests against explosive
 %                   alternatives), printing each computed value next to
 %                   the published one
-%   validation/   - the script behind the accuracy table of the paper and
+%   validation/   - the script behind the accuracy tables of the Supplementary Material and
 %                   the logs of the runs
 %
 % Example

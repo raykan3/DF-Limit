@@ -79,7 +79,7 @@ info.time = toc(t0);
 end
 
 function F = single_values(x,cas,c,c0,opts,mode)
-model = find('KUT' == cas(2));
+if strcmp(cas,'DG'), model = 4; else, model = find('KUT' == cas(2)); end
 o = rmfield_safe(opts,{'method','g0'});
 o.c0 = c0;
 if cas(1) == 'S', o.start = 'stationary'; else, o.start = 'zero'; end

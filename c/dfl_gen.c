@@ -795,7 +795,7 @@ static void guni_body(int j, void *v) { gctx *o = v; cdouble Is, Ie[2];
 
 static double outer_gen(int kind, int model, double c, double q, double c0, double g0, breaks_t *R, double tau, bool stat, const dfl_single_opts *o)
 {
-    int kern = (model == 1 && !stat) ? 1 : 2; double hu = o->hu, cde = tau; int N = o->N;
+    int kern = ((model == 1 || model == 4) && !stat) ? 1 : 2; double hu = o->hu, cde = tau; int N = o->N;
     double umax = asinh(WMAX / cde); int nu = (int) floor(umax / hu) + 1;
     cdouble *ts = malloc(nu * sizeof(cdouble)), *P = malloc(nu * sizeof(cdouble)), *s1 = malloc(nu * sizeof(cdouble)), *s2 = malloc(nu * sizeof(cdouble)), *M0 = malloc(nu * sizeof(cdouble));
     double *wt = malloc(nu * sizeof(double)), *g = malloc(nu * sizeof(double)), *psi = malloc(nu * sizeof(double));
@@ -876,7 +876,7 @@ double dfl_single_value_gen(int kind, double x, int model, double c, double c0, 
     double q = x == 0 ? 1e-12 : x;
     double tau = o->tau > 0 ? o->tau : dfl_default_tau(model, c, stat);
     DFL_NODEFAC = o->nodefac > 0 ? o->nodefac : 1;
-    int kern = (model == 1 && !stat) ? 1 : 2;
+    int kern = ((model == 1 || model == 4) && !stat) ? 1 : 2;
     if (stat) g0 = 0;
     double x0 = (g0 != 0 && model == 1) ? (1 + g0 * g0) / 2 : 0.5;
     breaks_t R; breakpts(q, c0, tau, x0, &R);
@@ -901,7 +901,7 @@ double dfl_single_value_gen(int kind, double x, int model, double c, double c0, 
 void dfl_debug_inner_gen(int model, double c, double c0, double x, bool stat, int kind, double tre, double tim, int part)
 {
     double q = x == 0 ? 1e-12 : x, tau = dfl_default_tau(model, c, stat);
-    int kern = (model == 1 && !stat) ? 1 : 2;
+    int kern = ((model == 1 || model == 4) && !stat) ? 1 : 2;
     breaks_t R; breakpts(q, c0, tau, 0.5, &R); R.vsad = saddle_loc(model, c, q, c0, tau, stat, kern, &R);
     printf("tau %.15g ne %d b %.15g %.15g y %.15g %.15g ell %.15g %.15g kindb %d %d ell0 %.15g sgn %d %d %d negl %d %d dbl %d vsad %.15g\n",
            tau, R.ne, R.b[0], R.b[1], R.y[0], R.y[1], R.ell[0], R.ell[1], R.kindb[0], R.kindb[1], R.ell0, R.sgn[0], R.sgn[1], R.sgn[2], R.negl[0], R.negl[1], R.dbl, R.vsad);

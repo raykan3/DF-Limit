@@ -140,6 +140,7 @@ static void det_adj3(const cdouble *M, cdouble *A, cdouble *det)
     *det = cadd(cadd(cmul(E(0,0), A[0]), cmul(E(0,1), A[3])), cmul(E(0,2), A[6]));
 #undef E
 }
+double dfl_lam_gls(double cb) { return (1 - cb) / (1 - cb + cb * cb / 3); }
 void dfl_girsanov(int model, double c, cdouble t, dfl_girs_t *G)
 {
     cdouble q = zof(c, t), th = csqrt(q);
@@ -180,6 +181,23 @@ void dfl_girsanov(int model, double c, cdouble t, dfl_girs_t *G)
     G->dim = 3;
     cdouble *S = G->Sg, *N = G->N;
     S[0] = g1; S[1] = g2; S[2] = g3; S[3] = g2; S[4] = g3; S[5] = g4; S[6] = g3; S[7] = g4; S[8] = g5;
+    if (model == 4) {
+        /* the GLS-detrended trend case at cbar = DFL_CBAR_GLS: the detrended path J - r L, L = lam J(1) + 3 (1 - lam) K, so that
+         * V_g = int W^2 - X' Gam_g X with Gam_g = [-lam^2/3 0 lam^2; 0 0 0; lam^2 0 3 (1 - lam^2)] and R_g = (1 - lam)^2 (X_1 - 3 X_3)^2 / 2
+         * (rank one); Q = diag(c, 0, 0) - 2t Gam_g, N = I - Q Sig, D = det N; A1 = A0 = 0 (the root s_1 comes from dfl_tparts) */
+        double lam = dfl_lam_gls(DFL_CBAR_GLS), l2 = lam * lam;
+        cdouble Qd[9] = {CPX(c, 0), ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO, ZERO};
+        Qd[0] = cadd(Qd[0], cscale(2 * l2 / 3, t)); Qd[2] = cscale(-2 * l2, t); Qd[6] = cscale(-2 * l2, t); Qd[8] = cscale(-6 * (1 - l2), t);
+        for (int i = 0; i < 3; i++) for (int j = 0; j < 3; j++) {
+            cdouble acc = ZERO;
+            for (int k = 0; k < 3; k++) acc = cadd(acc, cmul(Qd[3 * i + k], S[3 * k + j]));
+            N[3 * i + j] = csub(i == j ? ONE : ZERO, acc);
+        }
+        cdouble aN[9], aS[9], D, dS;
+        det_adj3(N, aN, &D); det_adj3(S, aS, &dS);
+        G->D = D; G->dS = dS; G->A2 = cdiv(D, dS); G->A1 = ZERO; G->A0 = ZERO;
+        return;
+    }
     cdouble Qd[9] = {CPX(c, 0), ZERO, ZERO, ZERO, cscale(-8, t), cscale(12, t), ZERO, cscale(12, t), cscale(-24, t)};
     for (int i = 0; i < 3; i++) for (int j = 0; j < 3; j++) {
         cdouble acc = ZERO;
@@ -249,6 +267,7 @@ static double tstar_g(int model, double c, bool stat, double t)
     /* case DK: the sign of D = eta S from the cancellation-free eta and the sign of S = sinh(mu)/mu (sin(th)/th for 2t > c^2);
      * eta alone changes sign at the poles of coth as well, and for c < 0 the first zero of D lies just below the pole
      * (c^2 + pi^2)/2, inside a stretch that the 5% steps of the bracketing can skip (c = -9.5: 61.6 for 49.2) */
+    if (model == 4 && !stat) { dfl_girs_t G; dfl_girsanov(4, c, CPX(t, 0), &G); return creal(cmul(cexp(G.lch), G.D)); }   /* GLS: the sign of cosh(th) |I - Q Sig| */
     if (model == 1 && !stat) { double q = c * c - 2 * t, sg = q >= 0 ? 1.0 : (sin(sqrt(-q)) >= 0 ? 1.0 : -1.0); return creal(dfl_eta1(c, CPX(t, 0))) * sg; }
     if (!stat && c > DFL_CGIRS) { dfl_girs_t G; dfl_girsanov(model, c, CPX(t, 0), &G); return creal(G.D); }
     return creal(dfl_Dfun(model, c, ZERO, CPX(t, 0), stat));
@@ -261,8 +280,8 @@ double dfl_tstar(int model, double c, bool stat)
     double a = 1e-6;
     while (tstar_g(model, c, stat, a) <= 0 && a > 1e-300) a /= 1e3;
     if (tstar_g(model, c, stat, a) <= 0) return NAN;
-    double b = a;
-    while (tstar_g(model, c, stat, b) > 0) { a = b; b *= 1.05; if (b > 1e4) return NAN; }
+    double b = a, fac = model == 4 ? 1.005 : 1.05;
+    while (tstar_g(model, c, stat, b) > 0) { a = b; b *= fac; if (b > 1e4) return NAN; }
     for (int it = 0; it < 100; it++) {
         double m = (a + b) / 2;
         if (tstar_g(model, c, stat, m) > 0) a = m; else b = m;
@@ -289,6 +308,28 @@ void dfl_tparts(int model, double c, int nt, const cdouble *t, bool stat, cdoubl
         unwrap(ph, nt);
         for (int j = 0; j < nt; j++) { P[j] = cscale(exp(-c / 2) * pow(cabs(M0[j]), -0.5), cexp(CPX(0, -ph[j] / 2))); M0[j] = ZERO; s2[j] = ZERO; }
         free(ph); return;
+    }
+    if (model == 4 && !stat) {
+        /* the GLS-detrended trend case: M(s,t) = e^{-s/2} P(t) (s_1 - s)^{-1/2} as in case DK, with M_{V_g}(t) = e^{-c/2} (cosh th
+         * |I - Q Sig|)^{-1/2} and s_1 = 1/(2 kap_1), 2 kap_1 = (1 - lam)^2 v' Sig (I - Q Sig)^{-1} v, v = (1, 0, -3): the variance of the
+         * detrended end point under the tilt; the branches of D and s_1 continued along the nodes */
+        double lam = dfl_lam_gls(DFL_CBAR_GLS), f = (1 - lam) * (1 - lam);
+        double *ps = malloc(nt * sizeof(double)); cdouble *lch = malloc(nt * sizeof(cdouble)), *lD = malloc(nt * sizeof(cdouble));
+        for (int j = 0; j < nt; j++) {
+            dfl_girs_t G; dfl_girsanov(4, c, t[j], &G);
+            cdouble aN[9], D; det_adj3(G.N, aN, &D);
+            /* x = N^{-1} v = adj(N) v / D, then v' Sig x */
+            cdouble x[3], y[3], v[3] = {ONE, ZERO, CPX(-3, 0)};
+            for (int i = 0; i < 3; i++) { x[i] = ZERO; for (int k = 0; k < 3; k++) x[i] = cadd(x[i], cmul(aN[3 * i + k], v[k])); x[i] = cdiv(x[i], D); }
+            for (int i = 0; i < 3; i++) { y[i] = ZERO; for (int k = 0; k < 3; k++) y[i] = cadd(y[i], cmul(G.Sg[3 * i + k], x[k])); }
+            cdouble q = cadd(cadd(cmul(v[0], y[0]), cmul(v[1], y[1])), cmul(v[2], y[2]));
+            s1[j] = cdiv(ONE, cscale(f, q)); s2[j] = ZERO; M0[j] = ZERO;
+            lD[j] = clog(G.D); lch[j] = G.lch; ph[j] = cimag(lD[j]); ps[j] = carg(s1[j]);
+        }
+        unwrap(ph, nt); unwrap(ps, nt);
+        for (int j = 0; j < nt; j++)
+            P[j] = cexp(cadd(CPX(-c / 2, 0), cadd(cscale(-0.5, cadd(lch[j], CPX(creal(lD[j]), ph[j]))), cscale(0.5, CPX(log(cabs(s1[j])), ps[j])))));
+        free(ps); free(lch); free(lD); free(ph); return;
     }
     cdouble *sa = malloc(nt * sizeof(cdouble)), *sb = malloc(nt * sizeof(cdouble)), *ma2 = malloc(nt * sizeof(cdouble)), *M0lch = malloc(nt * sizeof(cdouble));
     double *ph2 = malloc(nt * sizeof(double));

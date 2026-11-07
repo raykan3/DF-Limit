@@ -12,7 +12,7 @@ function varargout = ltratio(what,varargin)
 %   ('auto', the default: the faster representation at each x, the line integral at c0 = 0, with a fixed start and
 %   with c0 > 0 at x >= 0, the conditional integral otherwise with c0 ~= 0 and for the values below 1e-3; 'single' or
 %   'line', the line integral representation of Theorem 2; 'double' or 'conditional', the conditional integral
-%   representation of Theorem 3) and, for 'icdf', tol (1e-10).  Nothing but
+%   representation of Theorem S1 of the Supplementary Material) and, for 'icdf', tol (1e-10).  Nothing but
 %   this file and the MEX file is needed; with the MATLAB programs on the path too, DFX_CORE, TR_LIMDIST and
 %   TR_LIMMOM next to this file replace their engines, so that LTRATIO_CDF and the others run on the C engine.
 %
@@ -25,8 +25,13 @@ function varargout = ltratio(what,varargin)
 if strcmpi(what,'threads'), varargout{1} = ltratio_mex('threads', varargin{:}); return, end
 if nargin < 3, error('ltratio:args','usage: ltratio(what, x, cas, c, opts)'); end
 x = varargin{1}; cas = upper(char(varargin{2}));
-if ~(numel(cas) == 2 && any(cas(1) == 'DS') && any(cas(2) == 'KUT')), error('ltratio:args','the case must be DK, DU, DT, SK, SU or ST.'); end
-model = find('KUT' == cas(2)); stat = double(cas(1) == 'S');
+if strcmp(cas,'DG')                                   % the GLS-detrended trend case (model 4): zero start, the line integral only
+    model = 4; stat = 0;
+elseif numel(cas) == 2 && any(cas(1) == 'DS') && any(cas(2) == 'KUT')
+    model = find('KUT' == cas(2)); stat = double(cas(1) == 'S');
+else
+    error('ltratio:args','the case must be DK, DU, DT, SK, SU, ST or DG.');
+end
 c = 0; if nargin > 3 && ~isempty(varargin{3}), c = varargin{3}; end
 opts = struct; if nargin > 4 && ~isempty(varargin{4}), opts = varargin{4}; end
 c0 = 0; if isfield(opts,'c0') && ~isempty(opts.c0), c0 = opts.c0; end
@@ -36,7 +41,7 @@ if isfield(opts,'method') && ~isempty(opts.method)
     switch lower(char(opts.method))
         case 'auto', method = 0;
         case {'single','line'}, method = 1;                 % the line integral representation (Theorem 2)
-        case {'double','conditional'}, method = 2;          % the conditional integral representation (Theorem 3)
+        case {'double','conditional'}, method = 2;          % the conditional integral representation (Theorem S1 of the Supplementary Material)
         otherwise, error('ltratio:args','opts.method must be ''auto'', ''single'' (''line'') or ''double'' (''conditional'').');
     end
 end
