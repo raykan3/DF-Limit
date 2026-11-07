@@ -12,7 +12,7 @@ function varargout = ltratio(what,varargin)
 %   ('auto', the default: the faster representation at each x, the line integral at c0 = 0, with a fixed start and
 %   with c0 > 0 at x >= 0, the conditional integral otherwise with c0 ~= 0 and for the values below 1e-3; 'single' or
 %   'line', the line integral representation of Theorem 2; 'double' or 'conditional', the conditional integral
-%   representation of Theorem 3) and, for 'icdf', tol (1e-10).  Nothing but
+%   representation of Theorem S1 of the Supplementary Material) and, for 'icdf', tol (1e-10).  Nothing but
 %   this file and the MEX file is needed; with the MATLAB programs on the path too, DFX_CORE, TR_LIMDIST and
 %   TR_LIMMOM next to this file replace their engines, so that LTRATIO_CDF and the others run on the C engine.
 %
@@ -41,7 +41,7 @@ if isfield(opts,'method') && ~isempty(opts.method)
     switch lower(char(opts.method))
         case 'auto', method = 0;
         case {'single','line'}, method = 1;                 % the line integral representation (Theorem 2)
-        case {'double','conditional'}, method = 2;          % the conditional integral representation (Theorem 3)
+        case {'double','conditional'}, method = 2;          % the conditional integral representation (Theorem S1 of the Supplementary Material)
         otherwise, error('ltratio:args','opts.method must be ''auto'', ''single'' (''line'') or ''double'' (''conditional'').');
     end
 end

@@ -1,4 +1,4 @@
-/* dfl_double.c: the double integral (Theorem 3): the inner inversion in the argument of V along a path through a
+/* dfl_double.c: the double integral (Theorem S1 of the Supplementary Material): the inner inversion in the argument of V along a path through a
  * saddle point, the outer integral over V = b with an adaptive rule in log b.  Zero start: the closed forms
  * (case DK: E[e^{sV}; R <= a] by Girsanov; DU, DT: M_V g_s(r)) through the saddle point of the whole integrand on the
  * better of two paths (three in case DK).  With an initial observation: the Talbot parabola through the saddle point

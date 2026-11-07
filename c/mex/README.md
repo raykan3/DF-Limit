@@ -20,7 +20,7 @@ ltratio('threads')                                    % the number of threads (a
 ```
 
 The case `'DG'` is the GLS-detrended trend case of Elliott, Rothenberg and Stock (1996) at cbar = -13.5 (the DF-GLS
-tests; Section 9 of the paper): zero start, the single integral only, no moments.  `opts.method` defaults to `'auto'`: the line integral at c0 = 0 and with a fixed start g0 (the noncentral kernel),
+tests; Section 7 of the paper): zero start, the single integral only, no moments.  `opts.method` defaults to `'auto'`: the line integral at c0 = 0 and with a fixed start g0 (the noncentral kernel),
 and when c0 is not 0 with a zero start the conditional integral, except for c0 > 0 at x >= 0, where the line integral has
 no breakpoint and is the faster one by 5-50x (the faster representation at each point, measured over c in [-5, 5] and
 the three cases); as in the MATLAB programs, the values of the line integral below 1e-3 (a density, or a distribution function in the lower tail) are

@@ -1,4 +1,4 @@
-acc_table.m    the tables "The two representations against each other" of the paper
+acc_table.m    the tables "The two representations against each other" of the Supplementary Material
                (tab:acc: zero and stationary start; tab:accfixed: fixed start): the line
                integral against the conditional integral at seven points per
                configuration, with the median times; writes acc_table.log (every point)

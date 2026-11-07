@@ -3,7 +3,7 @@
 `DFExact.jl` computes the limiting distribution function, density, quantiles and moments of the three Dickey-Fuller
 t-ratios under local alternatives, for the statistic centered at the unit root or at a local null value c0, with a
 zero, a fixed or a stationary start, by both representations of the paper (the line integral of Theorem 2, the
-conditional integral of Theorem 3).  The user-level functions take the arguments of the MATLAB programs in `public/`:
+conditional integral of Theorem S1 of the Supplementary Material).  The user-level functions take the arguments of the MATLAB programs in `public/`:
 
 ```julia
 include("julia/DFExact.jl"); using .DFExact        # from the repository root; start Julia with -t auto
@@ -17,7 +17,7 @@ ltratio_mom(4, "DT")                               # first four moments of tau_t
 ```
 
 The case `"DG"` is the GLS-detrended trend case of Elliott, Rothenberg and Stock (1996) at cbar = -13.5 (the DF-GLS
-tests, Section 9 of the paper; zero start, line integral only, Julia only).  `x` may be an array; `method = :auto` (the default) takes the line integral at c0 = 0 and with a fixed start (the
+tests, Section 7 of the paper; zero start, line integral only, Julia only).  `x` may be an array; `method = :auto` (the default) takes the line integral at c0 = 0 and with a fixed start (the
 noncentral kernel), and when c0 != 0 with a zero start the conditional integral, except for c0 > 0 at x >= 0, where the
 line integral has no breakpoint and is the faster one; it recomputes the values of the line
 integral below 1e-3 by the conditional integral (the line integral's error is absolute, the conditional integral's

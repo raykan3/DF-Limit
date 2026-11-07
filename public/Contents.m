@@ -48,7 +48,7 @@
 %   dfx_series    - Taylor coefficients of the determinants for the port
 %   dfx_test      - the port against the stored reference values of DFExact.jl
 %
-% The conditional integral (Theorem 3 of the paper; the inner inversion in the
+% The conditional integral (Theorem S1 of the Supplementary Material; the inner inversion in the
 % argument of V along a path through a saddle point, the outer integral
 % over V)
 %   tr_limdist    - distribution function and density: part (i) in case DK
@@ -90,7 +90,7 @@
 %                   the moments, the right-tailed tests against explosive
 %                   alternatives), printing each computed value next to
 %                   the published one
-%   validation/   - the script behind the accuracy table of the paper and
+%   validation/   - the script behind the accuracy tables of the Supplementary Material and
 %                   the logs of the runs
 %
 % Example

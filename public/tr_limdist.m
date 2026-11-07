@@ -18,7 +18,7 @@ function [F,info] = tr_limdist(x,cas,c,opts,mode)
 %   (with complex covariances off the real axis) and R has the weights kap_1,
 %   kap_2 of TR_CFLIM (form 'B'): E[exp(s B + i u R)] = M_B(s) prod_k (1 -
 %   2 i u kap_k)^(-1/2).  Both the distribution function and the density are
-%   double integrals (Theorem 3 of the paper):
+%   double integrals (Theorem S1 of the Supplementary Material to the paper):
 %
 %   (i) case DK (zero or fixed start):
 %      E[delta(B - b) 1{R <= a}] = (1/(2 pi i)) int M_B(s) P e^(-s b) ds,

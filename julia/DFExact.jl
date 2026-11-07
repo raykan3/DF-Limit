@@ -1761,7 +1761,7 @@ end
 #   "DU"  regression on 1 and y_{t-1}            (tau_mu),   start g0
 #   "DT"  regression on 1, t and y_{t-1}         (tau_tau),  start g0
 #   "SK", "SU", "ST"  the same regressions with y_0 from the stationary distribution, J(0) ~ N(0, -1/(2c)), c < 0
-const CASES = ("DK", "DU", "DT", "SK", "SU", "ST", "DG")                 # DG: GLS-detrended, trend, zero start (Section 9)
+const CASES = ("DK", "DU", "DT", "SK", "SU", "ST", "DG")                 # DG: GLS-detrended, trend, zero start (Section 7 of the paper)
 """the method of `method = :auto` at the point x: the single integral at c0 = 0 (its fixed node layouts make it the faster
 one by 2-20x, zero or stationary start, any c) and with a fixed start g0 != 0 (the noncentral kernel, 2-6x faster than
 the double integral and without its limit c <= 2); with c0 != 0 and a zero start the double integral, except for
@@ -1841,7 +1841,7 @@ trend case of Elliott, Rothenberg and Stock, cbar = -13.5, zero start, line inte
 Non-finite x: 0 at -Inf, 1 at Inf, NaN at NaN.  method: :auto (the faster of the two representations at each x, see
 `automethod`; the values of the single integral below 1e-3 are recomputed by the double integral, and a point at which
 the double integral reports that its error estimate is not met gets the single integral's value), :single (the single
-integral of Theorem 2; with a fixed start the noncentral kernel) or :double (the double integral of Theorem 3, whose
+integral of Theorem 2; with a fixed start the noncentral kernel) or :double (the double integral of Theorem S1 of the Supplementary Material, whose
 flagged values are returned with a warning).  Further keywords go to the engine (tau, hu, N, pfac, ...).
 
     ltratio_cdf(-2.86, "DU")                        # P[tau_mu <= -2.86] at the unit root
@@ -2792,7 +2792,7 @@ function value_gen(kind::Int, q::Float64, model::Int, c::Float64, c0::Float64, t
 end
 
 # =====================================================================================
-# The double integral (Theorem 3): the inner inversion in the argument of V along a path through a saddle point, the
+# The double integral (Theorem S1 of the Supplementary Material): the inner inversion in the argument of V along a path through a saddle point, the
 # outer integral over V = b.  A port of Raymond Kan's TR_LIMDIST.
 #
 # With A' = U + cV... in the notation of the paper, R = U + 1/2 and a(b) = 1/2 + x sqrt(b) + c0 b,
@@ -3910,7 +3910,7 @@ end
 """
     tr_limdist(x, model, c; c0 = 0.0, g0 = 0.0, start = :zero, pdf = false, opts...) -> (F, info)
 
-The limiting distribution function (or density, pdf = true) by the double integral of Theorem 3 at the points x (a
+The limiting distribution function (or density, pdf = true) by the double integral of Theorem S1 of the Supplementary Material at the points x (a
 vector), with a fixed start g0 or a stationary start.  info.status is 0 where the computation is clean, otherwise 1
 (sign violations on the path) plus 2 (unresolved inner integrals, or an error estimate above errtol); a nonzero
 status gives a warning.  Options: M (outer nodes per piece), Nv (nodes on the contour), Nl (nodes of the integral over l
